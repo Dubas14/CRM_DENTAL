@@ -67,6 +67,19 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.superOnly && user.value.global_role !== 'super_admin') {
         return next({ name: 'schedule' }); // лікарів кидаємо на розклад
     }
+    if (to.meta.allowedRoles) {
+        const userRole = user.value.global_role;
+        const isAllowed = to.meta.allowedRoles.includes(userRole);
+        const isOwnDoctorRoute =
+            to.meta.allowOwnDoctor &&
+            userRole === 'doctor' &&
+            user.value.doctor &&
+            Number(to.params.id) === Number(user.value.doctor.id);
+
+        if (!isAllowed && !isOwnDoctorRoute) {
+            return next({ name: 'schedule' });
+        }
+    }
 
     if (to.meta.allowedRoles) {
         const userRole = user.value.global_role;

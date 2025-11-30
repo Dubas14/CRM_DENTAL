@@ -33,6 +33,7 @@ const initialFormState = () => ({
   address: '',
   note: '',
 });
+const form = ref(initialFormState());
 
 const form = ref(initialFormState());
 
@@ -45,7 +46,6 @@ const loadClinics = async () => {
         : '';
     return;
   }
-
   const { data } = await apiClient.get('/clinics');
   clinics.value = data;
 };
@@ -175,7 +175,6 @@ onMounted(async () => {
           </option>
         </select>
       </label>
-
       <div v-else class="text-sm text-slate-300">
         Клініка: <span class="font-semibold">{{ doctorClinic?.name || '—' }}</span>
       </div>
@@ -207,6 +206,14 @@ onMounted(async () => {
               {{ clinic.name }} ({{ clinic.city || '—' }})
             </option>
           </select>
+        </div>
+        <div v-else>
+          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+            Клініка
+          </label>
+          <div class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+            {{ doctorClinic?.name || '—' }}
+          </div>
         </div>
 
         <div v-else>

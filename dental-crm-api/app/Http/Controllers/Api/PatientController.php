@@ -33,6 +33,7 @@ class PatientController extends Controller
                 });
         }
 
+
         if ($request->filled('clinic_id')) {
             $query->where('clinic_id', $request->integer('clinic_id'));
         }

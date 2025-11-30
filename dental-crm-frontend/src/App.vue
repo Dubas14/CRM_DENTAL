@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { onMounted, ref, watchEffect } from 'vue';
+import { onMounted } from 'vue';
 import { useAuth } from './composables/useAuth';
 import { usePermissions } from './composables/usePermissions';
 
@@ -25,6 +25,7 @@ const showHeader = ref(false);
 watchEffect(() => {
   showHeader.value = route.name !== 'login' && isLoggedIn.value;
 });
+
 
 </script>
 

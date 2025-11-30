@@ -35,7 +35,6 @@ class DoctorScheduleController extends Controller
         if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду розкладу цього лікаря');
         }
-
         $schedules = Schedule::where('doctor_id', $doctor->id)
             ->orderBy('weekday')
             ->get();
@@ -65,6 +64,7 @@ class DoctorScheduleController extends Controller
         if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду слотів цього лікаря');
         }
+
 
         $date = Carbon::parse($validated['date'])->startOfDay();
         $weekday = (int) $date->isoWeekday(); // 1 (Mon) ... 7 (Sun)
