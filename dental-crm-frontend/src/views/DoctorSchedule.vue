@@ -82,6 +82,13 @@ const bookSelectedSlot = async () => {
   if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) {
     return;
   }
+  const trimmedName = bookingName.value.trim();
+  const trimmedComment = bookingComment.value.trim();
+
+  if (!trimmedName) {
+    bookingError.value = 'Вкажіть ім’я або контакт пацієнта';
+    return;
+  }
 
   bookingLoading.value = true;
   bookingError.value = null;
@@ -93,9 +100,9 @@ const bookSelectedSlot = async () => {
       date: selectedDate.value,
       time: bookingSlot.value.start,
       // поки що пацієнтів нема – кладемо ім’я/телефон в коментар
-      comment: bookingName.value
-          ? `Пацієнт: ${bookingName.value}. ${bookingComment.value || ''}`
-          : bookingComment.value || null,
+      comment: trimmedName
+          ? `Пацієнт: ${trimmedName}. ${trimmedComment || ''}`
+          : trimmedComment || null,
       source: 'crm',
     });
 
