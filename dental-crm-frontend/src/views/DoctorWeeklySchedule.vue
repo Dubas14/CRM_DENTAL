@@ -1,0 +1,203 @@
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import apiClient from '../services/apiClient';
+
+const route = useRoute();
+const router = useRouter();
+
+const doctorId = computed(() => Number(route.params.id));
+
+const loading = ref(true);
+const saving = ref(false);
+const error = ref(null);
+const saveError = ref(null);
+
+const days = ref([]);
+
+const weekdayLabels = {
+  1: 'Пн',
+  2: 'Вт',
+  3: 'Ср',
+  4: 'Чт',
+  5: 'Пт',
+  6: 'Сб',
+  7: 'Нд',
+};
+
+const loadSchedule = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    const { data } = await apiClient.get(`/doctors/${doctorId.value}/weekly-schedule`);
+    days.value = data.map(d => ({
+      weekday: d.weekday,
+      is_working: !!d.is_working,
+      start_time: d.start_time?.slice(0,5) || '09:00',
+      end_time:   d.end_time?.slice(0,5)   || '17:00',
+      break_start: d.break_start?.slice(0,5) || '13:00',
+      break_end:   d.break_end?.slice(0,5)   || '14:00',
+      slot_duration_minutes: d.slot_duration_minutes || 30,
+    }));
+  } catch (e) {
+    console.error(e);
+    error.value = e.response?.data?.message || 'Не вдалося завантажити розклад';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const saveSchedule = async () => {
+  saving.value = true;
+  saveError.value = null;
+  try {
+    const payload = {
+      days: days.value.map(d => ({
+        ...d,
+        start_time: d.is_working ? d.start_time : null,
+        end_time:   d.is_working ? d.end_time   : null,
+        break_start: d.is_working ? d.break_start : null,
+        break_end:   d.is_working ? d.break_end   : null,
+      })),
+    };
+    await apiClient.put(`/doctors/${doctorId.value}/weekly-schedule`, payload);
+    router.push({ name: 'schedule', query: { doctor: doctorId.value } });
+  } catch (e) {
+    console.error(e);
+    if (e.response?.data?.errors) {
+      const firstKey = Object.keys(e.response.data.errors)[0];
+      saveError.value = e.response.data.errors[firstKey][0];
+    } else {
+      saveError.value = e.response?.data?.message || 'Помилка збереження';
+    }
+  } finally {
+    saving.value = false;
+  }
+};
+
+onMounted(loadSchedule);
+</script>
+
+<template>
+  <div class="space-y-6">
+    <button
+        type="button"
+        class="text-xs text-slate-400 hover:text-slate-200"
+        @click="$router.back()"
+    >
+      ← Назад
+    </button>
+
+    <div>
+      <h1 class="text-2xl font-semibold">Тижневий розклад лікаря</h1>
+      <p class="text-sm text-slate-400">
+        Вкажіть робочі дні та години. На основі цього будуть будуватися вільні слоти.
+      </p>
+    </div>
+
+    <div v-if="loading" class="text-sm text-slate-400">
+      Завантаження...
+    </div>
+
+    <div v-else-if="error" class="text-sm text-red-400">
+      ❌ {{ error }}
+    </div>
+
+    <div v-else class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+      <table class="min-w-full text-sm">
+        <thead class="text-slate-400 border-b border-slate-800">
+        <tr>
+          <th class="px-3 py-2 text-left">День</th>
+          <th class="px-3 py-2 text-left">Працює</th>
+          <th class="px-3 py-2 text-left">З</th>
+          <th class="px-3 py-2 text-left">До</th>
+          <th class="px-3 py-2 text-left">Обід з</th>
+          <th class="px-3 py-2 text-left">Обід до</th>
+          <th class="px-3 py-2 text-left">Тривалість слота (хв)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr
+            v-for="day in days"
+            :key="day.weekday"
+            class="border-t border-slate-800"
+        >
+          <td class="px-3 py-2">
+            {{ weekdayLabels[day.weekday] }}
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model="day.is_working"
+                type="checkbox"
+                class="h-4 w-4 rounded border-slate-600 bg-slate-900"
+            />
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model="day.start_time"
+                :disabled="!day.is_working"
+                type="time"
+                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+            />
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model="day.end_time"
+                :disabled="!day.is_working"
+                type="time"
+                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+            />
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model="day.break_start"
+                :disabled="!day.is_working"
+                type="time"
+                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+            />
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model="day.break_end"
+                :disabled="!day.is_working"
+                type="time"
+                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+            />
+          </td>
+          <td class="px-3 py-2">
+            <input
+                v-model.number="day.slot_duration_minutes"
+                type="number"
+                min="5"
+                max="240"
+                class="w-20 rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+            />
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <div v-if="saveError" class="text-sm text-red-400">
+        ❌ {{ saveError }}
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button
+            type="button"
+            class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+            @click="loadSchedule"
+        >
+          Скасувати
+        </button>
+        <button
+            type="button"
+            :disabled="saving"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+            @click="saveSchedule"
+        >
+          {{ saving ? 'Збереження...' : 'Зберегти' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</template>

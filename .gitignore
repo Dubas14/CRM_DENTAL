@@ -1,0 +1,43 @@
+### Laravel ###
+dental-crm-api/vendor/
+dental-crm-api/node_modules/
+dental-crm-api/storage/
+dental-crm-api/public/storage/
+dental-crm-api/.env
+dental-crm-api/.env.*
+dental-crm-api/.phpunit.cache/
+dental-crm-api/storage/*.key
+
+### Composer ###
+composer.phar
+
+### Laravel IDE helper ###
+_ide_helper*
+.phpstorm.meta.php
+
+### NPM ###
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Vue / Vite ###
+dental-crm-frontend/node_modules/
+dental-crm-frontend/.env
+dental-crm-frontend/.env.*
+dental-crm-frontend/dist/
+dental-crm-frontend/.vite/
+dental-crm-frontend/.DS_Store
+
+### OS files ###
+.DS_Store
+Thumbs.db
+
+### IDE ###
+.idea/
+.vscode/
+*.iml
+
+### Docker ###
+docker-compose.override.yml
+.env.docker
