@@ -82,6 +82,7 @@ const bookSelectedSlot = async () => {
   if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) {
     return;
   }
+
   const trimmedName = bookingName.value.trim();
   const trimmedComment = bookingComment.value.trim();
 
@@ -99,16 +100,11 @@ const bookSelectedSlot = async () => {
       doctor_id: Number(selectedDoctorId.value),
       date: selectedDate.value,
       time: bookingSlot.value.start,
-      // поки що пацієнтів нема – кладемо ім’я/телефон в коментар
-      comment: trimmedName
-          ? `Пацієнт: ${trimmedName}. ${trimmedComment || ''}`
-          : trimmedComment || null,
+      comment: `Пацієнт: ${trimmedName}${trimmedComment ? `. ${trimmedComment}` : ''}`,
       source: 'crm',
     });
 
     bookingSuccess.value = true;
-
-    // перезавантажуємо слоти, щоб забрало зайнятий
     await loadSlots();
   } catch (e) {
     console.error(e);
@@ -288,7 +284,7 @@ onMounted(async () => {
               </button>
               <button
                   type="button"
-                  :disabled="bookingLoading"
+                  :disabled="bookingLoading || !bookingName.trim()"
                   class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
                   @click="bookSelectedSlot"
               >
