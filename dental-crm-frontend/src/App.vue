@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { onMounted } from 'vue';
+import { onMounted, ref, watchEffect } from 'vue';
 import { useAuth } from './composables/useAuth';
 import { usePermissions } from './composables/usePermissions';
 

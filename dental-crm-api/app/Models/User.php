@@ -59,11 +59,6 @@ class User extends Authenticatable
     }
 
 
-    public function doctor()
-    {
-        return $this->hasOne(Doctor::class);
-    }
-
     public function isSuperAdmin(): bool
     {
         return $this->global_role === 'super_admin';
