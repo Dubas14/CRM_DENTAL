@@ -4,6 +4,7 @@ import DoctorsList from '../views/DoctorsList.vue';
 import DoctorDetails from '../views/DoctorDetails.vue';
 import DoctorSchedule from '../views/DoctorSchedule.vue';
 import PatientsList from '../views/PatientsList.vue';
+import PatientDetails from '../views/PatientDetails.vue';
 import Login from '../views/Login.vue';
 import { useAuth } from '../composables/useAuth';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
@@ -34,6 +35,13 @@ const routes = [
     },
     { path: '/schedule', name: 'schedule', component: DoctorSchedule },
     { path: '/patients', name: 'patients', component: PatientsList },
+    {
+        path: '/patients/:id',
+        name: 'patient-details',
+        component: PatientDetails,
+        props: true,
+        meta: { allowedRoles: ['super_admin', 'clinic_admin', 'doctor'] },
+    },
 
     {
         path: '/doctors/:id/schedule-settings',

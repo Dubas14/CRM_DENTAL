@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use App\Models\User;
 
 class PatientController extends Controller
 {
@@ -72,14 +73,27 @@ class PatientController extends Controller
         return response()->json($patient, 201);
     }
 
-    public function show(Patient $patient)
+    public function show(Request $request, Patient $patient)
     {
-        $patient->load('clinic:id,name,city');
+        $this->authorizePatient($request->user(), $patient);
+
+        $patient->load([
+            'clinic:id,name,city',
+            'appointments' => function ($query) {
+                $query->with([
+                    'doctor:id,full_name,specialization,clinic_id,color',
+                    'clinic:id,name,city',
+                ])->orderByDesc('start_at');
+            },
+        ]);
+
         return $patient;
     }
 
     public function update(Request $request, Patient $patient)
     {
+        $this->authorizePatient($request->user(), $patient);
+
         $data = $request->validate([
             'clinic_id'  => ['sometimes', 'exists:clinics,id'],
             'full_name'  => ['sometimes', 'string', 'max:255'],
@@ -90,15 +104,58 @@ class PatientController extends Controller
             'note'       => ['sometimes', 'nullable', 'string'],
         ]);
 
+        if (isset($data['clinic_id'])
+            && $data['clinic_id'] !== $patient->clinic_id
+            && ! $request->user()->hasClinicRole($data['clinic_id'], ['clinic_admin'])
+            && ! $request->user()->isSuperAdmin()) {
+            abort(403, 'У вас немає доступу змінювати клініку пацієнта');
+        }
         $patient->update($data);
 
         return $patient->load('clinic:id,name,city');
     }
 
-    public function destroy(Patient $patient)
+    public function destroy(Request $request, Patient $patient)
     {
+        $this->authorizePatient($request->user(), $patient);
         $patient->delete();
 
         return response()->noContent();
+    }
+
+    protected function authorizePatient(User $user, Patient $patient): void
+    {
+        if ($this->canAccessPatient($user, $patient)) {
+            return;
+        }
+
+        abort(403, 'У вас немає доступу до цього пацієнта');
+    }
+
+    protected function canAccessPatient(User $user, Patient $patient): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($user->hasClinicRole($patient->clinic_id, ['clinic_admin', 'registrar'])) {
+            return true;
+        }
+
+        if ($user->global_role === 'doctor') {
+            $doctor = $user->doctor;
+
+            if ($doctor && $doctor->clinic_id === $patient->clinic_id) {
+                $hasAppointment = $patient->appointments()
+                    ->where('doctor_id', $doctor->id)
+                    ->exists();
+
+                if ($hasAppointment || $patient->user_id === $user->id) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

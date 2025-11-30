@@ -339,7 +339,12 @@ onMounted(async () => {
               class="border-t border-slate-800 hover:bg-slate-800/40"
           >
             <td class="px-4 py-2 font-medium">
-              {{ patient.full_name }}
+              <RouterLink
+                  :to="{ name: 'patient-details', params: { id: patient.id } }"
+                  class="text-emerald-300 hover:text-emerald-200"
+              >
+                {{ patient.full_name }}
+              </RouterLink>
             </td>
             <td class="px-4 py-2 text-slate-300">
               {{ patient.clinic?.name || '—' }}
