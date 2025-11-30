@@ -20,6 +20,10 @@ const bookingSuccess = ref(false);
 const bookingName = ref('');
 const bookingComment = ref('');
 
+const appointments = ref([]);
+const loadingAppointments = ref(false);
+const appointmentsError = ref(null);
+
 const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value))
 );
@@ -39,6 +43,27 @@ const loadDoctors = async () => {
   } finally {
     loadingDoctors.value = false;
   }
+};
+const loadAppointments = async () => {
+  if (!selectedDoctorId.value || !selectedDate.value) return;
+
+  loadingAppointments.value = true;
+  appointmentsError.value = null;
+
+  try {
+    const { data } = await apiClient.get(
+        `/doctors/${selectedDoctorId.value}/appointments`,
+        { params: { date: selectedDate.value } },
+    );
+    appointments.value = data;
+  } catch (e) {
+    console.error(e);
+    appointmentsError.value =
+        e.response?.data?.message || e.message || 'Не вдалося завантажити записи';
+  } finally {
+    loadingAppointments.value = false;
+  }
+  await loadAppointments();
 };
 
 const loadSlots = async () => {
@@ -290,6 +315,56 @@ onMounted(async () => {
               >
                 {{ bookingLoading ? 'Створення...' : 'Створити запис' }}
               </button>
+            </div>
+          </div>
+          <!-- заплановані записи на цей день -->
+          <div class="mt-6 space-y-2">
+            <div class="text-sm text-slate-400">
+              Записи на {{ selectedDate }}:
+            </div>
+
+            <div v-if="loadingAppointments" class="text-slate-300 text-sm">
+              Завантаження записів...
+            </div>
+
+            <div v-else-if="appointmentsError" class="text-red-400 text-sm">
+              ❌ {{ appointmentsError }}
+            </div>
+
+            <div v-else-if="appointments.length === 0" class="text-slate-500 text-sm">
+              На цю дату поки немає записів.
+            </div>
+
+            <div
+                v-else
+                class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40"
+            >
+              <table class="min-w-full text-sm">
+                <thead class="bg-slate-900/80 text-slate-300">
+                <tr>
+                  <th class="px-4 py-2 text-left">Час</th>
+                  <th class="px-4 py-2 text-left">Пацієнт / коментар</th>
+                  <th class="px-4 py-2 text-left">Статус</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr
+                    v-for="a in appointments"
+                    :key="a.id"
+                    class="border-t border-slate-800"
+                >
+                  <td class="px-4 py-2 text-slate-200">
+                    {{ a.start_at }} <!-- можна потім відформатувати через dayjs -->
+                  </td>
+                  <td class="px-4 py-2 text-slate-100">
+                    {{ a.patient_name || a.comment || '—' }}
+                  </td>
+                  <td class="px-4 py-2 text-slate-300">
+                    {{ a.status || 'planned' }}
+                  </td>
+                </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

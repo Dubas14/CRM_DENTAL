@@ -70,6 +70,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'show']);
     Route::put('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'update']);
+    Route::get('doctors/{doctor}/appointments', [AppointmentController::class, 'doctorAppointments']);
+
 
     Route::post('appointments', [AppointmentController::class, 'store']);
     Route::get('/me/clinics', function (Request $request) {

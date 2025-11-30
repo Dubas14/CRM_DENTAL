@@ -69,4 +69,21 @@ class AppointmentController extends Controller
 
         return response()->json($appointment, 201);
     }
+    public function doctorAppointments(Request $request, Doctor $doctor)
+    {
+        $this->authorize('view', $doctor); // якщо поки немає policy — тимчасово можна прибрати
+
+        $date = $request->query('date'); // 'YYYY-MM-DD'
+
+        $query = Appointment::query()
+            ->where('doctor_id', $doctor->id)
+            ->orderBy('start_at');
+
+        if ($date) {
+            $query->whereDate('start_at', $date);
+        }
+
+        return $query->get();
+    }
+
 }
