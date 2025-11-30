@@ -1,16 +1,16 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
 
+const route = useRoute();
+
+// ---- стани ----
 const doctors = ref([]);
 const selectedDoctorId = ref('');
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
-
-const { user } = useAuth();
-const { isDoctor } = usePermissions();
-const doctorProfile = computed(() => user.value?.doctor || null);
 
 const loadingDoctors = ref(true);
 const loadingSlots = ref(false);
@@ -18,7 +18,11 @@ const error = ref(null);
 const slots = ref([]);
 const slotsReason = ref(null);
 
-// стан бронювання
+const appointments = ref([]);
+const loadingAppointments = ref(false);
+const appointmentsError = ref(null);
+
+// бронювання
 const bookingSlot = ref(null); // { start, end }
 const bookingLoading = ref(false);
 const bookingError = ref(null);
@@ -26,22 +30,24 @@ const bookingSuccess = ref(false);
 const bookingName = ref('');
 const bookingComment = ref('');
 
-const appointments = ref([]);
-const loadingAppointments = ref(false);
-const appointmentsError = ref(null);
+// ---- auth / ролі ----
+const { user } = useAuth();
+const { isDoctor } = usePermissions();
+const doctorProfile = computed(() => user.value?.doctor || null);
 
-const selectedDoctor = computed(() =>
-    doctors.value.find((d) => d.id === Number(selectedDoctorId.value))
-);
-
-const route = useRoute();
-
+// ---- привʼязаний пацієнт з query ----
 const linkedPatientId = computed(() => {
   const raw = route.query.patient_id || route.query.patient;
   const num = Number(raw);
   return Number.isFinite(num) && num > 0 ? num : null;
 });
 
+// ---- обраний лікар ----
+const selectedDoctor = computed(() =>
+    doctors.value.find((d) => d.id === Number(selectedDoctorId.value)),
+);
+
+// якщо зараз авторизований лікар — фіксуємо його
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
     selectedDoctorId.value = String(doctorProfile.value.id);
@@ -56,12 +62,17 @@ watch(
     { immediate: true },
 );
 
+// ---- завантаження лікарів ----
 const loadDoctors = async () => {
   loadingDoctors.value = true;
   try {
     const { data } = await apiClient.get('/doctors');
     doctors.value = data;
-    if (!selectedDoctorId.value && data.length > 0) {
+
+    // якщо лікар — вибираємо його, інакше перший зі списку
+    if (isDoctor.value && doctorProfile.value?.id) {
+      selectedDoctorId.value = String(doctorProfile.value.id);
+    } else if (!selectedDoctorId.value && data.length > 0) {
       selectedDoctorId.value = String(data[0].id);
     }
   } catch (e) {
@@ -72,32 +83,8 @@ const loadDoctors = async () => {
     loadingDoctors.value = false;
   }
 };
-const loadAppointments = async () => {
-  if (!selectedDoctorId.value || !selectedDate.value) return;
 
-  loadingAppointments.value = true;
-  appointmentsError.value = null;
-
-  try {
-    const { data } = await apiClient.get(
-        `/doctors/${selectedDoctorId.value}/appointments`,
-        { params: { date: selectedDate.value } },
-    );
-    appointments.value = data;
-  } catch (e) {
-    console.error(e);
-    appointmentsError.value =
-        e.response?.data?.message || e.message || 'Не вдалося завантажити записи';
-  } finally {
-    loadingAppointments.value = false;
-  }
-};
-
-const refreshScheduleData = async () => {
-  await loadSlots();
-  await loadAppointments();
-};
-
+// ---- завантаження слотів ----
 const loadSlots = async () => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
 
@@ -127,6 +114,36 @@ const loadSlots = async () => {
   }
 };
 
+// ---- завантаження записів ----
+const loadAppointments = async () => {
+  if (!selectedDoctorId.value || !selectedDate.value) return;
+
+  loadingAppointments.value = true;
+  appointmentsError.value = null;
+
+  try {
+    const { data } = await apiClient.get(
+        `/doctors/${selectedDoctorId.value}/appointments`,
+        { params: { date: selectedDate.value } },
+    );
+    appointments.value = data;
+  } catch (e) {
+    console.error(e);
+    appointmentsError.value =
+        e.response?.data?.message ||
+        e.message ||
+        'Не вдалося завантажити записи';
+  } finally {
+    loadingAppointments.value = false;
+  }
+};
+
+const refreshScheduleData = async () => {
+  await loadSlots();
+  await loadAppointments();
+};
+
+// ---- вибір слота ----
 const selectSlot = (slot) => {
   bookingSlot.value = slot;
   bookingName.value = '';
@@ -135,6 +152,7 @@ const selectSlot = (slot) => {
   bookingSuccess.value = false;
 };
 
+// ---- створення запису ----
 const bookSelectedSlot = async () => {
   if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) {
     return;
@@ -158,7 +176,9 @@ const bookSelectedSlot = async () => {
       date: selectedDate.value,
       time: bookingSlot.value.start,
       patient_id: linkedPatientId.value,
-      comment: `Пацієнт: ${trimmedName}${trimmedComment ? `. ${trimmedComment}` : ''}`,
+      comment: `Пацієнт: ${trimmedName}${
+          trimmedComment ? `. ${trimmedComment}` : ''
+      }`,
       source: 'crm',
     });
 
@@ -167,9 +187,7 @@ const bookSelectedSlot = async () => {
   } catch (e) {
     console.error(e);
     bookingError.value =
-        e.response?.data?.message ||
-        e.message ||
-        'Не вдалося створити запис';
+        e.response?.data?.message || e.message || 'Не вдалося створити запис';
   } finally {
     bookingLoading.value = false;
   }
@@ -180,7 +198,6 @@ onMounted(async () => {
   await refreshScheduleData();
 });
 </script>
-
 
 <template>
   <div class="space-y-6">
@@ -197,6 +214,7 @@ onMounted(async () => {
     <div
         class="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"
     >
+      <!-- якщо НЕ лікар — можемо обирати зі списку -->
       <div v-if="!isDoctor" class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">
           Лікар
@@ -217,11 +235,14 @@ onMounted(async () => {
         </select>
       </div>
 
+      <!-- якщо лікар — показуємо його ПІБ без вибору -->
       <div v-else class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">
           Лікар
         </span>
-        <div class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+        <div
+            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+        >
           {{ doctorProfile?.full_name || selectedDoctor?.full_name || '—' }}
         </div>
       </div>
@@ -241,18 +262,18 @@ onMounted(async () => {
       <button
           type="button"
           class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
-          @change="refreshScheduleData"
+          @click="refreshScheduleData"
       >
         Оновити
       </button>
     </div>
 
-    <!-- помилки -->
+    <!-- помилки слотів -->
     <div v-if="error" class="text-red-400">
       ❌ {{ error }}
     </div>
 
-    <!-- слоти -->
+    <!-- слоти + запис -->
     <div v-else class="space-y-3">
       <div class="text-sm text-slate-300">
         <span class="font-semibold">Обраний лікар:</span>
@@ -302,8 +323,8 @@ onMounted(async () => {
             <div class="text-sm text-slate-200">
               Створення запису на
               <span class="font-semibold">
-        {{ bookingSlot.start }}–{{ bookingSlot.end }}
-      </span>
+                {{ bookingSlot.start }}–{{ bookingSlot.end }}
+              </span>
               ({{ selectedDate }})
             </div>
 
@@ -317,7 +338,9 @@ onMounted(async () => {
 
             <div class="grid gap-3 md:grid-cols-2">
               <div class="md:col-span-2">
-                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                <label
+                    class="block text-xs uppercase tracking-wide text-slate-400 mb-1"
+                >
                   Ім’я/контакт пацієнта (тимчасово, поки немає модуля пацієнтів)
                 </label>
                 <input
@@ -329,7 +352,9 @@ onMounted(async () => {
               </div>
 
               <div class="md:col-span-2">
-                <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                <label
+                    class="block text-xs uppercase tracking-wide text-slate-400 mb-1"
+                >
                   Коментар
                 </label>
                 <textarea
@@ -359,6 +384,7 @@ onMounted(async () => {
               </button>
             </div>
           </div>
+
           <!-- заплановані записи на цей день -->
           <div class="mt-6 space-y-2">
             <div class="text-sm text-slate-400">
@@ -369,11 +395,17 @@ onMounted(async () => {
               Завантаження записів...
             </div>
 
-            <div v-else-if="appointmentsError" class="text-red-400 text-sm">
+            <div
+                v-else-if="appointmentsError"
+                class="text-red-400 text-sm"
+            >
               ❌ {{ appointmentsError }}
             </div>
 
-            <div v-else-if="appointments.length === 0" class="text-slate-500 text-sm">
+            <div
+                v-else-if="appointments.length === 0"
+                class="text-slate-500 text-sm"
+            >
               На цю дату поки немає записів.
             </div>
 
@@ -396,7 +428,7 @@ onMounted(async () => {
                     class="border-t border-slate-800"
                 >
                   <td class="px-4 py-2 text-slate-200">
-                    {{ a.start_at }} <!-- можна потім відформатувати через dayjs -->
+                    {{ a.start_at }}
                   </td>
                   <td class="px-4 py-2 text-slate-100">
                     {{ a.patient_name || a.comment || '—' }}
@@ -409,6 +441,7 @@ onMounted(async () => {
               </table>
             </div>
           </div>
+          <!-- /записи -->
         </div>
       </div>
     </div>
