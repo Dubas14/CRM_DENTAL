@@ -20,7 +20,11 @@ const handleLogout = async () => {
   router.push({ name: 'login' });
 };
 
-const showHeader = computed(() => route.name !== 'login' && isLoggedIn.value);
+const showHeader = ref(false);
+
+watchEffect(() => {
+  showHeader.value = route.name !== 'login' && isLoggedIn.value;
+});
 
 
 </script>

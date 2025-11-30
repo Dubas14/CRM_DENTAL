@@ -35,6 +35,8 @@ const initialFormState = () => ({
 });
 const form = ref(initialFormState());
 
+const form = ref(initialFormState());
+
 const loadClinics = async () => {
   if (isDoctor.value) {
     clinics.value = doctorClinic.value ? [doctorClinic.value] : [];
@@ -205,6 +207,15 @@ onMounted(async () => {
             </option>
           </select>
         </div>
+        <div v-else>
+          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+            Клініка
+          </label>
+          <div class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+            {{ doctorClinic?.name || '—' }}
+          </div>
+        </div>
+
         <div v-else>
           <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
             Клініка
