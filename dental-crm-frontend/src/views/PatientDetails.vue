@@ -32,6 +32,8 @@ const treatmentHistory = computed(() =>
         .map((appointment) => ({
           ...appointment,
           historyDate: appointment.updated_at || appointment.start_at,
+          visitDate: appointment.start_at,
+          updatedDate: appointment.updated_at,
         }))
         .sort((a, b) => new Date(b.historyDate) - new Date(a.historyDate))
 );
@@ -224,6 +226,10 @@ onMounted(loadPatient);
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
                   <p class="font-semibold text-slate-100">{{ treatment.doctor?.full_name || 'Лікар не вказаний' }}</p>
                   <span class="text-xs text-slate-400">{{ formatDateTime(treatment.historyDate) }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 mb-1">
+                  <span v-if="treatment.visitDate">Візит: {{ formatDateTime(treatment.visitDate) }}</span>
+                  <span v-if="treatment.updatedDate">Оновлено: {{ formatDateTime(treatment.updatedDate) }}</span>
                 </div>
                 <p class="text-[13px] text-slate-300 whitespace-pre-line">{{ treatment.comment }}</p>
               </div>

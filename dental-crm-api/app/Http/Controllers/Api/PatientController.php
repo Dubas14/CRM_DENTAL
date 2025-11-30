@@ -83,7 +83,7 @@ class PatientController extends Controller
                 $query->with([
                     'doctor:id,full_name,specialization,clinic_id,color',
                     'clinic:id,name,city',
-                ])->orderByDesc('start_at');
+                ])->orderByDesc('updated_at')->orderByDesc('start_at');
             },
         ]);
 
