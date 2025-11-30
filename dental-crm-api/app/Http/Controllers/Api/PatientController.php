@@ -28,8 +28,10 @@ class PatientController extends Controller
             }
 
             $query->where('clinic_id', $doctor->clinic_id)
-                ->whereHas('appointments', function ($q) use ($doctor) {
-                    $q->where('doctor_id', $doctor->id);
+                ->where(function ($q) use ($doctor, $authUser) {
+                    $q->whereHas('appointments', function ($q) use ($doctor) {
+                        $q->where('doctor_id', $doctor->id);
+                    })->orWhere('user_id', $authUser->id);
                 });
         }
 
@@ -62,6 +64,8 @@ class PatientController extends Controller
             'address'    => ['nullable', 'string', 'max:255'],
             'note'       => ['nullable', 'string'],
         ]);
+
+        $data['user_id'] = $request->user()->id;
 
         $patient = Patient::create($data)->load('clinic:id,name,city');
 
