@@ -34,6 +34,14 @@ const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value))
 );
 
+const route = useRoute();
+
+const linkedPatientId = computed(() => {
+  const raw = route.query.patient_id || route.query.patient;
+  const num = Number(raw);
+  return Number.isFinite(num) && num > 0 ? num : null;
+});
+
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
     selectedDoctorId.value = String(doctorProfile.value.id);
@@ -149,6 +157,7 @@ const bookSelectedSlot = async () => {
       doctor_id: Number(selectedDoctorId.value),
       date: selectedDate.value,
       time: bookingSlot.value.start,
+      patient_id: linkedPatientId.value,
       comment: `Пацієнт: ${trimmedName}${trimmedComment ? `. ${trimmedComment}` : ''}`,
       source: 'crm',
     });

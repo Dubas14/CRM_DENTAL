@@ -5,6 +5,16 @@ import apiClient from '../services/apiClient';
 
 const route = useRoute();
 const router = useRouter();
+const goToSchedule = () => {
+  router.push({
+    // Візьми name маршруту з router/index.js для DoctorSchedule.vue.
+    // Якщо там name: 'schedule' — лишаємо 'schedule'.
+    name: 'schedule',
+    query: {
+      patient_id: patientId.value,
+    },
+  });
+};
 
 const patientId = computed(() => Number(route.params.id));
 
@@ -28,7 +38,6 @@ const form = ref({
 const visitHistory = computed(() => patient.value?.appointments || []);
 const treatmentHistory = computed(() =>
     (patient.value?.appointments || [])
-        .filter((appointment) => appointment.comment)
         .map((appointment) => ({
           ...appointment,
           historyDate: appointment.updated_at || appointment.start_at,
@@ -151,17 +160,31 @@ onMounted(loadPatient);
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 text-sm text-slate-300">
-        <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">
-          {{ patient?.clinic?.name || 'Клініка не вказана' }}
-        </span>
-        <span v-if="patient?.birth_date" class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">
-          {{ patient.birth_date }}
-        </span>
-        <span v-if="patient?.phone" class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">
-          {{ patient.phone }}
-        </span>
-      </div>
+      <button
+          type="button"
+          class="px-3 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400"
+          @click="goToSchedule"
+      >
+        Новий запис у розкладі
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 text-sm text-slate-300">
+      <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">
+        {{ patient?.clinic?.name || 'Клініка не вказана' }}
+      </span>
+      <span
+          v-if="patient?.birth_date"
+          class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700"
+      >
+        {{ patient.birth_date }}
+      </span>
+      <span
+          v-if="patient?.phone"
+          class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700"
+      >
+        {{ patient.phone }}
+      </span>
     </div>
 
     <div v-if="loading" class="text-slate-300">Завантаження даних...</div>
@@ -169,6 +192,7 @@ onMounted(loadPatient);
 
     <div v-else class="space-y-6">
       <div class="grid gap-6 lg:grid-cols-[1.7fr,1fr]">
+        <!-- Ліва колонка -->
         <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
           <h2 class="text-sm font-semibold text-slate-200">Загальна інформація</h2>
 
@@ -202,7 +226,9 @@ onMounted(loadPatient);
 
           <div class="space-y-2">
             <p class="text-xs uppercase text-slate-400">Загальна примітка</p>
-            <div class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-200">
+            <div
+                class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-200"
+            >
               {{ patient.note || 'Немає записів' }}
             </div>
           </div>
@@ -210,7 +236,9 @@ onMounted(loadPatient);
           <div class="space-y-3">
             <div class="flex items-center justify-between">
               <p class="text-xs uppercase text-slate-400">Історія лікування</p>
-              <span class="text-[11px] text-slate-400">{{ treatmentHistory.length }} запис(ів)</span>
+              <span class="text-[11px] text-slate-400">
+                {{ treatmentHistory.length }} запис(ів)
+              </span>
             </div>
 
             <div v-if="treatmentHistory.length === 0" class="text-sm text-slate-400">
@@ -223,25 +251,42 @@ onMounted(loadPatient);
                   :key="treatment.id + '-' + treatment.historyDate"
                   class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-200"
               >
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                  <p class="font-semibold text-slate-100">{{ treatment.doctor?.full_name || 'Лікар не вказаний' }}</p>
-                  <span class="text-xs text-slate-400">{{ formatDateTime(treatment.historyDate) }}</span>
+                <div
+                    class="flex flex-wrap items-center justify-between gap-2 mb-1"
+                >
+                  <p class="font-semibold text-slate-100">
+                    {{ treatment.doctor?.full_name || 'Лікар не вказаний' }}
+                  </p>
+                  <span class="text-xs text-slate-400">
+                    {{ formatDateTime(treatment.historyDate) }}
+                  </span>
                 </div>
-                <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 mb-1">
-                  <span v-if="treatment.visitDate">Візит: {{ formatDateTime(treatment.visitDate) }}</span>
-                  <span v-if="treatment.updatedDate">Оновлено: {{ formatDateTime(treatment.updatedDate) }}</span>
+                <div
+                    class="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 mb-1"
+                >
+                  <span v-if="treatment.visitDate">
+                    Візит: {{ formatDateTime(treatment.visitDate) }}
+                  </span>
+                  <span v-if="treatment.updatedDate">
+                    Оновлено: {{ formatDateTime(treatment.updatedDate) }}
+                  </span>
                 </div>
-                <p class="text-[13px] text-slate-300 whitespace-pre-line">{{ treatment.comment }}</p>
+                <p class="text-[13px] text-slate-300 whitespace-pre-line">
+                  {{ treatment.comment || 'Коментар від лікаря не додано' }}
+                </p>
               </div>
             </div>
           </div>
         </section>
 
+        <!-- Права колонка -->
         <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
           <h2 class="text-sm font-semibold text-slate-200">Редагування даних</h2>
 
           <div v-if="saveError" class="text-sm text-red-400">❌ {{ saveError }}</div>
-          <div v-if="savedMessage" class="text-sm text-emerald-400">✅ {{ savedMessage }}</div>
+          <div v-if="savedMessage" class="text-sm text-emerald-400">
+            ✅ {{ savedMessage }}
+          </div>
 
           <form class="space-y-3" @submit.prevent="savePatient">
             <div class="space-y-1">
@@ -293,7 +338,9 @@ onMounted(loadPatient);
             </div>
 
             <div class="space-y-1">
-              <label class="text-xs uppercase text-slate-400">Примітка / історія лікування</label>
+              <label class="text-xs uppercase text-slate-400">
+                Примітка / історія лікування
+              </label>
               <textarea
                   v-model="form.note"
                   rows="3"
@@ -325,7 +372,9 @@ onMounted(loadPatient);
       <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-200">Історія візитів</h2>
-          <span class="text-xs text-slate-400">{{ visitHistory.length }} запис(ів)</span>
+          <span class="text-xs text-slate-400">
+            {{ visitHistory.length }} запис(ів)
+          </span>
         </div>
 
         <div v-if="visitHistory.length === 0" class="text-sm text-slate-400">
@@ -342,13 +391,19 @@ onMounted(loadPatient);
               <div class="text-sm font-semibold text-slate-100">
                 {{ formatDateTime(visit.start_at) }}
               </div>
-              <span class="text-xs px-2 py-1 rounded-full" :class="statusClass(visit.status)">
+              <span
+                  class="text-xs px-2 py-1 rounded-full"
+                  :class="statusClass(visit.status)"
+              >
                 {{ statusLabel(visit.status) }}
               </span>
             </div>
 
             <div class="text-sm text-slate-200">
-              Лікар: <span class="font-medium">{{ visit.doctor?.full_name || '—' }}</span>
+              Лікар:
+              <span class="font-medium">
+                {{ visit.doctor?.full_name || '—' }}
+              </span>
             </div>
             <div class="text-xs text-slate-400">
               {{ visit.doctor?.specialization || 'Спеціалізація не вказана' }}
@@ -359,7 +414,9 @@ onMounted(loadPatient);
             </div>
 
             <div v-if="visit.comment" class="mt-3 text-sm text-slate-100">
-              <p class="text-xs uppercase text-slate-500 mb-1">Коментар / перебіг прийому</p>
+              <p class="text-xs uppercase text-slate-500 mb-1">
+                Коментар / перебіг прийому
+              </p>
               <p class="whitespace-pre-line">{{ visit.comment }}</p>
             </div>
           </div>
