@@ -63,6 +63,10 @@ const loadAppointments = async () => {
   } finally {
     loadingAppointments.value = false;
   }
+};
+
+const refreshScheduleData = async () => {
+  await loadSlots();
   await loadAppointments();
 };
 
@@ -130,7 +134,7 @@ const bookSelectedSlot = async () => {
     });
 
     bookingSuccess.value = true;
-    await loadSlots();
+    await refreshScheduleData();
   } catch (e) {
     console.error(e);
     bookingError.value =
@@ -144,7 +148,7 @@ const bookSelectedSlot = async () => {
 
 onMounted(async () => {
   await loadDoctors();
-  await loadSlots();
+  await refreshScheduleData();
 });
 </script>
 
@@ -172,7 +176,7 @@ onMounted(async () => {
             v-model="selectedDoctorId"
             :disabled="loadingDoctors"
             class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-            @change="loadSlots"
+            @change="refreshScheduleData"
         >
           <option value="" disabled>Оберіть лікаря</option>
           <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
@@ -192,14 +196,14 @@ onMounted(async () => {
             v-model="selectedDate"
             type="date"
             class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-            @change="loadSlots"
+            @change="refreshScheduleData"
         />
       </div>
 
       <button
           type="button"
           class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
-          @click="loadSlots"
+          @change="refreshScheduleData"
       >
         Оновити
       </button>

@@ -54,7 +54,7 @@ class DoctorController extends Controller
                 'name'        => $data['full_name'],
                 'email'       => $data['email'],
                 'password'    => Hash::make($data['password']),
-                'global_role' => 'user', // звичайний акаунт
+                'global_role' => 'doctor', // звичайний акаунт
             ]);
 
             // 2) привʼязуємо до клініки як лікаря

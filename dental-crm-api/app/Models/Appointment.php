@@ -19,6 +19,9 @@ class Appointment extends Model
         'source',
         'comment',
     ];
+    protected $appends = [
+        'patient_name',
+    ];
 
     public function doctor()
     {
@@ -28,6 +31,10 @@ class Appointment extends Model
     public function patient()
     {
         return $this->belongsTo(Patient::class);
+    }
+    public function getPatientNameAttribute(): ?string
+    {
+        return $this->patient?->full_name;
     }
 
     public function clinic()

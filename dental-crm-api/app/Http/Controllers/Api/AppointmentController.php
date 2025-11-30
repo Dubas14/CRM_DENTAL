@@ -59,7 +59,7 @@ class AppointmentController extends Controller
         $appointment = Appointment::create([
             'clinic_id' => $doctor->clinic_id,
             'doctor_id' => $doctor->id,
-            'patient_id'=> null, // додамо, коли буде модуль пацієнтів
+            'patient_id'=> $data['patient_id'] ?? null,
             'start_at'  => $startAt,
             'end_at'    => $endAt,
             'status'    => 'planned',
@@ -77,6 +77,7 @@ class AppointmentController extends Controller
 
         $query = Appointment::query()
             ->where('doctor_id', $doctor->id)
+            ->with('patient:id,full_name,phone')
             ->orderBy('start_at');
 
         if ($date) {
