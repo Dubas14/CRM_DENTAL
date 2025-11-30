@@ -1,12 +1,15 @@
 <script setup>
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router';
-import { onMounted, computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useAuth } from './composables/useAuth';
+import { usePermissions } from './composables/usePermissions';
 
 const router = useRouter();
 const route = useRoute();
 
 const { user, isLoggedIn, fetchUser, logout } = useAuth();
+const { canSeeClinics, canSeeDoctors, canSeeSchedule, canSeePatients } =
+    usePermissions();
 
 onMounted(() => {
   fetchUser().catch(() => {});
@@ -19,11 +22,9 @@ const handleLogout = async () => {
 
 const showHeader = computed(() => route.name !== 'login' && isLoggedIn.value);
 
-// 🔹 тільки супер-адмін
-const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin');
 </script>
 
-<<template>
+<template>
   <div class="min-h-screen bg-slate-900 text-slate-100">
     <header
         v-if="showHeader"
@@ -46,7 +47,7 @@ const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin');
         <nav class="text-sm flex gap-4">
           <!-- Клініки бачить лише супер-адмін -->
           <RouterLink
-              v-if="isSuperAdmin"
+              v-if="canSeeClinics"
               to="/clinics"
               class="text-slate-300 hover:text-white"
               active-class="text-white font-semibold"
@@ -55,6 +56,7 @@ const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin');
           </RouterLink>
 
           <RouterLink
+              v-if="canSeeDoctors"
               to="/doctors"
               class="text-slate-300 hover:text-white"
               active-class="text-white font-semibold"
@@ -63,6 +65,7 @@ const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin');
           </RouterLink>
 
           <RouterLink
+              v-if="canSeeSchedule"
               to="/schedule"
               class="text-slate-300 hover:text-white"
               active-class="text-white font-semibold"
@@ -71,6 +74,7 @@ const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin');
           </RouterLink>
 
           <RouterLink
+              v-if="canSeePatients"
               to="/patients"
               class="text-slate-300 hover:text-white"
               active-class="text-white font-semibold"

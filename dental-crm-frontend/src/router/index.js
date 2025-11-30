@@ -18,13 +18,19 @@ const routes = [
         component: ClinicsList,
         meta: { superOnly: true }, // 🔹 тільки супер-адмін
     },
-    { path: '/doctors', name: 'doctors', component: DoctorsList },
+    {
+        path: '/doctors',
+        name: 'doctors',
+        component: DoctorsList,
+        meta: { allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
 
     {
         path: '/doctors/:id',
         name: 'doctor-details',
         component: DoctorDetails,
         props: true,
+        meta: { allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
     },
     { path: '/schedule', name: 'schedule', component: DoctorSchedule },
     { path: '/patients', name: 'patients', component: PatientsList },
@@ -34,6 +40,7 @@ const routes = [
         name: 'doctor-weekly-schedule',
         component: DoctorWeeklySchedule,
         props: true,
+        meta: { allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
     },
 ];
 
@@ -59,6 +66,20 @@ router.beforeEach(async (to, from, next) => {
     // 🔹 якщо маршрут лише для супер-адміна
     if (to.meta.superOnly && user.value.global_role !== 'super_admin') {
         return next({ name: 'schedule' }); // лікарів кидаємо на розклад
+    }
+
+    if (to.meta.allowedRoles) {
+        const userRole = user.value.global_role;
+        const isAllowed = to.meta.allowedRoles.includes(userRole);
+        const isOwnDoctorRoute =
+            to.meta.allowOwnDoctor &&
+            userRole === 'doctor' &&
+            user.value.doctor &&
+            Number(to.params.id) === Number(user.value.doctor.id);
+
+        if (!isAllowed && !isOwnDoctorRoute) {
+            return next({ name: 'schedule' });
+        }
     }
 
     return next();

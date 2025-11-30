@@ -1,6 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import apiClient from '../services/apiClient';
+import { useAuth } from '../composables/useAuth';
+import { usePermissions } from '../composables/usePermissions';
 
 const patients = ref([]);
 const clinics = ref([]);
@@ -14,8 +16,16 @@ const selectedClinicFilter = ref('');
 const showForm = ref(false);
 const creating = ref(false);
 const formError = ref(null);
-const form = ref({
-  clinic_id: '',
+
+const { user } = useAuth();
+const { isDoctor } = usePermissions();
+
+const doctorProfile = computed(() => user.value?.doctor || null);
+const doctorClinicId = computed(() => doctorProfile.value?.clinic_id || '');
+const doctorClinic = computed(() => doctorProfile.value?.clinic || null);
+
+const initialFormState = () => ({
+  clinic_id: doctorClinicId.value || '',
   full_name: '',
   birth_date: '',
   phone: '',
@@ -24,7 +34,18 @@ const form = ref({
   note: '',
 });
 
+const form = ref(initialFormState());
+
 const loadClinics = async () => {
+  if (isDoctor.value) {
+    clinics.value = doctorClinic.value ? [doctorClinic.value] : [];
+    form.value.clinic_id = doctorClinicId.value || '';
+    selectedClinicFilter.value = doctorClinicId.value
+        ? String(doctorClinicId.value)
+        : '';
+    return;
+  }
+
   const { data } = await apiClient.get('/clinics');
   clinics.value = data;
 };
@@ -36,7 +57,11 @@ const loadPatients = async () => {
   try {
     const params = {};
     if (search.value) params.search = search.value;
-    if (selectedClinicFilter.value) params.clinic_id = selectedClinicFilter.value;
+    if (isDoctor.value && doctorClinicId.value) {
+      params.clinic_id = doctorClinicId.value;
+    } else if (selectedClinicFilter.value) {
+      params.clinic_id = selectedClinicFilter.value;
+    }
 
     const { data } = await apiClient.get('/patients', { params });
     // бо ми повернули paginate, беремо data.data
@@ -57,18 +82,16 @@ const createPatient = async () => {
   creating.value = true;
 
   try {
-    const { data } = await apiClient.post('/patients', form.value);
+    const payload = { ...form.value };
+
+    if (isDoctor.value && doctorClinicId.value) {
+      payload.clinic_id = doctorClinicId.value;
+    }
+
+    const { data } = await apiClient.post('/patients', payload);
     patients.value.unshift(data);
 
-    form.value = {
-      clinic_id: '',
-      full_name: '',
-      birth_date: '',
-      phone: '',
-      email: '',
-      address: '',
-      note: '',
-    };
+    form.value = initialFormState();
     showForm.value = false;
   } catch (e) {
     console.error(e);
@@ -139,7 +162,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <label class="text-sm text-slate-300">
+      <label v-if="!isDoctor" class="text-sm text-slate-300">
         Клініка:
         <select
             v-model="selectedClinicFilter"
@@ -152,6 +175,10 @@ onMounted(async () => {
           </option>
         </select>
       </label>
+
+      <div v-else class="text-sm text-slate-300">
+        Клініка: <span class="font-semibold">{{ doctorClinic?.name || '—' }}</span>
+      </div>
     </div>
 
     <!-- форма створення -->
@@ -166,7 +193,7 @@ onMounted(async () => {
       </div>
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createPatient">
-        <div>
+        <div v-if="!isDoctor">
           <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
             Клініка *
           </label>
@@ -180,6 +207,15 @@ onMounted(async () => {
               {{ clinic.name }} ({{ clinic.city || '—' }})
             </option>
           </select>
+        </div>
+
+        <div v-else>
+          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+            Клініка
+          </label>
+          <div class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+            {{ doctorClinic?.name || '—' }}
+          </div>
         </div>
 
         <div>

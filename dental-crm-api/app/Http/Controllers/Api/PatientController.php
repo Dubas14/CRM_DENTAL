@@ -10,8 +10,28 @@ class PatientController extends Controller
 {
     public function index(Request $request)
     {
+        $authUser = $request->user();
+
         $query = Patient::query()
             ->with('clinic:id,name,city');
+
+        if ($authUser->global_role === 'doctor') {
+            $doctor = $authUser->doctor;
+
+            if (! $doctor) {
+                return response()->json([
+                    'data' => [],
+                    'total' => 0,
+                    'per_page' => 20,
+                    'current_page' => 1,
+                ]);
+            }
+
+            $query->where('clinic_id', $doctor->clinic_id)
+                ->whereHas('appointments', function ($q) use ($doctor) {
+                    $q->where('doctor_id', $doctor->id);
+                });
+        }
 
         if ($request->filled('clinic_id')) {
             $query->where('clinic_id', $request->integer('clinic_id'));

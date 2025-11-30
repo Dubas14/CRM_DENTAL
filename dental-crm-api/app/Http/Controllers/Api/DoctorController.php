@@ -14,8 +14,14 @@ class DoctorController extends Controller
 {
     public function index(Request $request)
     {
+        $authUser = $request->user();
+
         $query = Doctor::query()
             ->with('clinic:id,name,city');
+
+        if ($authUser->global_role === 'doctor') {
+            $query->where('user_id', $authUser->id);
+        }
 
         // фільтр по клініці (на майбутнє)
         if ($request->filled('clinic_id')) {
