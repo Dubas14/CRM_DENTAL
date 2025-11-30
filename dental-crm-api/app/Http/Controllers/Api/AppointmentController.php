@@ -71,7 +71,11 @@ class AppointmentController extends Controller
     }
     public function doctorAppointments(Request $request, Doctor $doctor)
     {
-        $this->authorize('view', $doctor); // якщо поки немає policy — тимчасово можна прибрати
+        $user = $request->user();
+
+        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+            abort(403, 'У вас немає доступу до перегляду записів цього лікаря');
+        }
 
         $date = $request->query('date'); // 'YYYY-MM-DD'
 
