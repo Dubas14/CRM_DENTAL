@@ -53,6 +53,11 @@ class User extends Authenticatable
             ->withPivot('clinic_role')
             ->withTimestamps();
     }
+    public function doctor()
+    {
+        return $this->hasOne(Doctor::class);
+    }
+
 
     public function isSuperAdmin(): bool
     {
