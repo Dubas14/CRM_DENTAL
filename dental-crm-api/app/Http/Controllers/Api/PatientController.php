@@ -14,6 +14,7 @@ class PatientController extends Controller
 
         $query = Patient::query()
             ->with('clinic:id,name,city');
+
         if ($authUser->global_role === 'doctor') {
             $doctor = $authUser->doctor;
 
