@@ -1,10 +1,16 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import apiClient from '../services/apiClient';
+import { useAuth } from '../composables/useAuth';
+import { usePermissions } from '../composables/usePermissions';
 
 const doctors = ref([]);
 const selectedDoctorId = ref('');
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
+
+const { user } = useAuth();
+const { isDoctor } = usePermissions();
+const doctorProfile = computed(() => user.value?.doctor || null);
 
 const loadingDoctors = ref(true);
 const loadingSlots = ref(false);
@@ -26,6 +32,20 @@ const appointmentsError = ref(null);
 
 const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value))
+);
+
+const ensureOwnDoctorSelected = () => {
+  if (isDoctor.value && doctorProfile.value?.id) {
+    selectedDoctorId.value = String(doctorProfile.value.id);
+  }
+};
+
+watch(
+    () => doctorProfile.value?.id,
+    () => {
+      ensureOwnDoctorSelected();
+    },
+    { immediate: true },
 );
 
 const loadDoctors = async () => {
@@ -168,7 +188,7 @@ onMounted(async () => {
     <div
         class="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"
     >
-      <div class="flex flex-col gap-1">
+      <div v-if="!isDoctor" class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">
           Лікар
         </span>
@@ -186,6 +206,15 @@ onMounted(async () => {
             </span>
           </option>
         </select>
+      </div>
+
+      <div v-else class="flex flex-col gap-1">
+        <span class="text-xs uppercase tracking-wide text-slate-400">
+          Лікар
+        </span>
+        <div class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+          {{ doctorProfile?.full_name || selectedDoctor?.full_name || '—' }}
+        </div>
       </div>
 
       <div class="flex flex-col gap-1">

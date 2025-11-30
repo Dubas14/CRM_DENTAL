@@ -33,7 +33,7 @@ Route::post('/login', function (Request $request) {
 
     return response()->json([
         'token' => $token,
-        'user' => $user,
+        'user' => $user->load('doctor.clinic'),
     ]);
 });
 
@@ -45,7 +45,7 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    return $request->user()->load('doctor.clinic');
 });
 
 // ---- ПУБЛІЧНИЙ health-check ----
