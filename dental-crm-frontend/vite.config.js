@@ -1,7 +1,22 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
+  // 👇 ОСЬ ЦЕЙ БЛОК НАМ ПОТРІБЕН
+  server: {
+    host: '0.0.0.0', // Дозволяє доступ з будь-якої IP (в т.ч. з Windows)
+    port: 5173,      // Жорстко фіксуємо порт, щоб він не скакав на 5174
+    strictPort: true, // Якщо порт зайнятий — видати помилку, а не змінювати його
+    hmr: {
+      host: 'localhost', // Допомагає з оновленням сторінки (Hot Reload)
+    },
+  }
 })

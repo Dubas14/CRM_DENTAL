@@ -28,12 +28,13 @@ Route::post('/login', function (Request $request) {
         ]);
     }
 
-    // створюємо персональний токен Sanctum
+    // Створюємо токен
     $token = $user->createToken('crm-spa')->plainTextToken;
 
+    // 👇 ВИПРАВЛЕННЯ: Повертаємо просто юзера, без спроби завантажити клініку
     return response()->json([
         'token' => $token,
-        'user' => $user->load('doctor.clinic'),
+        'user' => $user,
     ]);
 });
 

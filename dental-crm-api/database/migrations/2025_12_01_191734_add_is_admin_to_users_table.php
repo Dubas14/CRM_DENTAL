@@ -6,25 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('global_role')
-                ->default('user') // super_admin / user
-                ->after('email');
+            // Додаємо колонку is_admin після email
+            $table->boolean('is_admin')->default(false)->after('email');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('global_role');
+            $table->dropColumn('is_admin');
         });
     }
 };

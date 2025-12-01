@@ -3,23 +3,22 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
+        // Створюємо Супер Адміна
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Super Admin',
+            'email' => 'admin@admin.ua',
+            'password' => Hash::make('admin'), // Пароль: password
+            'is_admin' => true,
         ]);
+
+        // Для тесту можна створити ще 5 звичайних менеджерів (опціонально)
+        // User::factory(5)->create();
     }
 }
