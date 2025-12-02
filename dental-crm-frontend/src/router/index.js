@@ -9,6 +9,7 @@ import Login from '../views/Login.vue';
 import { useAuth } from '../composables/useAuth';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
 
+
 const routes = [
     { path: '/login', name: 'login', component: Login },
 

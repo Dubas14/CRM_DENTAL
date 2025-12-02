@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DoctorScheduleController;
+use App\Http\Controllers\Api\MedicalRecordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ClinicController;
@@ -75,6 +76,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('clinics', ClinicController::class);
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
+
+    // Медична картка
+    Route::get('patients/{patient}/records', [MedicalRecordController::class, 'index']);
+    Route::post('patients/{patient}/records', [MedicalRecordController::class, 'store']);
+
+    // Зубна формула
+    Route::get('patients/{patient}/dental-map', [MedicalRecordController::class, 'getDentalMap']);
+    Route::post('patients/{patient}/dental-map', [MedicalRecordController::class, 'updateToothStatus']);
 
     Route::get('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'schedule']);
     Route::get('doctors/{doctor}/slots', [DoctorScheduleController::class, 'slots']);
