@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate; // 👈 Важливий імпорт
+use App\Models\User;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // 🔥 МАГІЯ ТУТ:
+        // Перед будь-якою перевіркою прав (Policy) запускається цей код.
+        // Якщо юзер має is_admin = true, ми дозволяємо все (return true).
+
+        Gate::before(function (User $user, $ability) {
+            if ($user->is_admin) {
+                return true;
+            }
+        });
     }
 }

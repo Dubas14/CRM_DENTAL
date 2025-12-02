@@ -1,38 +1,40 @@
-// src/services/authApi.js
-import apiClient from './apiClient';
 import axios from 'axios';
+import apiClient from './apiClient'; // Переконайся, що цей файл існує поруч
 
-// Окремий клієнт без інтерсепторів, щоб не було циклів
+// 1. Спеціальний клієнт ТІЛЬКИ для входу (без токенів, без інтерсепторів)
 const rawApi = axios.create({
-    // 👇 ВИПРАВЛЕННЯ: Беремо адресу з файлу .env (там у нас http://localhost)
-    // Замість хардкоду http://127.0.0.1:8000/api
-    baseURL: import.meta.env.VITE_API_URL + '/api',
-
-    // 👇 ВАЖЛИВО: Додаємо це, щоб працювали CSRF-куки (якщо треба)
-    withCredentials: true,
+    baseURL: 'http://localhost/api', // Жорстко порт 80 (Docker)
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
+    // withCredentials: true <-- ЦЕ МИ ПРИБРАЛИ, щоб не було помилки Network Error
 });
 
+// 2. Функція Логіну
 export async function login(email, password) {
-    // Одразу робимо запит на логін
+    // Відправляємо запит
     const { data } = await rawApi.post('/login', { email, password });
 
+    // Зберігаємо токен
     localStorage.setItem('auth_token', data.token);
+
     return data.user;
 }
 
+// 3. Функція Виходу (яку вимагала помилка)
 export async function logout() {
     try {
+        // Тут використовуємо звичайний apiClient, бо треба передати токен
         await apiClient.post('/logout');
     } catch (e) {
-        // якщо токен вже мертвий — ігноруємо
+        console.error('Logout error', e);
+    } finally {
+        localStorage.removeItem('auth_token');
     }
-    localStorage.removeItem('auth_token');
 }
 
+// 4. Функція отримання поточного юзера
 export async function getCurrentUser() {
     const token = localStorage.getItem('auth_token');
     if (!token) return null;

@@ -18,7 +18,7 @@ const handleSubmit = async () => {
     const loggedUser = await login(email.value, password.value);
 
     const target =
-        loggedUser.global_role === 'super_admin'
+        (loggedUser.is_admin === true || loggedUser.is_admin === 1)
             ? '/clinics'
             : '/schedule';
 

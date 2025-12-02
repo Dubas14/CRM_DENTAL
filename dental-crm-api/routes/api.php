@@ -15,23 +15,33 @@ use App\Http\Controllers\Api\DoctorScheduleSettingsController;
 // ---- AUTH ----
 
 Route::post('/login', function (Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
+
+    // 1. Валідація
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
     ]);
 
-    $user = User::where('email', $credentials['email'])->first();
+    // 2. Пошук юзера
+    $user = User::where('email', $request->email)->first();
 
-    if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+    // 3. Перевірка пароля
+    if (! $user || ! Hash::check($request->password, $user->password)) {
         throw ValidationException::withMessages([
-            'email' => 'Невірний email або пароль.',
+            'email' => ['Невірний логін або пароль.'],
         ]);
     }
 
-    // Створюємо токен
+    // 4. Створення токена
     $token = $user->createToken('crm-spa')->plainTextToken;
+    $user->load('doctor.clinic');
+    // 🔥 МАГІЯ ТУТ:
+    // Ми штучно додаємо поле 'global_role', яке так чекає ваш Фронтенд.
+    // Якщо в базі is_admin = true, ми кажемо фронту, що це 'super_admin'.
+    // В усіх інших випадках — поки що кажемо 'doctor' (або 'user').
+    $user->setAttribute('global_role', $user->is_admin ? 'super_admin' : 'doctor');
 
-    // 👇 ВИПРАВЛЕННЯ: Повертаємо просто юзера, без спроби завантажити клініку
+    // 5. Відповідь
     return response()->json([
         'token' => $token,
         'user' => $user,
