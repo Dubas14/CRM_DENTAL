@@ -183,7 +183,7 @@ const validatePhone = (event) => {
   event.target.value = val;
 };
 
-onMounted(loadData);
+
 </script>
 
 <template>

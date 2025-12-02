@@ -5,13 +5,16 @@ import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
 import AppointmentModal from '../components/AppointmentModal.vue';
+import PatientCreateModal from '../components/PatientCreateModal.vue';
 
 const route = useRoute();
 
+// --- Модальні вікна ---
 const showModal = ref(false);
+const showCreatePatientModal = ref(false);
 const selectedEvent = ref(null);
 
-// ---- стани ----
+// ---- Стани ----
 const doctors = ref([]);
 const selectedDoctorId = ref('');
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
@@ -26,95 +29,132 @@ const appointments = ref([]);
 const loadingAppointments = ref(false);
 const appointmentsError = ref(null);
 
-// бронювання
-const bookingSlot = ref(null); // { start, end }
+// ---- Бронювання ----
+const bookingSlot = ref(null);
 const bookingLoading = ref(false);
 const bookingError = ref(null);
 const bookingSuccess = ref(false);
-const bookingName = ref('');
-const bookingComment = ref('');
 
-// ---- auth / ролі ----
+const bookingName = ref('');
+const bookingPhone = ref('');
+const bookingComment = ref('');
+const selectedPatientForBooking = ref(null);
+
+// Пошук
+const searchResults = ref([]);
+const isSearching = ref(false);
+let searchTimeout = null;
+
+// ---- Auth ----
 const { user } = useAuth();
 const { isDoctor } = usePermissions();
 const doctorProfile = computed(() => user.value?.doctor || null);
 
-// ---- привʼязаний пацієнт з query ----
 const linkedPatientId = computed(() => {
   const raw = route.query.patient_id || route.query.patient;
   const num = Number(raw);
   return Number.isFinite(num) && num > 0 ? num : null;
 });
 
-// ---- обраний лікар ----
 const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value)),
 );
 
-// якщо зараз авторизований лікар — фіксуємо його
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
     selectedDoctorId.value = String(doctorProfile.value.id);
   }
 };
 
-watch(
-    () => doctorProfile.value?.id,
-    () => {
-      ensureOwnDoctorSelected();
-    },
-    { immediate: true },
-);
-const calendarOptions = ref({
-  // ... ваші інші налаштування ...
-  eventClick: handleEventClick, // <-- Додайте це
-});
+watch(() => doctorProfile.value?.id, () => { ensureOwnDoctorSelected(); }, { immediate: true });
 
-function handleEventClick(info) {
-  // info.event містить дані про клікнутий запис
-  selectedEvent.value = info.event;
+// === Пошук ===
+const onSearchInput = (e) => {
+  const val = e.target.value;
+  bookingName.value = val;
+
+  // Якщо користувач почав редагувати ім'я вибраного пацієнта -> скидаємо вибір
+  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name !== val) {
+    selectedPatientForBooking.value = null;
+  }
+
+  clearTimeout(searchTimeout);
+
+  if (val.length < 2) {
+    searchResults.value = [];
+    return;
+  }
+
+  isSearching.value = true;
+  searchTimeout = setTimeout(async () => {
+    try {
+      const { data } = await apiClient.get('/patients', { params: { search: val } });
+      searchResults.value = data.data || [];
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isSearching.value = false;
+    }
+  }, 300);
+};
+
+const selectPatientFromSearch = (patient) => {
+  selectedPatientForBooking.value = patient;
+  bookingName.value = patient.full_name;
+  bookingPhone.value = patient.phone || '';
+  searchResults.value = [];
+};
+
+// === Інші дії ===
+function openAppointment(appt) {
+  selectedEvent.value = appt;
   showModal.value = true;
 }
 
 function onRecordSaved() {
-  // Перезавантажити події календаря, щоб статус змінився на "done" (колір зміниться)
-  // Якщо ви використовуєте ref для подій, оновіть його.
-  // Або якщо FullCalendar тягне події функцією, зробіть refetch.
-  fetchAppointments();
+  loadAppointments();
 }
-// ---- завантаження лікарів ----
+
+function onPatientCreated(newPatient) {
+  selectedPatientForBooking.value = newPatient;
+  bookingName.value = newPatient.full_name;
+  bookingPhone.value = newPatient.phone || '';
+}
+
+function clearBookingForm() {
+  selectedPatientForBooking.value = null;
+  bookingName.value = '';
+  bookingPhone.value = '';
+  bookingComment.value = '';
+  bookingError.value = null;
+  bookingSuccess.value = false;
+  searchResults.value = [];
+}
+
 const loadDoctors = async () => {
   loadingDoctors.value = true;
   try {
     const { data } = await apiClient.get('/doctors');
     doctors.value = data;
-
-    // якщо лікар — вибираємо його, інакше перший зі списку
     if (isDoctor.value && doctorProfile.value?.id) {
       selectedDoctorId.value = String(doctorProfile.value.id);
     } else if (!selectedDoctorId.value && data.length > 0) {
       selectedDoctorId.value = String(data[0].id);
     }
   } catch (e) {
-    console.error(e);
-    error.value =
-        e.response?.data?.message || e.message || 'Помилка завантаження лікарів';
+    error.value = 'Помилка завантаження лікарів';
   } finally {
     loadingDoctors.value = false;
   }
 };
 
-// ---- завантаження слотів ----
 const loadSlots = async () => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
-
   loadingSlots.value = true;
   error.value = null;
   slots.value = [];
   slotsReason.value = null;
   bookingSlot.value = null;
-  bookingSuccess.value = false;
-  bookingError.value = null;
 
   try {
     const { data } = await apiClient.get(
@@ -124,20 +164,14 @@ const loadSlots = async () => {
     slots.value = data.slots || [];
     slotsReason.value = data.reason || null;
   } catch (e) {
-    console.error(e);
-    error.value =
-        e.response?.data?.message ||
-        e.message ||
-        'Не вдалося завантажити слоти';
+    error.value = 'Не вдалося завантажити слоти';
   } finally {
     loadingSlots.value = false;
   }
 };
 
-// ---- завантаження записів ----
 const loadAppointments = async () => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
-
   loadingAppointments.value = true;
   appointmentsError.value = null;
 
@@ -148,11 +182,7 @@ const loadAppointments = async () => {
     );
     appointments.value = data;
   } catch (e) {
-    console.error(e);
-    appointmentsError.value =
-        e.response?.data?.message ||
-        e.message ||
-        'Не вдалося завантажити записи';
+    appointmentsError.value = 'Не вдалося завантажити записи';
   } finally {
     loadingAppointments.value = false;
   }
@@ -163,54 +193,54 @@ const refreshScheduleData = async () => {
   await loadAppointments();
 };
 
-// ---- вибір слота ----
 const selectSlot = (slot) => {
   bookingSlot.value = slot;
-  bookingName.value = '';
-  bookingComment.value = '';
-  bookingError.value = null;
-  bookingSuccess.value = false;
+  clearBookingForm();
 };
 
-// ---- створення запису ----
 const bookSelectedSlot = async () => {
-  if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) {
+  if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) return;
+
+  const finalName = selectedPatientForBooking.value
+      ? selectedPatientForBooking.value.full_name
+      : bookingName.value.trim();
+
+  if (!finalName) {
+    bookingError.value = 'Вкажіть ім’я пацієнта';
     return;
   }
 
-  const trimmedName = bookingName.value.trim();
-  const trimmedComment = bookingComment.value.trim();
-
-  if (!trimmedName) {
-    bookingError.value = 'Вкажіть ім’я або контакт пацієнта';
-    return;
+  let commentText = bookingComment.value.trim();
+  if (!selectedPatientForBooking.value && bookingPhone.value) {
+    commentText += ` (Тел: ${bookingPhone.value})`;
   }
 
   bookingLoading.value = true;
-  bookingError.value = null;
-  bookingSuccess.value = false;
-
   try {
     await apiClient.post('/appointments', {
       doctor_id: Number(selectedDoctorId.value),
       date: selectedDate.value,
       time: bookingSlot.value.start,
-      patient_id: linkedPatientId.value,
-      comment: `Пацієнт: ${trimmedName}${
-          trimmedComment ? `. ${trimmedComment}` : ''
-      }`,
+      patient_id: selectedPatientForBooking.value?.id || linkedPatientId.value,
+      comment: selectedPatientForBooking.value
+          ? commentText
+          : `Пацієнт: ${finalName}. ${commentText}`,
       source: 'crm',
     });
-
     bookingSuccess.value = true;
     await refreshScheduleData();
+    setTimeout(() => { bookingSlot.value = null; }, 1500);
   } catch (e) {
-    console.error(e);
-    bookingError.value =
-        e.response?.data?.message || e.message || 'Не вдалося створити запис';
+    bookingError.value = e.response?.data?.message || 'Не вдалося створити запис';
   } finally {
     bookingLoading.value = false;
   }
+};
+
+const validatePhoneInput = (event) => {
+  let val = event.target.value.replace(/[^0-9+\-() ]/g, '');
+  bookingPhone.value = val;
+  event.target.value = val;
 };
 
 onMounted(async () => {
@@ -224,251 +254,188 @@ onMounted(async () => {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Розклад лікаря</h1>
-        <p class="text-sm text-slate-400">
-          Обери лікаря та дату, щоб подивитись доступні слоти для запису.
-        </p>
+        <p class="text-sm text-slate-400">Оберіть лікаря та дату для перегляду.</p>
       </div>
     </div>
 
-    <!-- вибір лікаря і дати -->
-    <div
-        class="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"
-    >
-      <!-- якщо НЕ лікар — можемо обирати зі списку -->
+    <div class="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
       <div v-if="!isDoctor" class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">
-          Лікар
-        </span>
-        <select
-            v-model="selectedDoctorId"
-            :disabled="loadingDoctors"
-            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-            @change="refreshScheduleData"
-        >
+        <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
+        <select v-model="selectedDoctorId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" @change="refreshScheduleData">
           <option value="" disabled>Оберіть лікаря</option>
           <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
             {{ doctor.full_name }}
-            <span v-if="doctor.specialization">
-              ({{ doctor.specialization }})
-            </span>
           </option>
         </select>
       </div>
-
-      <!-- якщо лікар — показуємо його ПІБ без вибору -->
       <div v-else class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">
-          Лікар
-        </span>
-        <div
-            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200"
-        >
+        <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
+        <div class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
           {{ doctorProfile?.full_name || selectedDoctor?.full_name || '—' }}
         </div>
       </div>
 
       <div class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">
-          Дата
-        </span>
-        <input
-            v-model="selectedDate"
-            type="date"
-            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-            @change="refreshScheduleData"
-        />
+        <span class="text-xs uppercase tracking-wide text-slate-400">Дата</span>
+        <input v-model="selectedDate" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" @change="refreshScheduleData" />
       </div>
 
-      <button
-          type="button"
-          class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
-          @click="refreshScheduleData"
-      >
+      <button type="button" class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800" @click="refreshScheduleData">
         Оновити
       </button>
     </div>
 
-    <!-- помилки слотів -->
-    <div v-if="error" class="text-red-400">
-      ❌ {{ error }}
-    </div>
-
-    <!-- слоти + запис -->
+    <div v-if="error" class="text-red-400">❌ {{ error }}</div>
     <div v-else class="space-y-3">
-      <div class="text-sm text-slate-300">
-        <span class="font-semibold">Обраний лікар:</span>
-        <span v-if="selectedDoctor">
-          {{ selectedDoctor.full_name }}
-          <span v-if="selectedDoctor.specialization">
-            ({{ selectedDoctor.specialization }})
-          </span>
-        </span>
-        <span v-else class="text-slate-500">не обрано</span>
-      </div>
 
-      <div v-if="loadingSlots" class="text-slate-300">
-        Завантаження слотів...
-      </div>
-
+      <div v-if="loadingSlots" class="text-slate-300">Завантаження слотів...</div>
       <div v-else>
-        <div v-if="slots.length === 0" class="text-slate-400 text-sm">
-          Немає вільних слотів на цю дату.
-          <span v-if="slotsReason === 'day_off'"> Лікар у вихідний.</span>
-          <span v-else-if="slotsReason === 'no_schedule'">
-            Розклад для цього дня не налаштований.
-          </span>
+        <div v-if="slots.length === 0" class="text-slate-400 text-sm">Немає вільних слотів.</div>
+        <div v-else class="flex flex-wrap gap-2">
+          <button v-for="slot in slots" :key="slot.start"
+                  class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-sm hover:bg-emerald-500/20"
+                  @click="selectSlot(slot)">
+            {{ slot.start }} – {{ slot.end }}
+          </button>
         </div>
 
-        <div v-else class="space-y-4">
-          <div class="text-sm text-slate-400">
-            Вільні слоти на {{ selectedDate }}:
+        <div v-if="bookingSlot" class="mt-4 rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-emerald-400 font-bold text-lg">Запис на {{ bookingSlot.start }}</h3>
+            <button @click="bookingSlot = null" class="text-slate-500 hover:text-white">✕</button>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-                v-for="slot in slots"
-                :key="slot.start"
-                type="button"
-                class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/40 text-emerald-200 text-sm hover:bg-emerald-500/20"
-                @click="selectSlot(slot)"
-            >
-              {{ slot.start }} – {{ slot.end }}
+
+          <div v-if="bookingSuccess" class="bg-emerald-900/30 text-emerald-400 p-3 rounded border border-emerald-500/30">
+            ✅ Запис успішно створено!
+          </div>
+          <div v-if="bookingError" class="bg-red-900/30 text-red-400 p-3 rounded border border-red-500/30">
+            {{ bookingError }}
+          </div>
+
+          <div v-if="selectedPatientForBooking" class="flex items-center justify-between bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg">
+            <div>
+              <span class="block text-xs text-blue-400 uppercase">Обраний пацієнт</span>
+              <span class="text-white font-bold">{{ selectedPatientForBooking.full_name }}</span>
+              <span class="text-slate-400 text-sm ml-2">{{ selectedPatientForBooking.phone }}</span>
+            </div>
+            <button @click="selectedPatientForBooking = null; bookingName = ''" class="text-xs text-slate-400 hover:text-white underline">
+              Змінити
             </button>
           </div>
 
-          <!-- форма бронювання -->
-          <div
-              v-if="bookingSlot"
-              class="mt-2 rounded-xl border border-slate-800 bg-slate-900/70 p-4 space-y-3"
-          >
-            <div class="text-sm text-slate-200">
-              Створення запису на
-              <span class="font-semibold">
-                {{ bookingSlot.start }}–{{ bookingSlot.end }}
-              </span>
-              ({{ selectedDate }})
-            </div>
+          <div v-else class="grid md:grid-cols-2 gap-4 relative">
+            <div class="relative">
+              <label class="block text-xs text-slate-400 mb-1 uppercase">Пошук пацієнта (Ім'я або Телефон)</label>
+              <input
+                  :value="bookingName"
+                  @input="onSearchInput"
+                  type="text"
+                  placeholder="Почніть вводити..."
+                  class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+              />
 
-            <div v-if="bookingError" class="text-sm text-red-400">
-              ❌ {{ bookingError }}
-            </div>
-
-            <div v-if="bookingSuccess" class="text-sm text-emerald-400">
-              ✅ Запис створено
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-2">
-              <div class="md:col-span-2">
-                <label
-                    class="block text-xs uppercase tracking-wide text-slate-400 mb-1"
-                >
-                  Ім’я/контакт пацієнта (тимчасово, поки немає модуля пацієнтів)
-                </label>
-                <input
-                    v-model="bookingName"
-                    type="text"
-                    class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-                    placeholder="Напр.: Петренко О., +380..."
-                />
-              </div>
-
-              <div class="md:col-span-2">
-                <label
-                    class="block text-xs uppercase tracking-wide text-slate-400 mb-1"
-                >
-                  Коментар
-                </label>
-                <textarea
-                    v-model="bookingComment"
-                    rows="2"
-                    class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
-                    placeholder="Скарги, побажання, додаткові деталі..."
-                ></textarea>
+              <div v-if="searchResults.length > 0 && !selectedPatientForBooking"
+                   class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                <ul>
+                  <li v-for="p in searchResults" :key="p.id"
+                      @click="selectPatientFromSearch(p)"
+                      class="px-3 py-2 hover:bg-slate-700 cursor-pointer text-sm text-slate-200 border-b border-slate-700 last:border-0">
+                    <div class="font-bold text-emerald-400">{{ p.full_name }}</div>
+                    <div class="text-xs text-slate-400">{{ p.phone }} | {{ p.birth_date }}</div>
+                  </li>
+                </ul>
               </div>
             </div>
 
-            <div class="flex justify-end gap-2">
-              <button
-                  type="button"
-                  class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
-                  @click="bookingSlot = null"
-              >
-                Скасувати
-              </button>
-              <button
-                  type="button"
-                  :disabled="bookingLoading || !bookingName.trim()"
-                  class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
-                  @click="bookSelectedSlot"
-              >
-                {{ bookingLoading ? 'Створення...' : 'Створити запис' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- заплановані записи на цей день -->
-          <div class="mt-6 space-y-2">
-            <div class="text-sm text-slate-400">
-              Записи на {{ selectedDate }}:
+            <div>
+              <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (для гостя)</label>
+              <input v-model="bookingPhone" @input="validatePhoneInput" type="text" placeholder="+380..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
             </div>
 
-            <div v-if="loadingAppointments" class="text-slate-300 text-sm">
-              Завантаження записів...
-            </div>
-
-            <div
-                v-else-if="appointmentsError"
-                class="text-red-400 text-sm"
-            >
-              ❌ {{ appointmentsError }}
-            </div>
-
-            <div
-                v-else-if="appointments.length === 0"
-                class="text-slate-500 text-sm"
-            >
-              На цю дату поки немає записів.
-            </div>
-
-            <div
-                v-else
-                class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40"
-            >
-              <table class="min-w-full text-sm">
-                <thead class="bg-slate-900/80 text-slate-300">
-                <tr>
-                  <th class="px-4 py-2 text-left">Час</th>
-                  <th class="px-4 py-2 text-left">Пацієнт / коментар</th>
-                  <th class="px-4 py-2 text-left">Статус</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr
-                    v-for="a in appointments"
-                    :key="a.id"
-                    class="border-t border-slate-800"
+            <div class="md:col-span-2" v-if="bookingName.length > 2 && !selectedPatientForBooking">
+              <div class="bg-slate-800/50 p-2 rounded border border-slate-700 flex items-center justify-between">
+                <span class="text-xs text-slate-400">Не знайшли пацієнта в списку?</span>
+                <button
+                    @click="showCreatePatientModal = true"
+                    class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-500 font-bold transition-colors"
                 >
-                  <td class="px-4 py-2 text-slate-200">
-                    {{ a.start_at }}
-                  </td>
-                  <td class="px-4 py-2 text-slate-100">
-                    {{ a.patient_name || a.comment || '—' }}
-                  </td>
-                  <td class="px-4 py-2 text-slate-300">
-                    {{ a.status || 'planned' }}
-                  </td>
-                </tr>
-                </tbody>
-              </table>
+                  + Створити анкету для "{{ bookingName }}"
+                </button>
+              </div>
             </div>
           </div>
-          <AppointmentModal
-              :is-open="showModal"
-              :appointment="selectedEvent"
-              @close="showModal = false"
-              @saved="onRecordSaved"
-          />
-          <!-- /записи -->
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1 uppercase">Коментар</label>
+            <textarea v-model="bookingComment" placeholder="Скарги, деталі..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white h-20"></textarea>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="bookingSlot = null" class="text-slate-400 hover:text-white px-3 py-2 text-sm">Скасувати</button>
+            <button @click="bookSelectedSlot" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-medium shadow-lg shadow-emerald-900/50">
+              Підтвердити запис
+            </button>
+          </div>
         </div>
+
+        <div class="mt-8 space-y-3">
+          <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
+
+          <div v-if="appointments.length === 0" class="text-slate-500 text-sm italic">Немає записів.</div>
+          <div v-else class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+            <table class="min-w-full text-sm">
+              <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-3 text-left font-medium">Час</th>
+                <th class="px-4 py-3 text-left font-medium">Пацієнт</th>
+                <th class="px-4 py-3 text-left font-medium">Статус</th>
+              </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+              <tr v-for="a in appointments" :key="a.id"
+                  @click="openAppointment(a)"
+                  class="hover:bg-slate-800/50 cursor-pointer transition-colors group">
+                <td class="px-4 py-3 text-emerald-400 font-bold font-mono">
+                  {{ a.start_at ? a.start_at.slice(11, 16) : '' }}
+                </td>
+                <td class="px-4 py-3 text-slate-200">
+                  <div class="font-medium">{{ a.patient_name || a.comment || '—' }}</div>
+                  <div v-if="a.patient_id" class="text-[10px] text-blue-400 inline-flex items-center gap-1 mt-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> АНКЕТА Є
+                  </div>
+                  <div v-else class="text-[10px] text-amber-500 inline-flex items-center gap-1 mt-0.5">
+                    ⚠️ Гість
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                       <span v-if="a.status === 'done'" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                         Виконано
+                       </span>
+                  <span v-else class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">
+                         Заплановано
+                       </span>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <AppointmentModal
+            :is-open="showModal"
+            :appointment="selectedEvent"
+            @close="showModal = false"
+            @saved="onRecordSaved"
+        />
+
+        <PatientCreateModal
+            :is-open="showCreatePatientModal"
+            :initial-name="bookingName"
+            :initial-phone="bookingPhone"
+            @close="showCreatePatientModal = false"
+            @created="onPatientCreated"
+        />
+
       </div>
     </div>
   </div>

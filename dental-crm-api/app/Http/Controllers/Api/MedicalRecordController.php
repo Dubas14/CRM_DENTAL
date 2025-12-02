@@ -19,27 +19,45 @@ class MedicalRecordController extends Controller
     // Додати запис в картку
     public function store(Request $request, Patient $patient)
     {
-        // ... (початок методу той самий: пошук лікаря, валідація) ...
-        $user = $request->user();
-        $doctor = \App\Models\Doctor::where('user_id', $user->id)->first();
-
-        // Валідація
+        // Валідація (до речі, тут ми виправили doctor_id)
         $validated = $request->validate([
-            'appointment_id' => 'nullable|exists:appointments,id', // <-- Важливо
-            'tooth_number'   => 'nullable|integer|min:11|max:85',
+            'appointment_id' => 'nullable|exists:appointments,id',
+            'tooth_number'   => 'nullable|integer|min:11|max:85', // Тут ваша помилка
             'diagnosis'      => 'required|string',
             'treatment'      => 'required|string',
             'complaints'     => 'nullable|string',
             'update_tooth_status' => 'nullable|string'
         ]);
 
-        $data = $validated;
-        $data['doctor_id'] = $doctor ? $doctor->id : $request->doctor_id; // Фолбек
+        // 1. Визначаємо лікаря
+        $user = $request->user();
+        $doctor = \App\Models\Doctor::where('user_id', $user->id)->first();
 
-        // 1. Створюємо медичний запис
+        $doctorId = null;
+
+        if ($doctor) {
+            // Якщо це робить сам лікар
+            $doctorId = $doctor->id;
+        } elseif (!empty($request->appointment_id)) {
+            // Якщо це робить Адмін -> беремо лікаря з візиту
+            $appointment = \App\Models\Appointment::find($request->appointment_id);
+            $doctorId = $appointment ? $appointment->doctor_id : null;
+        }
+
+        // Якщо так і не знайшли лікаря (наприклад, адмін пише нотатку без візиту)
+        if (!$doctorId) {
+            // Можна видати помилку, або дозволити (якщо запис робить клініка)
+            // Поки що кинемо помилку, щоб дані були цілісними
+            return response()->json(['message' => 'Неможливо визначити лікаря для цього запису'], 422);
+        }
+
+        $data = $validated;
+        $data['doctor_id'] = $doctorId;
+
+        // 2. Створюємо запис
         $record = $patient->medicalRecords()->create($data);
 
-        // 2. Оновлюємо зуби (якщо треба)
+        // 3. Оновлюємо статус зуба на карті
         if (!empty($request->tooth_number) && !empty($request->update_tooth_status)) {
             PatientToothStatus::updateOrCreate(
                 ['patient_id' => $patient->id, 'tooth_number' => $request->tooth_number],
@@ -47,7 +65,7 @@ class MedicalRecordController extends Controller
             );
         }
 
-        // 3. 🔥 АВТОМАТИЧНО ЗАКРИВАЄМО ВІЗИТ У КАЛЕНДАРІ
+        // 4. Закриваємо візит (статус "done")
         if (!empty($request->appointment_id)) {
             \App\Models\Appointment::where('id', $request->appointment_id)
                 ->update(['status' => 'done']);
