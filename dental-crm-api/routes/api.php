@@ -80,6 +80,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Медична картка
     Route::get('patients/{patient}/records', [MedicalRecordController::class, 'index']);
     Route::post('patients/{patient}/records', [MedicalRecordController::class, 'store']);
+    Route::get('patients/{patient}/notes', [\App\Http\Controllers\Api\PatientController::class, 'getNotes']);
+    Route::post('patients/{patient}/notes', [\App\Http\Controllers\Api\PatientController::class, 'addNote']);
 
     // Зубна формула
     Route::get('patients/{patient}/dental-map', [MedicalRecordController::class, 'getDentalMap']);

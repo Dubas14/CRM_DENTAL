@@ -131,6 +131,24 @@ class PatientController extends Controller
 
         abort(403, 'У вас немає доступу до цього пацієнта');
     }
+    public function getNotes(Patient $patient)
+    {
+        return $patient->notes()->with('user')->get();
+    }
+
+    public function addNote(Request $request, Patient $patient)
+    {
+        // 1. Зберігаємо провалідовані дані у змінну
+        $validated = $request->validate(['content' => 'required|string']);
+
+        $note = $patient->notes()->create([
+            'user_id' => $request->user()->id,
+            // 2. Використовуємо масив $validated
+            'content' => $validated['content']
+        ]);
+
+        return $note->load('user');
+    }
 
     protected function canAccessPatient(User $user, Patient $patient): bool
     {
@@ -155,6 +173,7 @@ class PatientController extends Controller
                 }
             }
         }
+
 
         return false;
     }

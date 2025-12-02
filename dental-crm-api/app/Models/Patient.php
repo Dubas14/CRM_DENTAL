@@ -43,4 +43,8 @@ class Patient extends Model
     {
         return $this->hasMany(PatientToothStatus::class);
     }
+    public function notes()
+    {
+        return $this->hasMany(PatientNote::class)->latest(); // Сортуємо: нові зверху
+    }
 }

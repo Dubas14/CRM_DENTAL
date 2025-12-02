@@ -4,8 +4,12 @@ import { useRoute } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
+import AppointmentModal from '../components/AppointmentModal.vue';
 
 const route = useRoute();
+
+const showModal = ref(false);
+const selectedEvent = ref(null);
 
 // ---- стани ----
 const doctors = ref([]);
@@ -61,7 +65,23 @@ watch(
     },
     { immediate: true },
 );
+const calendarOptions = ref({
+  // ... ваші інші налаштування ...
+  eventClick: handleEventClick, // <-- Додайте це
+});
 
+function handleEventClick(info) {
+  // info.event містить дані про клікнутий запис
+  selectedEvent.value = info.event;
+  showModal.value = true;
+}
+
+function onRecordSaved() {
+  // Перезавантажити події календаря, щоб статус змінився на "done" (колір зміниться)
+  // Якщо ви використовуєте ref для подій, оновіть його.
+  // Або якщо FullCalendar тягне події функцією, зробіть refetch.
+  fetchAppointments();
+}
 // ---- завантаження лікарів ----
 const loadDoctors = async () => {
   loadingDoctors.value = true;
@@ -441,6 +461,12 @@ onMounted(async () => {
               </table>
             </div>
           </div>
+          <AppointmentModal
+              :is-open="showModal"
+              :appointment="selectedEvent"
+              @close="showModal = false"
+              @saved="onRecordSaved"
+          />
           <!-- /записи -->
         </div>
       </div>

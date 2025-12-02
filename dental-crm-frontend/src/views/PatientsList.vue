@@ -106,6 +106,13 @@ const createPatient = async () => {
     creating.value = false;
   }
 };
+const validatePhone = (event) => {
+  // Замінюємо все, що не є цифрою, плюсом, дужками або дефісом на пустоту
+  let val = event.target.value.replace(/[^0-9+\-() ]/g, '');
+  form.value.phone = val;
+  // Синхронізуємо значення в полі (інколи v-model не встигає)
+  event.target.value = val;
+};
 
 onMounted(async () => {
   await loadClinics();
@@ -244,8 +251,9 @@ onMounted(async () => {
           </label>
           <input
               v-model="form.phone"
-              type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              @input="validatePhone"
+              type="tel"
+              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200"
               placeholder="+380..."
           />
         </div>

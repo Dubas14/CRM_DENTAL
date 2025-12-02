@@ -19,25 +19,38 @@ class MedicalRecordController extends Controller
     // Додати запис в картку
     public function store(Request $request, Patient $patient)
     {
+        // ... (початок методу той самий: пошук лікаря, валідація) ...
+        $user = $request->user();
+        $doctor = \App\Models\Doctor::where('user_id', $user->id)->first();
+
+        // Валідація
         $validated = $request->validate([
-            'doctor_id'      => 'required|exists:doctors,id',
-            'appointment_id' => 'nullable|exists:appointments,id',
+            'appointment_id' => 'nullable|exists:appointments,id', // <-- Важливо
             'tooth_number'   => 'nullable|integer|min:11|max:85',
             'diagnosis'      => 'required|string',
             'treatment'      => 'required|string',
             'complaints'     => 'nullable|string',
-            // Опціонально: оновлення статусу зуба разом із записом
-            'update_tooth_status' => 'nullable|string' // наприклад: 'filled'
+            'update_tooth_status' => 'nullable|string'
         ]);
 
-        $record = $patient->medicalRecords()->create($validated);
+        $data = $validated;
+        $data['doctor_id'] = $doctor ? $doctor->id : $request->doctor_id; // Фолбек
 
-        // Якщо вказано змінити статус зуба (наприклад, полікували карієс -> пломба)
-        if ($request->tooth_number && $request->update_tooth_status) {
+        // 1. Створюємо медичний запис
+        $record = $patient->medicalRecords()->create($data);
+
+        // 2. Оновлюємо зуби (якщо треба)
+        if (!empty($request->tooth_number) && !empty($request->update_tooth_status)) {
             PatientToothStatus::updateOrCreate(
                 ['patient_id' => $patient->id, 'tooth_number' => $request->tooth_number],
                 ['status' => $request->update_tooth_status]
             );
+        }
+
+        // 3. 🔥 АВТОМАТИЧНО ЗАКРИВАЄМО ВІЗИТ У КАЛЕНДАРІ
+        if (!empty($request->appointment_id)) {
+            \App\Models\Appointment::where('id', $request->appointment_id)
+                ->update(['status' => 'done']);
         }
 
         return $record->load('doctor.user');
