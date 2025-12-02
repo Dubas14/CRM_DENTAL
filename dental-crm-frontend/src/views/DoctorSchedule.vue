@@ -14,7 +14,7 @@ const showModal = ref(false);
 const showCreatePatientModal = ref(false);
 const selectedEvent = ref(null);
 
-// ---- Стани ----
+// ---- Стани розкладу ----
 const doctors = ref([]);
 const selectedDoctorId = ref('');
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
@@ -40,6 +40,9 @@ const bookingPhone = ref('');
 const bookingComment = ref('');
 const selectedPatientForBooking = ref(null);
 
+// Змінна для збереження ID запису, до якого треба прив'язати створеного пацієнта
+const appointmentToLink = ref(null);
+
 // Пошук
 const searchResults = ref([]);
 const isSearching = ref(false);
@@ -60,6 +63,7 @@ const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value)),
 );
 
+// Фіксація лікаря
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
     selectedDoctorId.value = String(doctorProfile.value.id);
@@ -68,19 +72,18 @@ const ensureOwnDoctorSelected = () => {
 
 watch(() => doctorProfile.value?.id, () => { ensureOwnDoctorSelected(); }, { immediate: true });
 
-// === Пошук ===
-const onSearchInput = (e) => {
-  const val = e.target.value;
-  bookingName.value = val;
-
-  // Якщо користувач почав редагувати ім'я вибраного пацієнта -> скидаємо вибір
-  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name !== val) {
+// === ЛОГІКА ПОШУКУ ===
+watch(bookingName, (newVal) => {
+  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name === newVal) {
+    return;
+  }
+  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name !== newVal) {
     selectedPatientForBooking.value = null;
   }
 
   clearTimeout(searchTimeout);
 
-  if (val.length < 2) {
+  if (!newVal || newVal.length < 2) {
     searchResults.value = [];
     return;
   }
@@ -88,7 +91,7 @@ const onSearchInput = (e) => {
   isSearching.value = true;
   searchTimeout = setTimeout(async () => {
     try {
-      const { data } = await apiClient.get('/patients', { params: { search: val } });
+      const { data } = await apiClient.get('/patients', { params: { search: newVal } });
       searchResults.value = data.data || [];
     } catch (e) {
       console.error(e);
@@ -96,7 +99,7 @@ const onSearchInput = (e) => {
       isSearching.value = false;
     }
   }, 300);
-};
+});
 
 const selectPatientFromSearch = (patient) => {
   selectedPatientForBooking.value = patient;
@@ -105,24 +108,72 @@ const selectPatientFromSearch = (patient) => {
   searchResults.value = [];
 };
 
-// === Інші дії ===
+// === РОБОТА З МОДАЛКАМИ ===
+
+// 1. Відкрити існуючий візит
 function openAppointment(appt) {
   selectedEvent.value = appt;
   showModal.value = true;
+}
+
+// 2. Відкрити створення пацієнта з модалки прийому
+function onOpenCreatePatientFromModal(nameFromModal) {
+  showModal.value = false; // Закриваємо модалку прийому
+  appointmentToLink.value = selectedEvent.value; // Запам'ятовуємо, що редагуємо цей запис
+
+  // Заповнюємо форму створення
+  bookingName.value = nameFromModal;
+  bookingPhone.value = '';
+
+  showCreatePatientModal.value = true; // Відкриваємо створення
+}
+
+// 3. Успішне створення пацієнта
+async function onPatientCreated(newPatient) {
+
+  // СЦЕНАРІЙ А: Прив'язка до існуючого запису (через кнопку в модалці)
+  if (appointmentToLink.value) {
+    try {
+      const apptId = appointmentToLink.value.id || appointmentToLink.value.extendedProps?.id;
+
+      // Оновлюємо запис на бекенді
+      await apiClient.put(`/appointments/${apptId}`, {
+        patient_id: newPatient.id
+      });
+
+      alert(`Пацієнт ${newPatient.full_name} створений і прив'язаний до запису!`);
+
+      // Оновлюємо календар
+      await refreshScheduleData();
+
+      // Знову відкриваємо вікно прийому, але тепер пацієнт прив'язаний
+      // Знаходимо оновлений запис у списку
+      const updatedAppt = appointments.value.find(a => a.id === apptId);
+      if (updatedAppt) {
+        openAppointment(updatedAppt);
+      }
+
+    } catch (e) {
+      alert('Пацієнта створено, але не вдалося прив\'язати до запису: ' + e.message);
+    } finally {
+      appointmentToLink.value = null; // Скидаємо
+    }
+    return;
+  }
+
+  // СЦЕНАРІЙ Б: Створення нового бронювання
+  selectedPatientForBooking.value = newPatient;
+  bookingName.value = newPatient.full_name;
+  bookingPhone.value = newPatient.phone || '';
 }
 
 function onRecordSaved() {
   loadAppointments();
 }
 
-function onPatientCreated(newPatient) {
-  selectedPatientForBooking.value = newPatient;
-  bookingName.value = newPatient.full_name;
-  bookingPhone.value = newPatient.phone || '';
-}
-
 function clearBookingForm() {
   selectedPatientForBooking.value = null;
+  appointmentToLink.value = null;
   bookingName.value = '';
   bookingPhone.value = '';
   bookingComment.value = '';
@@ -130,6 +181,8 @@ function clearBookingForm() {
   bookingSuccess.value = false;
   searchResults.value = [];
 }
+
+// === ЗАВАНТАЖЕННЯ ДАНИХ ===
 
 const loadDoctors = async () => {
   loadingDoctors.value = true;
@@ -258,6 +311,7 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Вибір лікаря -->
     <div class="flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
       <div v-if="!isDoctor" class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
@@ -285,9 +339,11 @@ onMounted(async () => {
       </button>
     </div>
 
+    <!-- Контент -->
     <div v-if="error" class="text-red-400">❌ {{ error }}</div>
     <div v-else class="space-y-3">
 
+      <!-- Слоти -->
       <div v-if="loadingSlots" class="text-slate-300">Завантаження слотів...</div>
       <div v-else>
         <div v-if="slots.length === 0" class="text-slate-400 text-sm">Немає вільних слотів.</div>
@@ -299,6 +355,7 @@ onMounted(async () => {
           </button>
         </div>
 
+        <!-- ФОРМА БРОНЮВАННЯ -->
         <div v-if="bookingSlot" class="mt-4 rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4">
           <div class="flex justify-between items-center">
             <h3 class="text-emerald-400 font-bold text-lg">Запис на {{ bookingSlot.start }}</h3>
@@ -314,11 +371,11 @@ onMounted(async () => {
 
           <div v-if="selectedPatientForBooking" class="flex items-center justify-between bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg">
             <div>
-              <span class="block text-xs text-blue-400 uppercase">Обраний пацієнт</span>
-              <span class="text-white font-bold">{{ selectedPatientForBooking.full_name }}</span>
-              <span class="text-slate-400 text-sm ml-2">{{ selectedPatientForBooking.phone }}</span>
+              <span class="block text-xs text-blue-400 uppercase font-bold mb-1">Обраний пацієнт</span>
+              <div class="text-white text-lg font-bold">{{ selectedPatientForBooking.full_name }}</div>
+              <div class="text-slate-400 text-sm">{{ selectedPatientForBooking.phone }}</div>
             </div>
-            <button @click="selectedPatientForBooking = null; bookingName = ''" class="text-xs text-slate-400 hover:text-white underline">
+            <button @click="selectedPatientForBooking = null; bookingName = ''" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-600 transition-colors">
               Змінити
             </button>
           </div>
@@ -327,10 +384,9 @@ onMounted(async () => {
             <div class="relative">
               <label class="block text-xs text-slate-400 mb-1 uppercase">Пошук пацієнта (Ім'я або Телефон)</label>
               <input
-                  :value="bookingName"
-                  @input="onSearchInput"
+                  v-model="bookingName"
                   type="text"
-                  placeholder="Почніть вводити..."
+                  placeholder="Почніть вводити ПІБ..."
                   class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
               />
 
@@ -345,23 +401,21 @@ onMounted(async () => {
                   </li>
                 </ul>
               </div>
+
+              <!-- КНОПКА СТВОРЕННЯ (З'являється тут) -->
+              <div v-if="bookingName.length > 2" class="mt-2">
+                <button
+                    @click="showCreatePatientModal = true"
+                    class="w-full flex items-center justify-center gap-2 text-xs bg-slate-800 hover:bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 border-dashed px-3 py-2 rounded transition-all"
+                >
+                  <span>+</span> Створити нову анкету для "{{ bookingName }}"
+                </button>
+              </div>
             </div>
 
             <div>
-              <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (для гостя)</label>
+              <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (якщо без анкети)</label>
               <input v-model="bookingPhone" @input="validatePhoneInput" type="text" placeholder="+380..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
-            </div>
-
-            <div class="md:col-span-2" v-if="bookingName.length > 2 && !selectedPatientForBooking">
-              <div class="bg-slate-800/50 p-2 rounded border border-slate-700 flex items-center justify-between">
-                <span class="text-xs text-slate-400">Не знайшли пацієнта в списку?</span>
-                <button
-                    @click="showCreatePatientModal = true"
-                    class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-500 font-bold transition-colors"
-                >
-                  + Створити анкету для "{{ bookingName }}"
-                </button>
-              </div>
             </div>
           </div>
 
@@ -378,6 +432,7 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- Таблиця записів -->
         <div class="mt-8 space-y-3">
           <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
 
@@ -421,11 +476,13 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- МОДАЛКИ ПІДКЛЮЧЕНІ ТУТ -->
         <AppointmentModal
             :is-open="showModal"
             :appointment="selectedEvent"
             @close="showModal = false"
             @saved="onRecordSaved"
+            @create-patient="onOpenCreatePatientFromModal"
         />
 
         <PatientCreateModal

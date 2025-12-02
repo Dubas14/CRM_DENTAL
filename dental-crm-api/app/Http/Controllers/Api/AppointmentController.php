@@ -90,5 +90,18 @@ class AppointmentController extends Controller
 
         return $query->get();
     }
+    public function update(Request $request, \App\Models\Appointment $appointment)
+    {
+        // Дозволяємо оновити patient_id (для прив'язки)
+        $validated = $request->validate([
+            'patient_id' => 'nullable|exists:patients,id',
+            'status'     => 'nullable|string',
+            'comment'    => 'nullable|string'
+        ]);
+
+        $appointment->update($validated);
+
+        return $appointment;
+    }
 
 }

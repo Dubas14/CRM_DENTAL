@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     Route::post('appointments', [AppointmentController::class, 'store']);
+    Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
     Route::get('/me/clinics', function (Request $request) {
         $user = $request->user()->load('clinics');
 
