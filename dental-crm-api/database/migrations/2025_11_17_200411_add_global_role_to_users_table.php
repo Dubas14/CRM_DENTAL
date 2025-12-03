@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('global_role')
-                ->default('user') // super_admin / user
-                ->after('email');
-        });
+        if (! Schema::hasColumn('users', 'global_role')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('global_role')
+                    ->default('user') // super_admin / user
+                    ->after('email');
+            });
+        }
     }
 
     /**
@@ -23,8 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('global_role');
-        });
+        if (Schema::hasColumn('users', 'global_role')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('global_role');
+            });
+        }
     }
 };

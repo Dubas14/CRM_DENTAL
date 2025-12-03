@@ -21,10 +21,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 2. Створюємо Супер-Адміна (user@example.com / password)
+        // Супер-адмін для входу в систему
         User::factory()->create([
-            'first_name' => 'Super',
-            'last_name' => 'Admin',
+            'name' => 'Super Admin',
             'email' => 'admin@admin.com',
             'password' => Hash::make('admin'),
             'is_admin' => true,
@@ -33,10 +32,38 @@ class DatabaseSeeder extends Seeder
 
         $clinics = Clinic::factory(3)->create();
 
-        $clinics->each(function (Clinic $clinic) {
-            $doctors = Doctor::factory(3)
-                ->for($clinic)
-                ->create();
+        $clinics->each(function (Clinic $clinic, int $index) {
+            // Адмін конкретної клініки
+            $clinicAdmin = User::factory()->create([
+                'name' => 'Clinic ' . ($index + 1) . ' Admin',
+                'email' => 'clinic' . ($index + 1) . '@admin.com',
+                'password' => Hash::make('admin'),
+                'global_role' => 'admin',
+            ]);
+
+            $clinic->users()->attach($clinicAdmin->id, ['clinic_role' => 'clinic_admin']);
+
+            // Лікарі з прив'язкою до клініки та роллю
+            $doctors = collect();
+            foreach (range(1, 3) as $doctorIndex) {
+                $doctorUser = User::factory()->create([
+                    'name' => fake()->name(),
+                    'email' => fake()->unique()->safeEmail(),
+                    'password' => Hash::make('password'),
+                    'global_role' => 'doctor',
+                ]);
+
+                $doctor = Doctor::factory()
+                    ->for($clinic)
+                    ->for($doctorUser)
+                    ->state([
+                        'full_name' => $doctorUser->name,
+                    ])
+                    ->create();
+
+                $clinic->users()->attach($doctorUser->id, ['clinic_role' => 'doctor']);
+                $doctors->push($doctor);
+            }
 
             $patients = Patient::factory(20)
                 ->for($clinic)
