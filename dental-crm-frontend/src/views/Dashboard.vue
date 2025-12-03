@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useAuth } from '../composables/useAuth';
 import apiClient from '../services/apiClient';
 import { Users, Calendar, Clock, Activity } from 'lucide-vue-next';
+import ActivityChart from '../components/ActivityChart.vue';
 
 const { user } = useAuth();
 const stats = ref({
@@ -12,6 +13,16 @@ const stats = ref({
 });
 
 const loading = ref(true);
+const weeklyActivity = ref([
+  { day: 'Пн', value: 12 },
+  { day: 'Вт', value: 18 },
+  { day: 'Ср', value: 10 },
+  { day: 'Чт', value: 22 },
+  { day: 'Пт', value: 16 },
+  { day: 'Сб', value: 8 },
+  { day: 'Нд', value: 5 }
+]);
+
 
 // Імітація завантаження статистики (поки бекенд не має спеціального ендпоінта)
 // Ми можемо зробити окремий контролер для цього пізніше.
@@ -103,11 +114,11 @@ onMounted(loadStats);
 
     <!-- Секція швидких дій -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Activity size="20" class="text-emerald-400"/>
-          Швидкі дії
-        </h3>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">␊
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">␊
+          <Activity size="20" class="text-emerald-400"/>␊
+          Швидкі дії␊
+        </h3>␊
         <div class="grid grid-cols-2 gap-4">
           <router-link :to="{name: 'schedule'}" class="flex flex-col items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer group">
             <Calendar class="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" size="28"/>
@@ -120,10 +131,7 @@ onMounted(loadStats);
         </div>
       </div>
 
-      <!-- Місце для графіку або нотаток -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex items-center justify-center text-slate-500">
-        <p>Тут буде графік доходу 📈</p>
-      </div>
+      <ActivityChart :data="weeklyActivity" title="Активність за тиждень" />
     </div>
   </div>
 </template>

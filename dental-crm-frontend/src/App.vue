@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from './composables/useAuth';
 import { usePermissions } from './composables/usePermissions';
+import ToastContainer from './components/ToastContainer.vue';
 import {
   LayoutDashboard,
   Calendar,
@@ -153,6 +154,7 @@ const isLoginPage = computed(() => route.name === 'login');
         class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
     ></div>
   </div>
+  <ToastContainer />
 </template>
 
 <style>
