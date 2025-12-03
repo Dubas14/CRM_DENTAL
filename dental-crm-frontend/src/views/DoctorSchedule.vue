@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'; // Додано onUnmounted
 import { useRoute } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
@@ -47,6 +47,7 @@ const appointmentToLink = ref(null);
 const searchResults = ref([]);
 const isSearching = ref(false);
 let searchTimeout = null;
+let autoRefreshInterval = null; // Таймер для автооновлення
 
 // ---- Auth ----
 const { user } = useAuth();
@@ -110,44 +111,33 @@ const selectPatientFromSearch = (patient) => {
 
 // === РОБОТА З МОДАЛКАМИ ===
 
-// 1. Відкрити існуючий візит
 function openAppointment(appt) {
   selectedEvent.value = appt;
   showModal.value = true;
 }
 
-// 2. Відкрити створення пацієнта з модалки прийому
 function onOpenCreatePatientFromModal(nameFromModal) {
-  showModal.value = false; // Закриваємо модалку прийому
-  appointmentToLink.value = selectedEvent.value; // Запам'ятовуємо, що редагуємо цей запис
-
-  // Заповнюємо форму створення
+  showModal.value = false;
+  appointmentToLink.value = selectedEvent.value;
   bookingName.value = nameFromModal;
   bookingPhone.value = '';
-
-  showCreatePatientModal.value = true; // Відкриваємо створення
+  showCreatePatientModal.value = true;
 }
 
-// 3. Успішне створення пацієнта
 async function onPatientCreated(newPatient) {
-
-  // СЦЕНАРІЙ А: Прив'язка до існуючого запису (через кнопку в модалці)
   if (appointmentToLink.value) {
     try {
-      const apptId = appointmentToLink.value.id || appointmentToLink.value.extendedProps?.id;
+      const apptId = appointmentToLink.value.id || (appointmentToLink.value.extendedProps && appointmentToLink.value.extendedProps.id);
 
-      // Оновлюємо запис на бекенді
+      if (!apptId) throw new Error("Не знайдено ID запису");
+
       await apiClient.put(`/appointments/${apptId}`, {
         patient_id: newPatient.id
       });
 
       alert(`Пацієнт ${newPatient.full_name} створений і прив'язаний до запису!`);
-
-      // Оновлюємо календар
       await refreshScheduleData();
 
-      // Знову відкриваємо вікно прийому, але тепер пацієнт прив'язаний
-      // Знаходимо оновлений запис у списку
       const updatedAppt = appointments.value.find(a => a.id === apptId);
       if (updatedAppt) {
         openAppointment(updatedAppt);
@@ -156,12 +146,11 @@ async function onPatientCreated(newPatient) {
     } catch (e) {
       alert('Пацієнта створено, але не вдалося прив\'язати до запису: ' + e.message);
     } finally {
-      appointmentToLink.value = null; // Скидаємо
+      appointmentToLink.value = null;
     }
     return;
   }
 
-  // СЦЕНАРІЙ Б: Створення нового бронювання
   selectedPatientForBooking.value = newPatient;
   bookingName.value = newPatient.full_name;
   bookingPhone.value = newPatient.phone || '';
@@ -184,6 +173,19 @@ function clearBookingForm() {
 
 // === ЗАВАНТАЖЕННЯ ДАНИХ ===
 
+// Завантаження пацієнта, якщо ми прийшли з його картки
+const loadLinkedPatient = async () => {
+  if (!linkedPatientId.value) return;
+  try {
+    const { data } = await apiClient.get(`/patients/${linkedPatientId.value}`);
+    preloadedPatient.value = data; // Зберігаємо для авто-вибору
+  } catch (e) {
+    console.error("Не вдалося завантажити дані пацієнта", e);
+  }
+};
+// Змінна для авто-вибору
+const preloadedPatient = ref(null);
+
 const loadDoctors = async () => {
   loadingDoctors.value = true;
   try {
@@ -201,13 +203,18 @@ const loadDoctors = async () => {
   }
 };
 
-const loadSlots = async () => {
+const loadSlots = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
-  loadingSlots.value = true;
+
+  if (!silent) loadingSlots.value = true;
   error.value = null;
-  slots.value = [];
-  slotsReason.value = null;
-  bookingSlot.value = null;
+
+  // Якщо ми просто оновлюємо фон, не скидаємо слоти, щоб не мигало
+  if (!silent) {
+    slots.value = [];
+    slotsReason.value = null;
+    bookingSlot.value = null;
+  }
 
   try {
     const { data } = await apiClient.get(
@@ -217,15 +224,16 @@ const loadSlots = async () => {
     slots.value = data.slots || [];
     slotsReason.value = data.reason || null;
   } catch (e) {
-    error.value = 'Не вдалося завантажити слоти';
+    if (!silent) error.value = 'Не вдалося завантажити слоти';
   } finally {
-    loadingSlots.value = false;
+    if (!silent) loadingSlots.value = false;
   }
 };
 
-const loadAppointments = async () => {
+const loadAppointments = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
-  loadingAppointments.value = true;
+
+  if (!silent) loadingAppointments.value = true;
   appointmentsError.value = null;
 
   try {
@@ -235,20 +243,28 @@ const loadAppointments = async () => {
     );
     appointments.value = data;
   } catch (e) {
-    appointmentsError.value = 'Не вдалося завантажити записи';
+    console.error(e);
+    if (!silent) appointmentsError.value = 'Не вдалося завантажити записи';
   } finally {
-    loadingAppointments.value = false;
+    if (!silent) loadingAppointments.value = false;
   }
 };
 
-const refreshScheduleData = async () => {
-  await loadSlots();
-  await loadAppointments();
+const refreshScheduleData = async (silent = false) => {
+  await loadSlots(silent);
+  await loadAppointments(silent);
 };
 
 const selectSlot = (slot) => {
   bookingSlot.value = slot;
   clearBookingForm();
+
+  // АВТО-ВИБІР: Якщо ми прийшли з картки пацієнта
+  if (preloadedPatient.value) {
+    selectedPatientForBooking.value = preloadedPatient.value;
+    bookingName.value = preloadedPatient.value.full_name;
+    bookingPhone.value = preloadedPatient.value.phone || '';
+  }
 };
 
 const bookSelectedSlot = async () => {
@@ -296,9 +312,23 @@ const validatePhoneInput = (event) => {
   event.target.value = val;
 };
 
+// === LIFECYCLE ===
 onMounted(async () => {
   await loadDoctors();
+  await loadLinkedPatient();
   await refreshScheduleData();
+
+  // Запускаємо авто-оновлення кожні 15 секунд
+  autoRefreshInterval = setInterval(() => {
+    // Оновлюємо тільки якщо не відкрито модальне вікно і не йде процес бронювання
+    if (!showModal.value && !showCreatePatientModal.value && !bookingSlot.value) {
+      refreshScheduleData(true); // true = silent mode (без спінера)
+    }
+  }, 15000);
+});
+
+onUnmounted(() => {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
 });
 </script>
 
@@ -308,6 +338,10 @@ onMounted(async () => {
       <div>
         <h1 class="text-2xl font-bold">Розклад лікаря</h1>
         <p class="text-sm text-slate-400">Оберіть лікаря та дату для перегляду.</p>
+      </div>
+      <!-- Індикатор автооновлення (опціонально) -->
+      <div class="text-xs text-slate-600 animate-pulse">
+        ● Дані оновлюються автоматично
       </div>
     </div>
 
@@ -356,7 +390,7 @@ onMounted(async () => {
         </div>
 
         <!-- ФОРМА БРОНЮВАННЯ -->
-        <div v-if="bookingSlot" class="mt-4 rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4">
+        <div v-if="bookingSlot" class="mt-4 rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4 relative">
           <div class="flex justify-between items-center">
             <h3 class="text-emerald-400 font-bold text-lg">Запис на {{ bookingSlot.start }}</h3>
             <button @click="bookingSlot = null" class="text-slate-500 hover:text-white">✕</button>
@@ -369,6 +403,7 @@ onMounted(async () => {
             {{ bookingError }}
           </div>
 
+          <!-- Якщо пацієнт вже обраний (із бази або з попередньої сторінки) -->
           <div v-if="selectedPatientForBooking" class="flex items-center justify-between bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg">
             <div>
               <span class="block text-xs text-blue-400 uppercase font-bold mb-1">Обраний пацієнт</span>
@@ -380,13 +415,14 @@ onMounted(async () => {
             </button>
           </div>
 
+          <!-- Форма пошуку -->
           <div v-else class="grid md:grid-cols-2 gap-4 relative">
             <div class="relative">
               <label class="block text-xs text-slate-400 mb-1 uppercase">Пошук пацієнта (Ім'я або Телефон)</label>
               <input
                   v-model="bookingName"
                   type="text"
-                  placeholder="Почніть вводити ПІБ..."
+                  placeholder="Почніть вводити..."
                   class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
               />
 
@@ -402,11 +438,11 @@ onMounted(async () => {
                 </ul>
               </div>
 
-              <!-- КНОПКА СТВОРЕННЯ (З'являється тут) -->
-              <div v-if="bookingName.length > 2" class="mt-2">
+              <!-- КНОПКА СТВОРЕННЯ -->
+              <div v-if="bookingName.length > 2 && !selectedPatientForBooking" class="mt-2">
                 <button
                     @click="showCreatePatientModal = true"
-                    class="w-full flex items-center justify-center gap-2 text-xs bg-slate-800 hover:bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 border-dashed px-3 py-2 rounded transition-all"
+                    class="w-full flex items-center justify-center gap-2 text-xs bg-slate-800 hover:bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 border-dashed px-3 py-2 rounded transition-all font-semibold"
                 >
                   <span>+</span> Створити нову анкету для "{{ bookingName }}"
                 </button>
@@ -414,7 +450,7 @@ onMounted(async () => {
             </div>
 
             <div>
-              <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (якщо без анкети)</label>
+              <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (для гостя)</label>
               <input v-model="bookingPhone" @input="validatePhoneInput" type="text" placeholder="+380..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
             </div>
           </div>
@@ -434,7 +470,10 @@ onMounted(async () => {
 
         <!-- Таблиця записів -->
         <div class="mt-8 space-y-3">
-          <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
+            <span v-if="loadingAppointments" class="text-xs text-slate-500 animate-pulse">Оновлення...</span>
+          </div>
 
           <div v-if="appointments.length === 0" class="text-slate-500 text-sm italic">Немає записів.</div>
           <div v-else class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
@@ -476,7 +515,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- МОДАЛКИ ПІДКЛЮЧЕНІ ТУТ -->
+        <!-- МОДАЛКИ -->
         <AppointmentModal
             :is-open="showModal"
             :appointment="selectedEvent"
