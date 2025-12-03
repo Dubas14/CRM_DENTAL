@@ -13,10 +13,20 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+
+            // Можеш використовувати або name, або first/last — залишаємо все.
+            $table->string('name')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // Для ролей/прав
+            $table->boolean('is_admin')->default(false);
+            $table->string('global_role')->nullable(); // або ->default('user')
+
             $table->rememberToken();
             $table->timestamps();
         });
