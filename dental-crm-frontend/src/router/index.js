@@ -8,10 +8,17 @@ import PatientDetails from '../views/PatientDetails.vue';
 import Login from '../views/Login.vue';
 import { useAuth } from '../composables/useAuth';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
+import Dashboard from '../views/Dashboard.vue';
 
 
 const routes = [
     { path: '/login', name: 'login', component: Login },
+    {
+        path: '/',
+        name: 'dashboard', // <-- Даємо ім'я
+        component: Dashboard, // <-- Вказуємо компонент
+        meta: { requiresAuth: true }
+    },
 
     { path: '/', redirect: '/clinics' },
     {
