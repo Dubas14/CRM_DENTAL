@@ -24,26 +24,42 @@ class DoctorScheduleSettingsController extends Controller
             abort(403, 'Немає доступу до розкладу цього лікаря');
         }
 
-        $items = Schedule::where('doctor_id', $doctor->id)
+        $existing = Schedule::where('doctor_id', $doctor->id)
             ->orderBy('weekday')
-            ->get();
+            ->get()
+            ->keyBy('weekday');
 
-        // якщо ще нічого не налаштовано – віддаємо дефолт по днях (1–5)
-        if ($items->isEmpty()) {
-            $items = collect(range(1, 7))->map(function ($day) use ($doctor) {
-                return [
-                    'doctor_id' => $doctor->id,
-                    'weekday'   => $day, // 1=Пн ... 7=Нд
-                    'is_working' => in_array($day, [1,2,3,4,5]),
-                    'start_time' => '09:00:00',
-                    'end_time'   => '17:00:00',
-                    'break_start' => '13:00:00',
-                    'break_end'   => '14:00:00',
-                    'slot_duration_minutes' => 30,
-                ];
-            });
-        }
+        $defaultWorkingDays = $existing->isEmpty();
 
+        $items = collect(range(1, 7))->map(function ($day) use ($doctor, $existing, $defaultWorkingDays) {
+            $base = [
+                'doctor_id' => $doctor->id,
+                'weekday'   => $day, // 1=Пн ... 7=Нд
+                'is_working' => $defaultWorkingDays && in_array($day, [1,2,3,4,5]),
+                'start_time' => '09:00:00',
+                'end_time'   => '17:00:00',
+                'break_start' => '13:00:00',
+                'break_end'   => '14:00:00',
+                'slot_duration_minutes' => 30,
+            ];
+
+            $schedule = $existing->get($day);
+
+            if (! $schedule) {
+                return $base;
+            }
+
+            return [
+                'doctor_id' => $schedule->doctor_id,
+                'weekday'   => $schedule->weekday,
+                'is_working'=> true,
+                'start_time' => $schedule->start_time,
+                'end_time'   => $schedule->end_time,
+                'break_start'=> $schedule->break_start,
+                'break_end'  => $schedule->break_end,
+                'slot_duration_minutes' => $schedule->slot_duration_minutes,
+            ];
+        });
         return response()->json($items);
     }
 

@@ -25,20 +25,61 @@ const weekdayLabels = {
   7: 'Нд',
 };
 
+const buildDefaultWeek = (allWorking = false) => (
+    Array.from({ length: 7 }, (_, idx) => {
+      const weekday = idx + 1;
+      return {
+        weekday,
+        is_working: allWorking ? [1, 2, 3, 4, 5].includes(weekday) : false,
+        start_time: '09:00',
+        end_time: '17:00',
+        break_start: '13:00',
+        break_end: '14:00',
+        slot_duration_minutes: 30,
+      };
+    })
+);
+
+const mergeWithDefaults = (data) => {
+  const hasApiData = Array.isArray(data) && data.length > 0;
+  const defaults = buildDefaultWeek(!hasApiData);
+
+  const map = new Map(
+      (data || []).map(d => [d.weekday, {
+        weekday: d.weekday,
+        is_working: d.is_working ?? true,
+        start_time: d.start_time?.slice(0,5),
+        end_time:   d.end_time?.slice(0,5),
+        break_start: d.break_start?.slice(0,5),
+        break_end:   d.break_end?.slice(0,5),
+        slot_duration_minutes: d.slot_duration_minutes,
+      }])
+  );
+
+  return defaults.map((day) => {
+    const fromApi = map.get(day.weekday);
+    if (!fromApi) return day;
+
+    return {
+      ...day,
+      ...fromApi,
+      is_working: !!fromApi.is_working,
+      start_time: fromApi.start_time || day.start_time,
+      end_time: fromApi.end_time || day.end_time,
+      break_start: fromApi.break_start || day.break_start,
+      break_end: fromApi.break_end || day.break_end,
+      slot_duration_minutes: fromApi.slot_duration_minutes || day.slot_duration_minutes,
+    };
+  });
+};
+
 const loadSchedule = async () => {
   loading.value = true;
   error.value = null;
+  saveError.value = null;
   try {
     const { data } = await apiClient.get(`/doctors/${doctorId.value}/weekly-schedule`);
-    days.value = data.map(d => ({
-      weekday: d.weekday,
-      is_working: !!d.is_working,
-      start_time: d.start_time?.slice(0,5) || '09:00',
-      end_time:   d.end_time?.slice(0,5)   || '17:00',
-      break_start: d.break_start?.slice(0,5) || '13:00',
-      break_end:   d.break_end?.slice(0,5)   || '14:00',
-      slot_duration_minutes: d.slot_duration_minutes || 30,
-    }));
+    days.value = mergeWithDefaults(data);
   } catch (e) {
     console.error(e);
     error.value = e.response?.data?.message || 'Не вдалося завантажити розклад';

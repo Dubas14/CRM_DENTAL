@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'; // Додано onUnmounted
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
@@ -8,6 +8,7 @@ import AppointmentModal from '../components/AppointmentModal.vue';
 import PatientCreateModal from '../components/PatientCreateModal.vue';
 
 const route = useRoute();
+const router = useRouter();
 
 // --- Модальні вікна ---
 const showModal = ref(false);
@@ -53,6 +54,17 @@ let autoRefreshInterval = null; // Таймер для автооновленн�
 const { user } = useAuth();
 const { isDoctor } = usePermissions();
 const doctorProfile = computed(() => user.value?.doctor || null);
+
+const canOpenWeeklySettings = computed(() => {
+  if (!selectedDoctorId.value) return false;
+  if (['super_admin', 'clinic_admin'].includes(user.value?.global_role)) return true;
+
+  if (isDoctor.value && doctorProfile.value?.id) {
+    return Number(selectedDoctorId.value) === Number(doctorProfile.value.id);
+  }
+
+  return false;
+});
 
 const linkedPatientId = computed(() => {
   const raw = route.query.patient_id || route.query.patient;
@@ -170,6 +182,12 @@ function clearBookingForm() {
   bookingSuccess.value = false;
   searchResults.value = [];
 }
+
+const openWeeklySettings = () => {
+  if (!canOpenWeeklySettings.value) return;
+
+  router.push({ name: 'doctor-weekly-schedule', params: { id: selectedDoctorId.value } });
+};
 
 // === ЗАВАНТАЖЕННЯ ДАНИХ ===
 
@@ -339,9 +357,20 @@ onUnmounted(() => {
         <h1 class="text-2xl font-bold">Розклад лікаря</h1>
         <p class="text-sm text-slate-400">Оберіть лікаря та дату для перегляду.</p>
       </div>
-      <!-- Індикатор автооновлення (опціонально) -->
-      <div class="text-xs text-slate-600 animate-pulse">
-        ● Дані оновлюються автоматично
+      <div class="flex items-center gap-3">
+        <!-- Індикатор автооновлення (опціонально) -->
+        <div class="text-xs text-slate-600 animate-pulse">
+          ● Дані оновлюються автоматично
+        </div>
+
+        <button
+            v-if="canOpenWeeklySettings"
+            type="button"
+            class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-200 hover:bg-slate-800"
+            @click="openWeeklySettings"
+        >
+          Налаштувати тижневий розклад
+        </button>
       </div>
     </div>
 
