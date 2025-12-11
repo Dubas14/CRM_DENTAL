@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ProcedureController;
+use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\WaitlistController;
 use Illuminate\Support\Facades\Hash;
@@ -80,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('rooms', RoomController::class);
+    Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
 
     // Медична картка

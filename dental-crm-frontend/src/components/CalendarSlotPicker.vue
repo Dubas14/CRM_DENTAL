@@ -5,6 +5,7 @@ import calendarApi from '../services/calendarApi';
 const props = defineProps({
   doctorId: { type: [Number, String], required: true },
   procedureId: { type: [Number, String, null], default: null },
+  equipmentId: { type: [Number, String, null], default: null },
   date: { type: String, required: true },
   durationMinutes: { type: Number, default: null },
   autoLoad: { type: Boolean, default: true },
@@ -31,6 +32,7 @@ const loadSlots = async () => {
     const { data } = await calendarApi.getDoctorSlots(props.doctorId, {
       date: props.date,
       procedure_id: props.procedureId || undefined,
+      equipment_id: props.equipmentId || undefined,
     });
     slots.value = data.slots || [];
     reason.value = data.reason || null;
@@ -50,6 +52,7 @@ const loadRecommended = async () => {
     const { data } = await calendarApi.getRecommendedSlots(props.doctorId, {
       from_date: props.date,
       procedure_id: props.procedureId || undefined,
+      equipment_id: props.equipmentId || undefined,
     });
     recommended.value = data.slots || [];
   } catch (e) {
@@ -60,7 +63,7 @@ const loadRecommended = async () => {
 
 const formatSlot = (slot) => `${slot.start} – ${slot.end}`;
 
-watch(() => [props.doctorId, props.date, props.procedureId], () => {
+watch(() => [props.doctorId, props.date, props.procedureId, props.equipmentId], () => {
   if (props.autoLoad && !props.disabled) {
     loadSlots();
   }

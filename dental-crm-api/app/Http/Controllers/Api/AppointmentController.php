@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Services\Access\DoctorAccessService;
 use App\Models\Procedure;
 use App\Models\Room;
+use App\Models\Equipment;
 use App\Models\WaitlistEntry;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\ConflictChecker;
@@ -26,6 +27,7 @@ class AppointmentController extends Controller
             'time'      => ['required', 'date_format:H:i'],
             'procedure_id' => ['nullable', 'exists:procedures,id'],
             'room_id'   => ['nullable', 'exists:rooms,id'],
+            'equipment_id' => ['nullable', 'exists:equipments,id'],
             'patient_id'=> ['nullable', 'exists:patients,id'],
             'is_follow_up' => ['boolean'],
             'source'    => ['nullable', 'string', 'max:50'],
@@ -43,6 +45,7 @@ class AppointmentController extends Controller
         $availability = new AvailabilityService();
         $procedure = isset($data['procedure_id']) ? Procedure::find($data['procedure_id']) : null;
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
+        $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
 
         $date = Carbon::parse($data['date'])->startOfDay();
         $startAt = Carbon::parse($data['date'].' '.$data['time']);
@@ -54,7 +57,11 @@ class AppointmentController extends Controller
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
         }
 
-        $conflicts = (new ConflictChecker())->evaluate($doctor, $date, $startAt, $endAt, $procedure, $room, $data['patient_id'] ?? null);
+        if ($procedure?->equipment_id) {
+            $equipment = $availability->resolveEquipment($equipment ?? $procedure->equipment, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+
+        $conflicts = (new ConflictChecker())->evaluate($doctor, $date, $startAt, $endAt, $procedure, $room, $equipment, $data['patient_id'] ?? null);
 
         if (!empty($conflicts['hard'])) {
             return response()->json([
@@ -75,6 +82,7 @@ class AppointmentController extends Controller
             'doctor_id' => $doctor->id,
             'procedure_id' => $procedure?->id,
             'room_id' => $room?->id,
+            'equipment_id' => $equipment?->id,
             'patient_id'=> $data['patient_id'] ?? null,
             'is_follow_up' => $data['is_follow_up'] ?? false,
             'start_at'  => $startAt,
@@ -102,7 +110,7 @@ class AppointmentController extends Controller
 
         $query = Appointment::query()
             ->where('doctor_id', $doctor->id)
-            ->with(['patient:id,full_name,phone', 'procedure:id,name,duration_minutes', 'room:id,name'])
+            ->with(['patient:id,full_name,phone', 'procedure:id,name,duration_minutes', 'room:id,name', 'equipment:id,name'])
             ->orderBy('start_at');
 
         if ($date) {
@@ -119,6 +127,7 @@ class AppointmentController extends Controller
             'time'      => ['sometimes', 'date_format:H:i'],
             'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
             'room_id'   => ['sometimes', 'nullable', 'exists:rooms,id'],
+            'equipment_id' => ['sometimes', 'nullable', 'exists:equipments,id'],
             'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
             'is_follow_up' => ['sometimes', 'boolean'],
             'status'     => ['sometimes', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
@@ -144,6 +153,10 @@ class AppointmentController extends Controller
             ? Room::find($validated['room_id'])
             : $appointment->room;
 
+        $equipment = array_key_exists('equipment_id', $validated)
+            ? Equipment::find($validated['equipment_id'])
+            : $appointment->equipment;
+
         $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
         $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
         $date = Carbon::parse($dateValue)->startOfDay();
@@ -158,6 +171,10 @@ class AppointmentController extends Controller
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
         }
 
+        if ($procedure?->equipment_id) {
+            $equipment = $availability->resolveEquipment($equipment ?? $procedure->equipment, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+
         $conflicts = (new ConflictChecker())->evaluate(
             $doctor,
             $date,
@@ -165,6 +182,7 @@ class AppointmentController extends Controller
             $endAt,
             $procedure,
             $room,
+            $equipment,
             $validated['patient_id'] ?? $appointment->patient_id,
             $appointment->id
         );
@@ -188,6 +206,7 @@ class AppointmentController extends Controller
             'doctor_id' => $doctor->id,
             'procedure_id' => $procedure?->id,
             'room_id' => $room?->id,
+            'equipment_id' => $equipment?->id,
             'patient_id' => $validated['patient_id'] ?? $appointment->patient_id,
             'is_follow_up' => $validated['is_follow_up'] ?? $appointment->is_follow_up,
             'start_at' => $startAt,

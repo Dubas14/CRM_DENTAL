@@ -24,6 +24,7 @@ class Appointment extends Model
         'doctor_id',
         'procedure_id',
         'room_id',
+        'equipment_id',
         'patient_id',
         'is_follow_up',
         'start_at',
@@ -61,6 +62,11 @@ class Appointment extends Model
     public function patient()
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function equipment()
+    {
+        return $this->belongsTo(Equipment::class);
     }
     public function getPatientNameAttribute(): ?string
     {

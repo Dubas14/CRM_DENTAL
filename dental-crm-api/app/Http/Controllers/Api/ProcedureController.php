@@ -28,6 +28,7 @@ class ProcedureController extends Controller
             'requires_room'      => ['boolean'],
             'requires_assistant' => ['boolean'],
             'default_room_id'    => ['nullable', 'exists:rooms,id'],
+            'equipment_id'       => ['nullable', 'exists:equipments,id'],
             'metadata'           => ['nullable', 'array'],
         ]);
 
@@ -50,6 +51,7 @@ class ProcedureController extends Controller
             'requires_room'      => ['sometimes', 'boolean'],
             'requires_assistant' => ['sometimes', 'boolean'],
             'default_room_id'    => ['sometimes', 'nullable', 'exists:rooms,id'],
+            'equipment_id'       => ['sometimes', 'nullable', 'exists:equipments,id'],
             'metadata'           => ['sometimes', 'nullable', 'array'],
         ]);
 
