@@ -75,7 +75,7 @@ const isLoginPage = computed(() => route.name === 'login');
 
         <router-link :to="{name: 'schedule'}" :class="[route.name === 'schedule' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
           <Calendar size="20" />
-          <span class="font-medium">Розклад</span>
+          <span class="font-medium">Розклад &amp; Waitlist</span>
         </router-link>
 
         <router-link :to="{name: 'patients'}" :class="[route.name === 'patients' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">

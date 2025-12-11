@@ -9,6 +9,7 @@ const props = defineProps({
   durationMinutes: { type: Number, default: null },
   autoLoad: { type: Boolean, default: true },
   disabled: { type: Boolean, default: false },
+  refreshToken: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(['select-slot']);
@@ -60,6 +61,12 @@ const loadRecommended = async () => {
 const formatSlot = (slot) => `${slot.start} – ${slot.end}`;
 
 watch(() => [props.doctorId, props.date, props.procedureId], () => {
+  if (props.autoLoad && !props.disabled) {
+    loadSlots();
+  }
+});
+
+watch(() => props.refreshToken, () => {
   if (props.autoLoad && !props.disabled) {
     loadSlots();
   }
