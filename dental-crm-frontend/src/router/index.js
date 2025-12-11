@@ -9,6 +9,7 @@ import Login from '../views/Login.vue';
 import { useAuth } from '../composables/useAuth';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
 import Dashboard from '../views/Dashboard.vue';
+import CalendarModuleDemo from '../views/CalendarModuleDemo.vue';
 
 
 const routes = [
@@ -42,6 +43,12 @@ const routes = [
         meta: { allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
     },
     { path: '/schedule', name: 'schedule', component: DoctorSchedule },
+    {
+        path: '/calendar-module',
+        name: 'calendar-module',
+        component: CalendarModuleDemo,
+        meta: { requiresAuth: true }
+    },
     { path: '/patients', name: 'patients', component: PatientsList },
     {
         path: '/patients/:id',
