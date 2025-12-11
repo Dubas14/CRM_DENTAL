@@ -9,10 +9,23 @@ class Appointment extends Model
 {
     use HasFactory;
 
+    public const ALLOWED_STATUSES = [
+        'planned',
+        'confirmed',
+        'reminded',
+        'waiting',
+        'done',
+        'cancelled',
+        'no_show',
+    ];
+
     protected $fillable = [
         'clinic_id',
         'doctor_id',
+        'procedure_id',
+        'room_id',
         'patient_id',
+        'is_follow_up',
         'start_at',
         'end_at',
         'status',
@@ -23,9 +36,23 @@ class Appointment extends Model
         'patient_name',
     ];
 
+    protected $casts = [
+        'is_follow_up' => 'boolean',
+    ];
+
     public function doctor()
     {
         return $this->belongsTo(Doctor::class);
+    }
+
+    public function procedure()
+    {
+        return $this->belongsTo(Procedure::class);
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class);
     }
 
     public function patient()

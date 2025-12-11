@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\ClinicController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientController;
+use App\Http\Controllers\Api\ProcedureController;
+use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\WaitlistController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -76,6 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('clinics', ClinicController::class);
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
+    Route::apiResource('rooms', RoomController::class);
+    Route::apiResource('procedures', ProcedureController::class);
 
     // Медична картка
     Route::get('patients/{patient}/records', [MedicalRecordController::class, 'index']);
@@ -88,7 +93,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('patients/{patient}/dental-map', [MedicalRecordController::class, 'updateToothStatus']);
 
     Route::get('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'schedule']);
+    Route::put('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'updateSchedule']);
     Route::get('doctors/{doctor}/slots', [DoctorScheduleController::class, 'slots']);
+    Route::get('doctors/{doctor}/recommended-slots', [DoctorScheduleController::class, 'recommended']);
 
     Route::get('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'show']);
     Route::put('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'update']);
@@ -97,6 +104,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('appointments', [AppointmentController::class, 'store']);
     Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
+    Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
+
+    Route::get('waitlist', [WaitlistController::class, 'index']);
+    Route::post('waitlist', [WaitlistController::class, 'store']);
+    Route::get('waitlist/candidates', [WaitlistController::class, 'candidates']);
+    Route::post('waitlist/{waitlistEntry}/book', [WaitlistController::class, 'markBooked']);
+    Route::post('waitlist/{waitlistEntry}/cancel', [WaitlistController::class, 'cancel']);
     Route::get('/me/clinics', function (Request $request) {
         $user = $request->user()->load('clinics');
 
