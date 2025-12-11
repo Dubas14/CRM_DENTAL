@@ -47,6 +47,16 @@ const markBooked = async (entry) => {
   }
 };
 
+const cancelEntry = async (entry) => {
+  try {
+    await calendarApi.cancelWaitlistEntry(entry.id);
+    emit('refresh', entry);
+    loadCandidates();
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message;
+  }
+};
+
 watch(
   () => [props.clinicId, props.doctorId, props.procedureId, props.preferredDate, props.limit],
   () => {
@@ -83,12 +93,22 @@ onMounted(() => {
                 <span v-if="candidate.doctor" class="text-slate-500">• {{ candidate.doctor.full_name }}</span>
               </p>
             </div>
-            <button
-              class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg"
-              @click="markBooked(candidate)"
-            >
-              Забронювати
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm rounded-lg border border-slate-600"
+                type="button"
+                @click="cancelEntry(candidate)"
+              >
+                Скасувати
+              </button>
+              <button
+                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg"
+                type="button"
+                @click="markBooked(candidate)"
+              >
+                Забронювати
+              </button>
+            </div>
           </div>
           <div class="flex items-center gap-3 text-xs text-slate-400">
             <span v-if="candidate.preferred_date" class="bg-slate-800/60 px-2 py-1 rounded">{{ candidate.preferred_date }}</span>

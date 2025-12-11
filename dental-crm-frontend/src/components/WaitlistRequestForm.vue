@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import calendarApi from '../services/calendarApi';
 
 const props = defineProps({
@@ -20,6 +20,31 @@ const form = ref({
 
 const loading = ref(false);
 const error = ref(null);
+
+let lastDefaultDoctor = props.defaultDoctorId || '';
+let lastDefaultProcedure = props.defaultProcedureId || '';
+
+watch(
+  () => props.defaultDoctorId,
+  (val) => {
+    const normalized = val || '';
+    if (!form.value.doctor_id || form.value.doctor_id === lastDefaultDoctor) {
+      form.value.doctor_id = normalized;
+    }
+    lastDefaultDoctor = normalized;
+  },
+);
+
+watch(
+  () => props.defaultProcedureId,
+  (val) => {
+    const normalized = val || '';
+    if (!form.value.procedure_id || form.value.procedure_id === lastDefaultProcedure) {
+      form.value.procedure_id = normalized;
+    }
+    lastDefaultProcedure = normalized;
+  },
+);
 
 const submit = async () => {
   loading.value = true;
