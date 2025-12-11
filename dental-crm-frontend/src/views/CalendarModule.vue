@@ -6,16 +6,20 @@ import WaitlistRequestForm from '../components/WaitlistRequestForm.vue';
 import AppointmentCancellationCard from '../components/AppointmentCancellationCard.vue';
 import calendarApi from '../services/calendarApi';
 import apiClient from '../services/apiClient';
+import equipmentApi from '../services/equipmentApi';
 import { useAuth } from '../composables/useAuth';
 
 const { user } = useAuth();
 
 const doctors = ref([]);
 const procedures = ref([]);
+const equipments = ref([]);
 const appointments = ref([]);
 
 const selectedDoctorId = ref('');
 const selectedProcedureId = ref('');
+const selectedEquipmentId = ref('');
+const selectedProcedure = computed(() => procedures.value.find((p) => p.id === Number(selectedProcedureId.value)));
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
 const selectedSlot = ref(null);
 
@@ -54,6 +58,12 @@ const fetchProcedures = async () => {
   procedures.value = mapCollection(data);
 };
 
+const fetchEquipments = async () => {
+  if (!clinicId.value) return;
+  const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
+  equipments.value = mapCollection(data);
+};
+
 const loadAppointments = async () => {
   if (!selectedDoctorId.value) return;
   const { data } = await calendarApi.getDoctorAppointments(selectedDoctorId.value, { date: selectedDate.value });
@@ -80,6 +90,7 @@ const bookAppointment = async () => {
       time: selectedSlot.value.start,
       patient_id: patientId.value || null,
       procedure_id: selectedProcedureId.value || null,
+      equipment_id: selectedEquipmentId.value || null,
       comment: comment.value || null,
     };
     const { data } = await calendarApi.createAppointment(payload);
@@ -100,10 +111,21 @@ const openCancellation = (appointment) => {
 
 onMounted(async () => {
   await Promise.all([fetchDoctors(), fetchProcedures()]);
+  await fetchEquipments();
 });
 
 watch(() => [selectedDoctorId.value, selectedDate.value], () => {
   loadAppointments();
+});
+
+watch(clinicId, () => {
+  fetchEquipments();
+});
+
+watch(selectedProcedure, (proc) => {
+  if (proc?.equipment_id) {
+    selectedEquipmentId.value = proc.equipment_id;
+  }
 });
 </script>
 
@@ -127,6 +149,10 @@ watch(() => [selectedDoctorId.value, selectedDate.value], () => {
           <option value="">Без процедури</option>
           <option v-for="proc in procedures" :key="proc.id" :value="proc.id">{{ proc.name }}</option>
         </select>
+        <select v-model="selectedEquipmentId" class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white">
+          <option value="">Без обладнання</option>
+          <option v-for="item in equipments" :key="item.id" :value="item.id">{{ item.name }}</option>
+        </select>
       </div>
     </div>
 
@@ -136,6 +162,7 @@ watch(() => [selectedDoctorId.value, selectedDate.value], () => {
           v-if="selectedDoctorId"
           :doctor-id="selectedDoctorId"
           :procedure-id="selectedProcedureId"
+          :equipment-id="selectedEquipmentId"
           :date="selectedDate"
           @select-slot="onSlotSelected"
         />
@@ -184,6 +211,7 @@ watch(() => [selectedDoctorId.value, selectedDate.value], () => {
                 <p class="text-xs text-slate-400">
                   {{ appt.start_at?.slice(11,16) }}–{{ appt.end_at?.slice(11,16) }}
                   • {{ appt.procedure?.name || 'без процедури' }}
+                  <span v-if="appt.equipment" class="text-amber-300">• {{ appt.equipment.name }}</span>
                 </p>
               </div>
               <div class="flex gap-2">

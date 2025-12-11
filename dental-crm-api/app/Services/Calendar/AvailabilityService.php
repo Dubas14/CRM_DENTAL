@@ -4,6 +4,7 @@ namespace App\Services\Calendar;
 
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\Equipment;
 use App\Models\Procedure;
 use App\Models\Room;
 use App\Models\Schedule;
@@ -59,7 +60,7 @@ class AvailabilityService
         ];
     }
 
-    public function getSlots(Doctor $doctor, Carbon $date, int $durationMinutes, ?Room $room = null): array
+    public function getSlots(Doctor $doctor, Carbon $date, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null): array
     {
         $plan = $this->getDailyPlan($doctor, $date);
 
@@ -73,6 +74,11 @@ class AvailabilityService
             ->get();
 
         $roomAppointments = $room ? Appointment::where('room_id', $room->id)
+            ->whereDate('start_at', $date)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->get() : collect();
+
+        $equipmentAppointments = $equipment ? Appointment::where('equipment_id', $equipment->id)
             ->whereDate('start_at', $date)
             ->whereNotIn('status', ['cancelled', 'no_show'])
             ->get() : collect();
@@ -96,6 +102,10 @@ class AvailabilityService
             }
 
             if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
+                continue;
+            }
+
+            if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
                 continue;
             }
 
@@ -152,14 +162,48 @@ class AvailabilityService
         return null;
     }
 
-    public function suggestSlots(Doctor $doctor, Carbon $fromDate, int $durationMinutes, ?Room $room = null, int $limit = 5): array
+    public function resolveEquipment(?Equipment $equipment, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Equipment
+    {
+        if ($equipment) {
+            return $equipment;
+        }
+
+        if (! $procedure->equipment_id) {
+            return null;
+        }
+
+        $candidateQuery = Equipment::query()
+            ->where('clinic_id', $clinicId)
+            ->where('is_active', true)
+            ->where('id', $procedure->equipment_id);
+
+        $equipments = $candidateQuery->get();
+
+        foreach ($equipments as $candidate) {
+            $hasConflict = Appointment::where('equipment_id', $candidate->id)
+                ->whereDate('start_at', $date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->where(function ($q) use ($start, $end) {
+                    $q->where('start_at', '<', $end)->where('end_at', '>', $start);
+                })
+                ->exists();
+
+            if (! $hasConflict) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public function suggestSlots(Doctor $doctor, Carbon $fromDate, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null, int $limit = 5): array
     {
         $slots = [];
         $cursor = $fromDate->copy();
         $safetyCounter = 0;
 
         while (count($slots) < $limit && $safetyCounter < 60) {
-            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room);
+            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room, $equipment);
 
             foreach ($daily['slots'] as $slot) {
                 $slots[] = [

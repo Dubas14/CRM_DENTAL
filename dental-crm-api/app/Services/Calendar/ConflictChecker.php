@@ -4,6 +4,7 @@ namespace App\Services\Calendar;
 
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\Equipment;
 use App\Models\Procedure;
 use App\Models\Room;
 use Carbon\Carbon;
@@ -17,6 +18,7 @@ class ConflictChecker
         Carbon $endAt,
         ?Procedure $procedure,
         ?Room $room,
+        ?Equipment $equipment,
         ?int $patientId,
         ?int $ignoreAppointmentId = null
     ): array {
@@ -90,6 +92,26 @@ class ConflictChecker
 
             if ($roomConflict) {
                 $result['hard'][] = ['code' => 'room_busy', 'message' => 'Кабінет зайнятий у цей час'];
+            }
+        }
+
+        if ($procedure?->equipment_id) {
+            if (! $equipment) {
+                $result['hard'][] = ['code' => 'equipment_missing', 'message' => 'Потрібне обладнання для процедури'];
+            } else {
+                $equipmentConflict = Appointment::where('equipment_id', $equipment->id)
+                    ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
+                    ->whereDate('start_at', $date)
+                    ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->where(function ($q) use ($startAt, $endAt) {
+                        $q->where('start_at', '<', $endAt)
+                            ->where('end_at', '>', $startAt);
+                    })
+                    ->exists();
+
+                if ($equipmentConflict) {
+                    $result['hard'][] = ['code' => 'equipment_busy', 'message' => 'Обладнання зайняте у цей час'];
+                }
             }
         }
 
