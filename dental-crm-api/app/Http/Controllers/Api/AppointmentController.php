@@ -8,6 +8,12 @@ use App\Models\Doctor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Services\Access\DoctorAccessService;
+use App\Models\Procedure;
+use App\Models\Room;
+use App\Models\WaitlistEntry;
+use App\Services\Calendar\AvailabilityService;
+use App\Services\Calendar\ConflictChecker;
+use App\Services\Calendar\WaitlistService;
 
 class AppointmentController extends Controller
 {
@@ -18,9 +24,14 @@ class AppointmentController extends Controller
             'doctor_id' => ['required', 'exists:doctors,id'],
             'date'      => ['required', 'date'],
             'time'      => ['required', 'date_format:H:i'],
+            'procedure_id' => ['nullable', 'exists:procedures,id'],
+            'room_id'   => ['nullable', 'exists:rooms,id'],
             'patient_id'=> ['nullable', 'exists:patients,id'],
+            'is_follow_up' => ['boolean'],
             'source'    => ['nullable', 'string', 'max:50'],
             'comment'   => ['nullable', 'string'],
+            'waitlist_entry_id' => ['nullable', 'exists:waitlist_entries,id'],
+            'allow_soft_conflicts' => ['sometimes', 'boolean'],
         ]);
 
         $doctor = Doctor::findOrFail($data['doctor_id']);
@@ -29,43 +40,53 @@ class AppointmentController extends Controller
             abort(403, 'У вас немає доступу до створення запису для цього лікаря');
         }
 
+        $availability = new AvailabilityService();
+        $procedure = isset($data['procedure_id']) ? Procedure::find($data['procedure_id']) : null;
+        $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
+
         $date = Carbon::parse($data['date'])->startOfDay();
         $startAt = Carbon::parse($data['date'].' '.$data['time']);
+        $plan = $availability->getDailyPlan($doctor, $date);
+        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $endAt = $startAt->copy()->addMinutes($duration);
 
-        // тривалість беремо з розкладу (або 30 хв за замовчуванням)
-        $schedule = $doctor->schedules()
-            ->where('weekday', $date->isoWeekday())
-            ->first();
+        if ($procedure && $procedure->requires_room) {
+            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
 
-        $slotDuration = $schedule?->slot_duration_minutes ?? 30;
-        $endAt = $startAt->copy()->addMinutes($slotDuration);
+        $conflicts = (new ConflictChecker())->evaluate($doctor, $date, $startAt, $endAt, $procedure, $room, $data['patient_id'] ?? null);
 
-        // перевірка конфліктів із вже існуючими записами
-        $hasConflict = Appointment::where('doctor_id', $doctor->id)
-            ->whereDate('start_at', $date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->where(function ($q) use ($startAt, $endAt) {
-                $q->where('start_at', '<', $endAt)
-                    ->where('end_at', '>', $startAt);
-            })
-            ->exists();
-
-        if ($hasConflict) {
+        if (!empty($conflicts['hard'])) {
             return response()->json([
-                'message' => 'Цей слот вже зайнятий',
+                'message' => 'Неможливо створити запис через конфлікти',
+                'hard_conflicts' => $conflicts['hard'],
             ], 422);
+        }
+
+        if (!empty($conflicts['soft']) && !($data['allow_soft_conflicts'] ?? false)) {
+            return response()->json([
+                'message' => 'Виявлено можливі конфлікти',
+                'soft_conflicts' => $conflicts['soft'],
+            ], 409);
         }
 
         $appointment = Appointment::create([
             'clinic_id' => $doctor->clinic_id,
             'doctor_id' => $doctor->id,
+            'procedure_id' => $procedure?->id,
+            'room_id' => $room?->id,
             'patient_id'=> $data['patient_id'] ?? null,
+            'is_follow_up' => $data['is_follow_up'] ?? false,
             'start_at'  => $startAt,
             'end_at'    => $endAt,
             'status'    => 'planned',
             'source'    => $data['source'] ?? 'crm',
             'comment'   => $data['comment'] ?? null,
         ]);
+
+        if (!empty($data['waitlist_entry_id'])) {
+            WaitlistEntry::where('id', $data['waitlist_entry_id'])->update(['status' => 'booked']);
+        }
 
         return response()->json($appointment, 201);
     }
@@ -81,7 +102,7 @@ class AppointmentController extends Controller
 
         $query = Appointment::query()
             ->where('doctor_id', $doctor->id)
-            ->with('patient:id,full_name,phone')
+            ->with(['patient:id,full_name,phone', 'procedure:id,name,duration_minutes', 'room:id,name'])
             ->orderBy('start_at');
 
         if ($date) {
@@ -92,16 +113,120 @@ class AppointmentController extends Controller
     }
     public function update(Request $request, \App\Models\Appointment $appointment)
     {
-        // Дозволяємо оновити patient_id (для прив'язки)
         $validated = $request->validate([
-            'patient_id' => 'nullable|exists:patients,id',
-            'status'     => 'nullable|string',
-            'comment'    => 'nullable|string'
+            'doctor_id' => ['sometimes', 'exists:doctors,id'],
+            'date'      => ['sometimes', 'date'],
+            'time'      => ['sometimes', 'date_format:H:i'],
+            'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
+            'room_id'   => ['sometimes', 'nullable', 'exists:rooms,id'],
+            'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
+            'is_follow_up' => ['sometimes', 'boolean'],
+            'status'     => ['sometimes', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
+            'comment'    => ['sometimes', 'nullable', 'string'],
+            'allow_soft_conflicts' => ['sometimes', 'boolean']
         ]);
 
-        $appointment->update($validated);
+        $doctor = isset($validated['doctor_id'])
+            ? Doctor::findOrFail($validated['doctor_id'])
+            : $appointment->doctor;
 
-        return $appointment;
+        $user = $request->user();
+
+        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+            abort(403, 'У вас немає доступу до зміни цього запису');
+        }
+
+        $procedure = array_key_exists('procedure_id', $validated)
+            ? Procedure::find($validated['procedure_id'])
+            : $appointment->procedure;
+
+        $room = array_key_exists('room_id', $validated)
+            ? Room::find($validated['room_id'])
+            : $appointment->room;
+
+        $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
+        $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
+        $date = Carbon::parse($dateValue)->startOfDay();
+        $startAt = Carbon::parse($dateValue.' '.$timeValue);
+
+        $availability = new AvailabilityService();
+        $plan = $availability->getDailyPlan($doctor, $date);
+        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $endAt = $startAt->copy()->addMinutes($duration);
+
+        if ($procedure && $procedure->requires_room) {
+            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+
+        $conflicts = (new ConflictChecker())->evaluate(
+            $doctor,
+            $date,
+            $startAt,
+            $endAt,
+            $procedure,
+            $room,
+            $validated['patient_id'] ?? $appointment->patient_id,
+            $appointment->id
+        );
+
+        if (!empty($conflicts['hard'])) {
+            return response()->json([
+                'message' => 'Неможливо змінити запис через конфлікти',
+                'hard_conflicts' => $conflicts['hard'],
+            ], 422);
+        }
+
+        if (!empty($conflicts['soft']) && !($validated['allow_soft_conflicts'] ?? false)) {
+            return response()->json([
+                'message' => 'Виявлено можливі конфлікти',
+                'soft_conflicts' => $conflicts['soft'],
+            ], 409);
+        }
+
+        $appointment->update([
+            'clinic_id' => $doctor->clinic_id,
+            'doctor_id' => $doctor->id,
+            'procedure_id' => $procedure?->id,
+            'room_id' => $room?->id,
+            'patient_id' => $validated['patient_id'] ?? $appointment->patient_id,
+            'is_follow_up' => $validated['is_follow_up'] ?? $appointment->is_follow_up,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+            'status' => $validated['status'] ?? $appointment->status,
+            'comment' => $validated['comment'] ?? $appointment->comment,
+        ]);
+
+        return $appointment->fresh(['patient', 'doctor', 'procedure', 'room']);
+    }
+
+    public function cancel(Request $request, Appointment $appointment)
+    {
+        $user = $request->user();
+
+        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+            abort(403, 'У вас немає доступу до скасування цього запису');
+        }
+
+        $data = $request->validate([
+            'comment' => ['sometimes', 'nullable', 'string'],
+        ]);
+
+        $appointment->update([
+            'status' => 'cancelled',
+            'comment' => $data['comment'] ?? $appointment->comment,
+        ]);
+
+        $waitlistSuggestions = (new WaitlistService())->matchCandidates(
+            $appointment->clinic_id,
+            $appointment->doctor_id,
+            $appointment->procedure_id,
+            $appointment->start_at?->copy()->startOfDay()
+        );
+
+        return response()->json([
+            'appointment' => $appointment->fresh(['patient', 'doctor', 'procedure', 'room']),
+            'waitlist_suggestions' => $waitlistSuggestions,
+        ]);
     }
 
 }
