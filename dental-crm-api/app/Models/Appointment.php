@@ -38,6 +38,9 @@ class Appointment extends Model
 
     protected $casts = [
         'is_follow_up' => 'boolean',
+        'start_at'     => 'datetime',
+        'end_at'       => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function doctor()

@@ -216,13 +216,16 @@ class AppointmentController extends Controller
             'comment' => $data['comment'] ?? $appointment->comment,
         ]);
 
+        $startDate = $appointment->start_at instanceof Carbon
+            ? $appointment->start_at->copy()->startOfDay()
+            : Carbon::parse($appointment->start_at)->startOfDay();
+
         $waitlistSuggestions = (new WaitlistService())->matchCandidates(
             $appointment->clinic_id,
             $appointment->doctor_id,
             $appointment->procedure_id,
-            $appointment->start_at?->copy()->startOfDay()
+            $startDate
         );
-
         return response()->json([
             'appointment' => $appointment->fresh(['patient', 'doctor', 'procedure', 'room']),
             'waitlist_suggestions' => $waitlistSuggestions,
