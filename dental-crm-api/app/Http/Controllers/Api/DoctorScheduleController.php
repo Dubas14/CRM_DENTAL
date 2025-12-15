@@ -12,6 +12,7 @@ use App\Services\Access\DoctorAccessService;
 use App\Models\Procedure;
 use App\Models\Room;
 use App\Services\Calendar\AvailabilityService;
+use App\Services\Calendar\RescheduleService;
 
 
 class DoctorScheduleController extends Controller
@@ -53,22 +54,37 @@ class DoctorScheduleController extends Controller
                 'slot_duration_minutes' => $item['slot_duration_minutes'] ?? 30,
             ]);
         }
+        $rescheduleQueue = [];
 
         if (isset($validated['exceptions'])) {
             ScheduleException::where('doctor_id', $doctor->id)->delete();
+            $rescheduleService = new RescheduleService();
 
             foreach ($validated['exceptions'] as $exception) {
-                ScheduleException::create([
+                $createdException = ScheduleException::create([
                     'doctor_id' => $doctor->id,
                     'date' => $exception['date'],
                     'type' => $exception['type'],
                     'start_time' => $exception['start_time'] ?? null,
                     'end_time' => $exception['end_time'] ?? null,
                 ]);
+
+                if (in_array($createdException->type, ['day_off', 'override'])) {
+                    $from = Carbon::parse($createdException->date)->startOfDay();
+                    $to = Carbon::parse($createdException->date)->endOfDay();
+
+                    $rescheduleQueue = array_merge(
+                        $rescheduleQueue,
+                        $rescheduleService->buildRescheduleQueue($doctor, $from, $to)
+                    );
+                }
             }
         }
 
-        return response()->json(['status' => 'updated']);
+        return response()->json([
+            'status' => 'updated',
+            'reschedule_queue' => $rescheduleQueue,
+        ]);
     }
 
     // базовий розклад + винятки
