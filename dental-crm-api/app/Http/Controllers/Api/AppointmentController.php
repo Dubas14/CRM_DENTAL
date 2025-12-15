@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Services\Access\DoctorAccessService;
@@ -28,6 +29,7 @@ class AppointmentController extends Controller
             'procedure_id' => ['nullable', 'exists:procedures,id'],
             'room_id'   => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
+            'assistant_id' => ['nullable', 'exists:users,id'],
             'patient_id'=> ['nullable', 'exists:patients,id'],
             'is_follow_up' => ['boolean'],
             'source'    => ['nullable', 'string', 'max:50'],
@@ -46,6 +48,8 @@ class AppointmentController extends Controller
         $procedure = isset($data['procedure_id']) ? Procedure::find($data['procedure_id']) : null;
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
         $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
+        $assistantId = $data['assistant_id'] ?? null;
+        $assistant = null;
 
         $date = Carbon::parse($data['date'])->startOfDay();
         $startAt = Carbon::parse($data['date'].' '.$data['time']);
@@ -56,12 +60,17 @@ class AppointmentController extends Controller
         if ($procedure && $procedure->requires_room) {
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
         }
+        if ($procedure && $procedure->requires_assistant) {
+            if (!empty($assistantId)) {
+                $assistant = User::find($assistantId);
+            }
+        }
 
         if ($procedure?->equipment_id) {
             $equipment = $availability->resolveEquipment($equipment ?? $procedure->equipment, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
         }
 
-        $conflicts = (new ConflictChecker())->evaluate($doctor, $date, $startAt, $endAt, $procedure, $room, $equipment, $data['patient_id'] ?? null);
+        $conflicts = (new ConflictChecker())->evaluate($doctor, $date, $startAt, $endAt, $procedure, $room, $equipment, $data['patient_id'] ?? null, null, $assistant?->id);
 
         if (!empty($conflicts['hard'])) {
             return response()->json([
@@ -83,6 +92,7 @@ class AppointmentController extends Controller
             'procedure_id' => $procedure?->id,
             'room_id' => $room?->id,
             'equipment_id' => $equipment?->id,
+            'assistant_id' => $assistantId,
             'patient_id'=> $data['patient_id'] ?? null,
             'is_follow_up' => $data['is_follow_up'] ?? false,
             'start_at'  => $startAt,
@@ -128,6 +138,7 @@ class AppointmentController extends Controller
             'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
             'room_id'   => ['sometimes', 'nullable', 'exists:rooms,id'],
             'equipment_id' => ['sometimes', 'nullable', 'exists:equipments,id'],
+            'assistant_id' => ['sometimes', 'nullable', 'exists:users,id'],
             'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
             'is_follow_up' => ['sometimes', 'boolean'],
             'status'     => ['sometimes', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
@@ -157,6 +168,11 @@ class AppointmentController extends Controller
             ? Equipment::find($validated['equipment_id'])
             : $appointment->equipment;
 
+        $assistantId = array_key_exists('assistant_id', $validated)
+            ? $validated['assistant_id']
+            : $appointment->assistant_id;
+        $assistant = null;
+
         $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
         $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
         $date = Carbon::parse($dateValue)->startOfDay();
@@ -169,6 +185,11 @@ class AppointmentController extends Controller
 
         if ($procedure && $procedure->requires_room) {
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+        if ($procedure && $procedure->requires_assistant) {
+            if (!empty($assistantId)) {
+                $assistant = User::find($assistantId);
+            }
         }
 
         if ($procedure?->equipment_id) {
@@ -184,7 +205,8 @@ class AppointmentController extends Controller
             $room,
             $equipment,
             $validated['patient_id'] ?? $appointment->patient_id,
-            $appointment->id
+            $appointment->id,
+            $assistant?->id
         );
 
         if (!empty($conflicts['hard'])) {
@@ -207,6 +229,7 @@ class AppointmentController extends Controller
             'procedure_id' => $procedure?->id,
             'room_id' => $room?->id,
             'equipment_id' => $equipment?->id,
+            'assistant_id' => $assistantId,
             'patient_id' => $validated['patient_id'] ?? $appointment->patient_id,
             'is_follow_up' => $validated['is_follow_up'] ?? $appointment->is_follow_up,
             'start_at' => $startAt,

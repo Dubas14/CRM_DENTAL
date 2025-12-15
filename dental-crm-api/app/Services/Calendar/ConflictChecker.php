@@ -20,7 +20,8 @@ class ConflictChecker
         ?Room $room,
         ?Equipment $equipment,
         ?int $patientId,
-        ?int $ignoreAppointmentId = null
+        ?int $ignoreAppointmentId = null,
+        ?int $assistantId = null
     ): array {
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $date);
@@ -112,6 +113,21 @@ class ConflictChecker
                 if ($equipmentConflict) {
                     $result['hard'][] = ['code' => 'equipment_busy', 'message' => 'Обладнання зайняте у цей час'];
                 }
+            }
+        }
+        if ($procedure?->requires_assistant && $assistantId) {
+            $assistantConflict = Appointment::where('assistant_id', $assistantId)
+                ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
+                ->whereDate('start_at', $date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->where(function ($q) use ($startAt, $endAt) {
+                    $q->where('start_at', '<', $endAt)
+                        ->where('end_at', '>', $startAt);
+                })
+                ->exists();
+
+            if ($assistantConflict) {
+                $result['hard'][] = ['code' => 'assistant_busy', 'message' => 'Асистент зайнятий у цей час'];
             }
         }
 

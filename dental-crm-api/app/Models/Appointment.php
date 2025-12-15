@@ -24,6 +24,7 @@ class Appointment extends Model
         'doctor_id',
         'procedure_id',
         'room_id',
+        'assistant_id',
         'equipment_id',
         'patient_id',
         'is_follow_up',
@@ -53,6 +54,11 @@ class Appointment extends Model
     {
         return $this->belongsTo(Procedure::class);
     }
+    public function assistant()
+    {
+        return $this->belongsTo(User::class, 'assistant_id');
+    }
+
 
     public function room()
     {
