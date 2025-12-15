@@ -12,6 +12,7 @@ use App\Models\ScheduleException;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class AvailabilityService
 {
@@ -62,60 +63,71 @@ class AvailabilityService
 
     public function getSlots(Doctor $doctor, Carbon $date, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null): array
     {
-        $plan = $this->getDailyPlan($doctor, $date);
+        $cacheKey = sprintf(
+            'calendar_slots_doctor_%d_%s_%d_%s_%s',
+            $doctor->id,
+            $date->toDateString(),
+            $durationMinutes,
+            $room?->id ?? 'any',
+            $equipment?->id ?? 'any'
+        );
 
-        if (isset($plan['reason'])) {
-            return ['slots' => [], 'reason' => $plan['reason']];
-        }
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment) {
+            $plan = $this->getDailyPlan($doctor, $date);
 
-        $appointments = Appointment::where('doctor_id', $doctor->id)
-            ->whereDate('start_at', $date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->get();
-
-        $roomAppointments = $room ? Appointment::where('room_id', $room->id)
-            ->whereDate('start_at', $date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->get() : collect();
-
-        $equipmentAppointments = $equipment ? Appointment::where('equipment_id', $equipment->id)
-            ->whereDate('start_at', $date)
-            ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->get() : collect();
-
-        $period = new CarbonPeriod($plan['start'], "{$plan['slot_duration']} minutes", $plan['end']->copy()->subMinutes($durationMinutes));
-        $slots = [];
-
-        foreach ($period as $start) {
-            $end = $start->copy()->addMinutes($durationMinutes);
-
-            if ($plan['break_start'] && $plan['break_end'] && $start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())) {
-                continue;
+            if (isset($plan['reason'])) {
+                return ['slots' => [], 'reason' => $plan['reason']];
             }
 
-            if ($end > $plan['end']) {
-                continue;
+            $appointments = Appointment::where('doctor_id', $doctor->id)
+                ->whereDate('start_at', $date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->get();
+
+            $roomAppointments = $room ? Appointment::where('room_id', $room->id)
+                ->whereDate('start_at', $date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->get() : collect();
+
+            $equipmentAppointments = $equipment ? Appointment::where('equipment_id', $equipment->id)
+                ->whereDate('start_at', $date)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->get() : collect();
+
+            $period = new CarbonPeriod($plan['start'], "{$plan['slot_duration']} minutes", $plan['end']->copy()->subMinutes($durationMinutes));
+            $slots = [];
+
+            foreach ($period as $start) {
+                $end = $start->copy()->addMinutes($durationMinutes);
+
+                if ($plan['break_start'] && $plan['break_end'] && $start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())) {
+                    continue;
+                }
+
+                if ($end > $plan['end']) {
+                    continue;
+                }
+
+                if ($this->hasConflict($appointments, $start, $end)) {
+                    continue;
+                }
+
+                if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
+                    continue;
+                }
+
+                if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
+                    continue;
+                }
+
+                $slots[] = [
+                    'start' => $start->format('H:i'),
+                    'end'   => $end->format('H:i'),
+                ];
             }
 
-            if ($this->hasConflict($appointments, $start, $end)) {
-                continue;
-            }
-
-            if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
-                continue;
-            }
-
-            if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
-                continue;
-            }
-
-            $slots[] = [
-                'start' => $start->format('H:i'),
-                'end'   => $end->format('H:i'),
-            ];
-        }
-
-        return ['slots' => $slots];
+            return ['slots' => $slots];
+        });
     }
 
     public function hasConflict(Collection $appointments, Carbon $start, Carbon $end): bool
@@ -196,7 +208,7 @@ class AvailabilityService
         return null;
     }
 
-    public function suggestSlots(Doctor $doctor, Carbon $fromDate, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null, int $limit = 5): array
+    public function suggestSlots(Doctor $doctor, Carbon $fromDate, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null, int $limit = 5, ?string $preferredTimeOfDay = null): array
     {
         $slots = [];
         $cursor = $fromDate->copy();
@@ -206,21 +218,44 @@ class AvailabilityService
             $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room, $equipment);
 
             foreach ($daily['slots'] as $slot) {
+                $slotStart = Carbon::createFromFormat('H:i', $slot['start']);
+                $score = 100 - $fromDate->diffInDays($cursor);
+
+                if ($preferredTimeOfDay) {
+                    $isPreferredTime = match ($preferredTimeOfDay) {
+                        'morning' => $slotStart->betweenIncluded($slotStart->copy()->setTime(6, 0), $slotStart->copy()->setTime(11, 59)),
+                        'afternoon' => $slotStart->betweenIncluded($slotStart->copy()->setTime(12, 0), $slotStart->copy()->setTime(16, 59)),
+                        'evening' => $slotStart->betweenIncluded($slotStart->copy()->setTime(17, 0), $slotStart->copy()->setTime(20, 59)),
+                        default => false,
+                    };
+
+                    if ($isPreferredTime) {
+                        $score += 20;
+                    }
+                }
+
                 $slots[] = [
                     'date' => $cursor->toDateString(),
                     'start' => $slot['start'],
                     'end' => $slot['end'],
+                    'score' => $score,
                 ];
-
-                if (count($slots) >= $limit) {
-                    break;
-                }
             }
 
             $cursor->addDay();
             $safetyCounter++;
         }
 
-        return $slots;
+        usort($slots, function ($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
+        $topSlots = array_slice($slots, 0, $limit);
+
+        return array_map(fn ($slot) => [
+            'date' => $slot['date'],
+            'start' => $slot['start'],
+            'end' => $slot['end'],
+        ], $topSlots);
     }
 }
