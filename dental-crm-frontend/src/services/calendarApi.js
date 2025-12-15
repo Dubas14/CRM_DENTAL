@@ -10,6 +10,14 @@ const calendarApi = {
   getDoctorAppointments(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/appointments`, { params });
   },
+  getAppointments(params = {}) {
+    // Підтримка мульти-лікар та діапазону дат
+    return apiClient.get('/appointments', { params });
+  },
+  getSlots(params = {}) {
+    // Підтримка кількох лікарів або тижневого діапазону
+    return apiClient.get('/slots', { params });
+  },
   createAppointment(payload) {
     return apiClient.post('/appointments', payload);
   },
