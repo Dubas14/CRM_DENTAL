@@ -102,9 +102,15 @@ onMounted(() => {
       {{ error }}
     </div>
 
-    <div v-if="loading" class="text-slate-300 text-sm">Завантаження слотів...</div>
+    <div class="relative space-y-3">
+      <div
+          v-if="loading"
+          class="absolute right-0 -top-1 text-xs text-emerald-300 flex items-center gap-2 animate-pulse"
+      >
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>Оновлення...</span>
+      </div>
 
-    <div v-else>
       <div v-if="slots.length" class="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         <button
           v-for="slot in slots"
@@ -116,6 +122,8 @@ onMounted(() => {
           {{ formatSlot(slot) }}
         </button>
       </div>
+
+      <div v-else-if="loading" class="text-sm text-slate-400">Завантаження слотів...</div>
 
       <div v-else class="text-sm text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
         <p class="font-semibold text-white mb-1">Вільних слотів немає</p>
