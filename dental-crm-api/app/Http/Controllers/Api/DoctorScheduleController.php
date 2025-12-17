@@ -120,6 +120,7 @@ class DoctorScheduleController extends Controller
             'procedure_id' => ['nullable', 'exists:procedures,id'],
             'room_id' => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
+            'assistant_id' => ['nullable', 'exists:users,id'],
         ]);
 
         $user = $request->user();
@@ -132,6 +133,7 @@ class DoctorScheduleController extends Controller
         $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
         $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
         $equipment = isset($validated['equipment_id']) ? \App\Models\Equipment::find($validated['equipment_id']) : null;
+        $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $date);
@@ -145,13 +147,16 @@ class DoctorScheduleController extends Controller
         }
 
         $duration = $procedure?->duration_minutes ?? $plan['slot_duration'];
-        $slots = $availability->getSlots($doctor, $date, $duration, $room, $equipment ?? $procedure?->equipment);
+        $slots = $availability->getSlots($doctor, $date, $duration, $room, $equipment ?? $procedure?->equipment, $assistantId);
 
         return response()->json([
             'date'  => $date->toDateString(),
             'slots' => $slots['slots'],
             'reason' => $slots['reason'] ?? null,
             'duration_minutes' => $duration,
+            'room' => $room,
+            'equipment' => $equipment ?? $procedure?->equipment,
+            'assistant_id' => $assistantId,
         ]);
     }
 
@@ -162,6 +167,7 @@ class DoctorScheduleController extends Controller
             'procedure_id' => ['nullable', 'exists:procedures,id'],
             'room_id' => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
+            'assistant_id' => ['nullable', 'exists:users,id'],
             'limit' => ['nullable', 'integer', 'between:1,20'],
         ]);
 
@@ -175,16 +181,29 @@ class DoctorScheduleController extends Controller
         $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
         $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
         $equipment = isset($validated['equipment_id']) ? \App\Models\Equipment::find($validated['equipment_id']) : null;
+        $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $fromDate);
         $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
-        $slots = $availability->suggestSlots($doctor, $fromDate, $duration, $room, $equipment ?? $procedure?->equipment, $validated['limit'] ?? 5);
+        $slots = $availability->suggestSlots(
+            $doctor,
+            $fromDate,
+            $duration,
+            $room,
+            $equipment ?? $procedure?->equipment,
+            $validated['limit'] ?? 5,
+            null,
+            $assistantId
+        );
 
         return response()->json([
             'from_date' => $fromDate->toDateString(),
             'slots' => $slots,
             'duration_minutes' => $duration,
+            'room' => $room,
+            'equipment' => $equipment ?? $procedure?->equipment,
+            'assistant_id' => $assistantId,
         ]);
     }
 }

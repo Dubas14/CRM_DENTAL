@@ -6,6 +6,8 @@ const props = defineProps({
   doctorId: { type: [Number, String], required: true },
   procedureId: { type: [Number, String, null], default: null },
   equipmentId: { type: [Number, String, null], default: null },
+  roomId: { type: [Number, String, null], default: null },
+  assistantId: { type: [Number, String, null], default: null },
   date: { type: String, required: true },
   durationMinutes: { type: Number, default: null },
   autoLoad: { type: Boolean, default: true },
@@ -20,6 +22,9 @@ const recommended = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const reason = ref(null);
+const slotRoom = ref(null);
+const slotEquipment = ref(null);
+const slotAssistantId = ref(null);
 
 const hasNoSlots = computed(() => !loading.value && slots.value.length === 0);
 
@@ -33,9 +38,14 @@ const loadSlots = async () => {
       date: props.date,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
+      room_id: props.roomId || undefined,
+      assistant_id: props.assistantId || undefined,
     });
     slots.value = data.slots || [];
     reason.value = data.reason || null;
+    slotRoom.value = data.room || null;
+    slotEquipment.value = data.equipment || null;
+    slotAssistantId.value = data.assistant_id || null;
     if (recommended.value.length === 0) {
       await loadRecommended();
     }
@@ -53,6 +63,8 @@ const loadRecommended = async () => {
       from_date: props.date,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
+      room_id: props.roomId || undefined,
+      assistant_id: props.assistantId || undefined,
     });
     recommended.value = data.slots || [];
   } catch (e) {
@@ -63,7 +75,7 @@ const loadRecommended = async () => {
 
 const formatSlot = (slot) => `${slot.start} – ${slot.end}`;
 
-watch(() => [props.doctorId, props.date, props.procedureId, props.equipmentId], () => {
+watch(() => [props.doctorId, props.date, props.procedureId, props.equipmentId, props.roomId, props.assistantId], () => {
   if (props.autoLoad && !props.disabled) {
     loadSlots();
   }
@@ -96,6 +108,12 @@ onMounted(() => {
       >
         Оновити
       </button>
+    </div>
+
+    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+      <span v-if="slotRoom" class="mr-3">Кабінет: <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span>
+      <span v-if="slotEquipment" class="mr-3">Обладнання: <strong class="text-amber-300">{{ slotEquipment.name || `#${slotEquipment.id}` }}</strong></span>
+      <span v-if="slotAssistantId">Асистент ID: <strong class="text-indigo-300">{{ slotAssistantId }}</strong></span>
     </div>
 
     <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3">

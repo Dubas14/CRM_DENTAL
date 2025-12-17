@@ -61,18 +61,26 @@ class AvailabilityService
         ];
     }
 
-    public function getSlots(Doctor $doctor, Carbon $date, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null): array
+    public function getSlots(
+        Doctor $doctor,
+        Carbon $date,
+        int $durationMinutes,
+        ?Room $room = null,
+        ?Equipment $equipment = null,
+        ?int $assistantId = null
+    ): array
     {
         $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_%s_%s',
+            'calendar_slots_doctor_%d_%s_%d_%s_%s_%s',
             $doctor->id,
             $date->toDateString(),
             $durationMinutes,
             $room?->id ?? 'any',
-            $equipment?->id ?? 'any'
+            $equipment?->id ?? 'any',
+            $assistantId ?? 'any'
         );
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment, $assistantId) {
             $plan = $this->getDailyPlan($doctor, $date);
 
             if (isset($plan['reason'])) {
@@ -208,14 +216,23 @@ class AvailabilityService
         return null;
     }
 
-    public function suggestSlots(Doctor $doctor, Carbon $fromDate, int $durationMinutes, ?Room $room = null, ?Equipment $equipment = null, int $limit = 5, ?string $preferredTimeOfDay = null): array
+    public function suggestSlots(
+        Doctor $doctor,
+        Carbon $fromDate,
+        int $durationMinutes,
+        ?Room $room = null,
+        ?Equipment $equipment = null,
+        int $limit = 5,
+        ?string $preferredTimeOfDay = null,
+        ?int $assistantId = null
+    ): array
     {
         $slots = [];
         $cursor = $fromDate->copy();
         $safetyCounter = 0;
 
         while (count($slots) < $limit && $safetyCounter < 60) {
-            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room, $equipment);
+            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room, $equipment, $assistantId);
 
             foreach ($daily['slots'] as $slot) {
                 $slotStart = Carbon::createFromFormat('H:i', $slot['start']);

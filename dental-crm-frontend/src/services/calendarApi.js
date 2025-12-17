@@ -19,10 +19,72 @@ const calendarApi = {
     return apiClient.get('/slots', { params });
   },
   createAppointment(payload) {
-    return apiClient.post('/appointments', payload);
+    const {
+      doctor_id,
+      date,
+      time,
+      patient_id,
+      procedure_id,
+      room_id,
+      equipment_id,
+      assistant_id,
+      is_follow_up,
+      waitlist_entry_id,
+      allow_soft_conflicts,
+      comment,
+      source,
+    } = payload;
+
+    return apiClient.post('/appointments', {
+      doctor_id,
+      date,
+      time,
+      patient_id,
+      procedure_id,
+      room_id,
+      equipment_id,
+      assistant_id,
+      is_follow_up,
+      waitlist_entry_id,
+      allow_soft_conflicts,
+      comment,
+      source,
+    });
   },
   updateAppointment(appointmentId, payload) {
-    return apiClient.put(`/appointments/${appointmentId}`, payload);
+    const {
+      doctor_id,
+      date,
+      time,
+      patient_id,
+      procedure_id,
+      room_id,
+      equipment_id,
+      assistant_id,
+      is_follow_up,
+      waitlist_entry_id,
+      allow_soft_conflicts,
+      status,
+      comment,
+      source,
+    } = payload;
+
+    return apiClient.put(`/appointments/${appointmentId}`, {
+      doctor_id,
+      date,
+      time,
+      patient_id,
+      procedure_id,
+      room_id,
+      equipment_id,
+      assistant_id,
+      is_follow_up,
+      waitlist_entry_id,
+      allow_soft_conflicts,
+      status,
+      comment,
+      source,
+    });
   },
   cancelAppointment(appointmentId, payload) {
     return apiClient.post(`/appointments/${appointmentId}/cancel`, payload);

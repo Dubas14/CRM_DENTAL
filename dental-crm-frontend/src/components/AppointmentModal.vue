@@ -41,6 +41,13 @@ const patientName = computed(() => getProp('patient_name') || getProp('comment')
 const patientId = computed(() => getProp('patient_id'));
 const appointmentId = computed(() => props.appointment?.id);
 const status = computed(() => getProp('status'));
+const appointmentDetails = computed(() => ({
+  procedure: getProp('procedure')?.name || getProp('procedure_name'),
+  room: getProp('room')?.name || getProp('room_name'),
+  equipment: getProp('equipment')?.name || getProp('equipment_name'),
+  assistant: getProp('assistant')?.full_name || getProp('assistant_name'),
+  isFollowUp: !!getProp('is_follow_up'),
+}));
 
 const saveRecord = async () => {
   // Валідація зубів
@@ -95,6 +102,30 @@ const saveRecord = async () => {
 
       <!-- Тіло форми -->
       <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
+
+        <div class="grid grid-cols-2 gap-4 text-sm text-slate-300">
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-slate-400">Процедура</p>
+            <p class="font-semibold text-white">{{ appointmentDetails.procedure || '—' }}</p>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-slate-400">Кабінет</p>
+            <p class="font-semibold text-white">{{ appointmentDetails.room || '—' }}</p>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-slate-400">Обладнання</p>
+            <p class="font-semibold text-white">{{ appointmentDetails.equipment || '—' }}</p>
+          </div>
+          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-slate-400">Асистент</p>
+            <p class="font-semibold text-white">{{ appointmentDetails.assistant || '—' }}</p>
+          </div>
+        </div>
+
+        <div v-if="appointmentDetails.isFollowUp" class="bg-emerald-900/40 text-emerald-200 border border-emerald-600/40 px-3 py-2 rounded-md text-sm flex items-center gap-2">
+          <span class="text-lg">↻</span>
+          <span>Повторний візит</span>
+        </div>
 
         <div v-if="status === 'done'" class="bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 p-4 rounded-lg text-center font-bold">
           ✅ Цей візит вже завершено
