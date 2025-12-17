@@ -4,20 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
-use App\Models\Schedule;
-use App\Models\ScheduleException;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use App\Services\Access\DoctorAccessService;
 use App\Models\Procedure;
 use App\Models\Room;
+use App\Models\Equipment;
+use App\Models\Schedule;
+use App\Models\ScheduleException;
+use App\Services\Access\DoctorAccessService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\RescheduleService;
-
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DoctorScheduleController extends Controller
 {
-
     public function updateSchedule(Request $request, Doctor $doctor)
     {
         $user = $request->user();
@@ -34,6 +33,7 @@ class DoctorScheduleController extends Controller
             'schedules.*.break_start' => ['nullable', 'date_format:H:i'],
             'schedules.*.break_end' => ['nullable', 'date_format:H:i'],
             'schedules.*.slot_duration_minutes' => ['nullable', 'integer', 'min:5'],
+
             'exceptions' => ['sometimes', 'array'],
             'exceptions.*.date' => ['required', 'date'],
             'exceptions.*.type' => ['required', 'in:day_off,override'],
@@ -54,6 +54,7 @@ class DoctorScheduleController extends Controller
                 'slot_duration_minutes' => $item['slot_duration_minutes'] ?? 30,
             ]);
         }
+
         $rescheduleQueue = [];
 
         if (isset($validated['exceptions'])) {
@@ -69,7 +70,8 @@ class DoctorScheduleController extends Controller
                     'end_time' => $exception['end_time'] ?? null,
                 ]);
 
-                if (in_array($createdException->type, ['day_off', 'override'])) {
+                // При day_off/override формуємо чергу перенесень на день (як ти вже робив)
+                if (in_array($createdException->type, ['day_off', 'override'], true)) {
                     $from = Carbon::parse($createdException->date)->startOfDay();
                     $to = Carbon::parse($createdException->date)->endOfDay();
 
@@ -95,6 +97,7 @@ class DoctorScheduleController extends Controller
         if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду розкладу цього лікаря');
         }
+
         $schedules = Schedule::where('doctor_id', $doctor->id)
             ->orderBy('weekday')
             ->get();
@@ -110,7 +113,6 @@ class DoctorScheduleController extends Controller
             'exceptions' => $exceptions,
         ]);
     }
-
 
     // вільні слоти на конкретну дату
     public function slots(Request $request, Doctor $doctor)
@@ -130,9 +132,19 @@ class DoctorScheduleController extends Controller
         }
 
         $date = Carbon::parse($validated['date'])->startOfDay();
-        $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
-        $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
-        $equipment = isset($validated['equipment_id']) ? \App\Models\Equipment::find($validated['equipment_id']) : null;
+
+        $procedure = isset($validated['procedure_id'])
+            ? Procedure::find($validated['procedure_id'])
+            : null;
+
+        $room = isset($validated['room_id'])
+            ? Room::find($validated['room_id'])
+            : null;
+
+        $equipment = isset($validated['equipment_id'])
+            ? Equipment::find($validated['equipment_id'])
+            : null;
+
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
@@ -146,16 +158,29 @@ class DoctorScheduleController extends Controller
             ]);
         }
 
-        $duration = $procedure?->duration_minutes ?? $plan['slot_duration'];
-        $slots = $availability->getSlots($doctor, $date, $duration, $room, $equipment ?? $procedure?->equipment, $assistantId);
+        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+
+        // Якщо вказали equipment_id — беремо його. Якщо ні — беремо обладнання з процедури (якщо є).
+        $resolvedEquipment = $equipment ?? $procedure?->equipment;
+
+        $slotsResult = $availability->getSlots(
+            $doctor,
+            $date,
+            $duration,
+            $room,
+            $resolvedEquipment,
+            $assistantId
+        );
 
         return response()->json([
             'date'  => $date->toDateString(),
-            'slots' => $slots['slots'],
-            'reason' => $slots['reason'] ?? null,
+            'slots' => $slotsResult['slots'],
+            'reason' => $slotsResult['reason'] ?? null,
             'duration_minutes' => $duration,
+
+            // контекст (щоб фронт міг показати, що саме зараз фільтруємо/резервуємо)
             'room' => $room,
-            'equipment' => $equipment ?? $procedure?->equipment,
+            'equipment' => $resolvedEquipment,
             'assistant_id' => $assistantId,
         ]);
     }
@@ -178,20 +203,33 @@ class DoctorScheduleController extends Controller
         }
 
         $fromDate = Carbon::parse($validated['from_date'])->startOfDay();
-        $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
-        $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
-        $equipment = isset($validated['equipment_id']) ? \App\Models\Equipment::find($validated['equipment_id']) : null;
+
+        $procedure = isset($validated['procedure_id'])
+            ? Procedure::find($validated['procedure_id'])
+            : null;
+
+        $room = isset($validated['room_id'])
+            ? Room::find($validated['room_id'])
+            : null;
+
+        $equipment = isset($validated['equipment_id'])
+            ? Equipment::find($validated['equipment_id'])
+            : null;
+
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $fromDate);
+
         $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $resolvedEquipment = $equipment ?? $procedure?->equipment;
+
         $slots = $availability->suggestSlots(
             $doctor,
             $fromDate,
             $duration,
             $room,
-            $equipment ?? $procedure?->equipment,
+            $resolvedEquipment,
             $validated['limit'] ?? 5,
             null,
             $assistantId
@@ -201,8 +239,9 @@ class DoctorScheduleController extends Controller
             'from_date' => $fromDate->toDateString(),
             'slots' => $slots,
             'duration_minutes' => $duration,
+
             'room' => $room,
-            'equipment' => $equipment ?? $procedure?->equipment,
+            'equipment' => $resolvedEquipment,
             'assistant_id' => $assistantId,
         ]);
     }

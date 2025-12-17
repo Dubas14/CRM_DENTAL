@@ -49,18 +49,23 @@ class AvailabilityService
         }
 
         return [
-            'start' => Carbon::parse($date->toDateString().' '.$startTime),
-            'end'   => Carbon::parse($date->toDateString().' '.$endTime),
+            'start' => Carbon::parse($date->toDateString() . ' ' . $startTime),
+            'end'   => Carbon::parse($date->toDateString() . ' ' . $endTime),
             'break_start' => $schedule?->break_start
-                ? Carbon::parse($date->toDateString().' '.$schedule->break_start)
+                ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_start)
                 : null,
             'break_end' => $schedule?->break_end
-                ? Carbon::parse($date->toDateString().' '.$schedule->break_end)
+                ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_end)
                 : null,
             'slot_duration' => $schedule?->slot_duration_minutes ?? 30,
         ];
     }
 
+    /**
+     * Генерує доступні слоти на день.
+     *
+     * @return array{slots: array<int,array{start:string,end:string}>, reason?: string}
+     */
     public function getSlots(
         Doctor $doctor,
         Carbon $date,
@@ -68,8 +73,7 @@ class AvailabilityService
         ?Room $room = null,
         ?Equipment $equipment = null,
         ?int $assistantId = null
-    ): array
-    {
+    ): array {
         $cacheKey = sprintf(
             'calendar_slots_doctor_%d_%s_%d_%s_%s_%s',
             $doctor->id,
@@ -80,7 +84,14 @@ class AvailabilityService
             $assistantId ?? 'any'
         );
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment, $assistantId) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use (
+            $doctor,
+            $date,
+            $durationMinutes,
+            $room,
+            $equipment,
+            $assistantId
+        ) {
             $plan = $this->getDailyPlan($doctor, $date);
 
             if (isset($plan['reason'])) {
@@ -92,39 +103,70 @@ class AvailabilityService
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->get();
 
-            $roomAppointments = $room ? Appointment::where('room_id', $room->id)
-                ->whereDate('start_at', $date)
-                ->whereNotIn('status', ['cancelled', 'no_show'])
-                ->get() : collect();
+            $roomAppointments = $room
+                ? Appointment::where('room_id', $room->id)
+                    ->whereDate('start_at', $date)
+                    ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->get()
+                : collect();
 
-            $equipmentAppointments = $equipment ? Appointment::where('equipment_id', $equipment->id)
-                ->whereDate('start_at', $date)
-                ->whereNotIn('status', ['cancelled', 'no_show'])
-                ->get() : collect();
+            $equipmentAppointments = $equipment
+                ? Appointment::where('equipment_id', $equipment->id)
+                    ->whereDate('start_at', $date)
+                    ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->get()
+                : collect();
 
-            $period = new CarbonPeriod($plan['start'], "{$plan['slot_duration']} minutes", $plan['end']->copy()->subMinutes($durationMinutes));
+            $assistantAppointments = $assistantId
+                ? Appointment::where('assistant_id', $assistantId)
+                    ->whereDate('start_at', $date)
+                    ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->get()
+                : collect();
+
+            $latestStart = $plan['end']->copy()->subMinutes($durationMinutes);
+            if ($latestStart < $plan['start']) {
+                return ['slots' => [], 'reason' => 'duration_too_long'];
+            }
+
+            $period = new CarbonPeriod(
+                $plan['start'],
+                "{$plan['slot_duration']} minutes",
+                $latestStart
+            );
+
             $slots = [];
 
             foreach ($period as $start) {
                 $end = $start->copy()->addMinutes($durationMinutes);
 
-                if ($plan['break_start'] && $plan['break_end'] && $start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())) {
+                // Перерва: якщо слот перетинає break — пропускаємо
+                if (
+                    $plan['break_start'] &&
+                    $plan['break_end'] &&
+                    $start < $plan['break_end'] &&
+                    $end > $plan['break_start']
+                ) {
                     continue;
                 }
 
-                if ($end > $plan['end']) {
-                    continue;
-                }
-
+                // Конфлікти лікаря
                 if ($this->hasConflict($appointments, $start, $end)) {
                     continue;
                 }
 
+                // Конфлікти кабінету
                 if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
                     continue;
                 }
 
+                // Конфлікти обладнання
                 if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
+                    continue;
+                }
+
+                // Конфлікти асистента
+                if ($assistantId && $this->hasConflict($assistantAppointments, $start, $end)) {
                     continue;
                 }
 
@@ -145,8 +187,14 @@ class AvailabilityService
         });
     }
 
-    public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Room
-    {
+    public function resolveRoom(
+        ?Room $room,
+        Procedure $procedure,
+        Carbon $date,
+        Carbon $start,
+        Carbon $end,
+        int $clinicId
+    ): ?Room {
         if ($room) {
             return $room;
         }
@@ -182,8 +230,14 @@ class AvailabilityService
         return null;
     }
 
-    public function resolveEquipment(?Equipment $equipment, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Equipment
-    {
+    public function resolveEquipment(
+        ?Equipment $equipment,
+        Procedure $procedure,
+        Carbon $date,
+        Carbon $start,
+        Carbon $end,
+        int $clinicId
+    ): ?Equipment {
         if ($equipment) {
             return $equipment;
         }
@@ -225,8 +279,7 @@ class AvailabilityService
         int $limit = 5,
         ?string $preferredTimeOfDay = null,
         ?int $assistantId = null
-    ): array
-    {
+    ): array {
         $slots = [];
         $cursor = $fromDate->copy();
         $safetyCounter = 0;
@@ -240,9 +293,18 @@ class AvailabilityService
 
                 if ($preferredTimeOfDay) {
                     $isPreferredTime = match ($preferredTimeOfDay) {
-                        'morning' => $slotStart->betweenIncluded($slotStart->copy()->setTime(6, 0), $slotStart->copy()->setTime(11, 59)),
-                        'afternoon' => $slotStart->betweenIncluded($slotStart->copy()->setTime(12, 0), $slotStart->copy()->setTime(16, 59)),
-                        'evening' => $slotStart->betweenIncluded($slotStart->copy()->setTime(17, 0), $slotStart->copy()->setTime(20, 59)),
+                        'morning' => $slotStart->betweenIncluded(
+                            $slotStart->copy()->setTime(6, 0),
+                            $slotStart->copy()->setTime(11, 59)
+                        ),
+                        'afternoon' => $slotStart->betweenIncluded(
+                            $slotStart->copy()->setTime(12, 0),
+                            $slotStart->copy()->setTime(16, 59)
+                        ),
+                        'evening' => $slotStart->betweenIncluded(
+                            $slotStart->copy()->setTime(17, 0),
+                            $slotStart->copy()->setTime(20, 59)
+                        ),
                         default => false,
                     };
 
@@ -263,9 +325,7 @@ class AvailabilityService
             $safetyCounter++;
         }
 
-        usort($slots, function ($a, $b) {
-            return $b['score'] <=> $a['score'];
-        });
+        usort($slots, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         $topSlots = array_slice($slots, 0, $limit);
 
