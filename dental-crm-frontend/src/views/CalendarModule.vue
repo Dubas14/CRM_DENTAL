@@ -14,12 +14,19 @@ const { user } = useAuth();
 const doctors = ref([]);
 const procedures = ref([]);
 const equipments = ref([]);
+const rooms = ref([]);
 const appointments = ref([]);
 
 const selectedDoctorId = ref('');
 const viewMode = ref('day');
 const selectedProcedureId = ref('');
 const selectedEquipmentId = ref('');
+const selectedRoomId = ref('');
+const selectedAssistantId = ref('');
+const isFollowUp = ref(false);
+const waitlistEntryId = ref('');
+const allowSoftConflicts = ref(false);
+
 const selectedProcedure = computed(() => procedures.value.find((p) => p.id === Number(selectedProcedureId.value)));
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
 const selectedSlot = ref(null);
@@ -116,6 +123,12 @@ const fetchEquipments = async () => {
   equipments.value = mapCollection(data);
 };
 
+const fetchRooms = async () => {
+  if (!clinicId.value) return;
+  const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
+  rooms.value = mapCollection(data);
+};
+
 const mapAppointments = (data) => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
@@ -164,6 +177,11 @@ const bookAppointment = async () => {
       patient_id: patientId.value || null,
       procedure_id: selectedProcedureId.value || null,
       equipment_id: selectedEquipmentId.value || null,
+      room_id: selectedRoomId.value || null,
+      assistant_id: selectedAssistantId.value || null,
+      is_follow_up: !!isFollowUp.value,
+      waitlist_entry_id: waitlistEntryId.value || null,
+      allow_soft_conflicts: !!allowSoftConflicts.value,
       comment: comment.value || null,
     };
     const { data } = await calendarApi.createAppointment(payload);
@@ -184,7 +202,7 @@ const openCancellation = (appointment) => {
 
 onMounted(async () => {
   await Promise.all([fetchDoctors(), fetchProcedures()]);
-  await fetchEquipments();
+  await Promise.all([fetchEquipments(), fetchRooms()]);
 });
 
 watch(() => [selectedDoctorId.value, selectedDate.value, viewMode.value], () => {
@@ -199,6 +217,7 @@ watch(activeDoctorIds, () => {
 
 watch(clinicId, () => {
   fetchEquipments();
+  fetchRooms();
 });
 
 watch(selectedProcedure, (proc) => {
@@ -243,6 +262,19 @@ watch(selectedProcedure, (proc) => {
           <option value="">Без обладнання</option>
           <option v-for="item in equipments" :key="item.id" :value="item.id">{{ item.name }}</option>
         </select>
+        <select v-model="selectedRoomId" class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white">
+          <option value="">Без кабінету</option>
+          <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
+        </select>
+        <label class="text-sm text-slate-300 space-x-2">
+          <span>Асистент</span>
+          <input
+            v-model="selectedAssistantId"
+            type="number"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white w-28"
+            placeholder="ID"
+          />
+        </label>
       </div>
     </div>
 
@@ -253,6 +285,8 @@ watch(selectedProcedure, (proc) => {
           :doctor-id="selectedDoctorId"
           :procedure-id="selectedProcedureId"
           :equipment-id="selectedEquipmentId"
+          :room-id="selectedRoomId"
+          :assistant-id="selectedAssistantId"
           :date="selectedDate"
           @select-slot="onSlotSelected"
         />
@@ -282,6 +316,20 @@ watch(selectedProcedure, (proc) => {
               <span class="text-sm text-slate-300">Коментар</span>
               <input v-model="comment" type="text" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white" placeholder="Побажання пацієнта" />
             </label>
+            <label class="space-y-1">
+              <span class="text-sm text-slate-300">Waitlist entry ID</span>
+              <input v-model="waitlistEntryId" type="number" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white" placeholder="Опційно" />
+            </label>
+            <div class="space-y-2 text-sm text-slate-300">
+              <label class="flex items-center gap-2">
+                <input v-model="isFollowUp" type="checkbox" class="accent-emerald-500" />
+                <span>Повторний візит</span>
+              </label>
+              <label class="flex items-center gap-2">
+                <input v-model="allowSoftConflicts" type="checkbox" class="accent-emerald-500" />
+                <span>Дозволити м'які конфлікти</span>
+              </label>
+            </div>
           </div>
 
           <div class="flex items-center gap-3 text-sm">
@@ -320,10 +368,13 @@ watch(selectedProcedure, (proc) => {
                       {{ appt.start_at?.slice(11,16) }}–{{ appt.end_at?.slice(11,16) }}
                       • {{ appt.procedure?.name || 'без процедури' }}
                       <!-- TODO: додати іконки типів процедур -->
+                      <span v-if="appt.room" class="text-sky-300">• {{ appt.room.name }}</span>
+                      <span v-if="appt.assistant" class="text-indigo-300">• Асистент: {{ appt.assistant.full_name || appt.assistant.name || appt.assistant.id }}</span>
                       <span v-if="appt.equipment" class="text-amber-300">• {{ appt.equipment.name }}</span>
                     </p>
                   </div>
                   <div class="flex gap-2">
+                    <span v-if="appt.is_follow_up" class="text-xs bg-emerald-900/60 px-2 py-1 rounded text-emerald-300">Повторний</span>
                     <span class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">{{ appt.status }}</span>
                     <!-- TODO: кольорове кодування статусів записів -->
                     <button class="text-sm text-red-400 hover:text-red-300" @click="openCancellation(appt)">Скасувати</button>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\User;
@@ -106,7 +107,9 @@ class AppointmentController extends Controller
             WaitlistEntry::where('id', $data['waitlist_entry_id'])->update(['status' => 'booked']);
         }
 
-        return response()->json($appointment, 201);
+        $appointment->load(['doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment', 'clinic']);
+
+        return (new AppointmentResource($appointment))->response()->setStatusCode(201);
     }
     public function doctorAppointments(Request $request, Doctor $doctor)
     {
@@ -120,14 +123,22 @@ class AppointmentController extends Controller
 
         $query = Appointment::query()
             ->where('doctor_id', $doctor->id)
-            ->with(['patient:id,full_name,phone', 'procedure:id,name,duration_minutes', 'room:id,name', 'equipment:id,name'])
+            ->with([
+                'patient:id,full_name,phone',
+                'procedure:id,name,duration_minutes',
+                'room:id,name',
+                'equipment:id,name',
+                'doctor:id,full_name,clinic_id',
+                'assistant:id,full_name',
+                'clinic:id,name',
+            ])
             ->orderBy('start_at');
 
         if ($date) {
             $query->whereDate('start_at', $date);
         }
 
-        return $query->get();
+        return AppointmentResource::collection($query->get());
     }
     public function update(Request $request, \App\Models\Appointment $appointment)
     {
@@ -238,7 +249,9 @@ class AppointmentController extends Controller
             'comment' => $validated['comment'] ?? $appointment->comment,
         ]);
 
-        return $appointment->fresh(['patient', 'doctor', 'procedure', 'room']);
+        return new AppointmentResource(
+            $appointment->fresh(['doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment', 'clinic'])
+        );
     }
 
     public function cancel(Request $request, Appointment $appointment)
