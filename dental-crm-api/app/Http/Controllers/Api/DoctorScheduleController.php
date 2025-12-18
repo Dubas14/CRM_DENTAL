@@ -33,7 +33,6 @@ class DoctorScheduleController extends Controller
             'schedules.*.break_start' => ['nullable', 'date_format:H:i'],
             'schedules.*.break_end' => ['nullable', 'date_format:H:i'],
             'schedules.*.slot_duration_minutes' => ['nullable', 'integer', 'min:5'],
-
             'exceptions' => ['sometimes', 'array'],
             'exceptions.*.date' => ['required', 'date'],
             'exceptions.*.type' => ['required', 'in:day_off,override'],
@@ -70,7 +69,6 @@ class DoctorScheduleController extends Controller
                     'end_time' => $exception['end_time'] ?? null,
                 ]);
 
-                // При day_off/override формуємо чергу перенесень на день (як ти вже робив)
                 if (in_array($createdException->type, ['day_off', 'override'], true)) {
                     $from = Carbon::parse($createdException->date)->startOfDay();
                     $to = Carbon::parse($createdException->date)->endOfDay();
@@ -89,7 +87,6 @@ class DoctorScheduleController extends Controller
         ]);
     }
 
-    // базовий розклад + винятки
     public function schedule(Request $request, Doctor $doctor)
     {
         $user = $request->user();
@@ -98,23 +95,16 @@ class DoctorScheduleController extends Controller
             abort(403, 'У вас немає доступу до перегляду розкладу цього лікаря');
         }
 
-        $schedules = Schedule::where('doctor_id', $doctor->id)
-            ->orderBy('weekday')
-            ->get();
-
-        $exceptions = ScheduleException::where('doctor_id', $doctor->id)
-            ->orderBy('date', 'desc')
-            ->limit(50)
-            ->get();
+        $schedules = Schedule::where('doctor_id', $doctor->id)->orderBy('weekday')->get();
+        $exceptions = ScheduleException::where('doctor_id', $doctor->id)->orderBy('date', 'desc')->limit(50)->get();
 
         return response()->json([
-            'doctor'     => $doctor,
-            'schedules'  => $schedules,
+            'doctor' => $doctor,
+            'schedules' => $schedules,
             'exceptions' => $exceptions,
         ]);
     }
 
-    // вільні слоти на конкретну дату
     public function slots(Request $request, Doctor $doctor)
     {
         $validated = $request->validate([
@@ -132,19 +122,9 @@ class DoctorScheduleController extends Controller
         }
 
         $date = Carbon::parse($validated['date'])->startOfDay();
-
-        $procedure = isset($validated['procedure_id'])
-            ? Procedure::find($validated['procedure_id'])
-            : null;
-
-        $room = isset($validated['room_id'])
-            ? Room::find($validated['room_id'])
-            : null;
-
-        $equipment = isset($validated['equipment_id'])
-            ? Equipment::find($validated['equipment_id'])
-            : null;
-
+        $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
+        $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
+        $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
@@ -152,15 +132,14 @@ class DoctorScheduleController extends Controller
 
         if (isset($plan['reason'])) {
             return response()->json([
-                'date'   => $date->toDateString(),
-                'slots'  => [],
+                'date' => $date->toDateString(),
+                'slots' => [],
                 'reason' => $plan['reason'],
             ]);
         }
 
-        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $duration = $procedure?->duration_minutes ?? $plan['slot_duration'];
 
-        // Якщо вказали equipment_id — беремо його. Якщо ні — беремо обладнання з процедури (якщо є).
         $resolvedEquipment = $equipment ?? $procedure?->equipment;
 
         $slotsResult = $availability->getSlots(
@@ -173,12 +152,10 @@ class DoctorScheduleController extends Controller
         );
 
         return response()->json([
-            'date'  => $date->toDateString(),
+            'date' => $date->toDateString(),
             'slots' => $slotsResult['slots'],
             'reason' => $slotsResult['reason'] ?? null,
             'duration_minutes' => $duration,
-
-            // контекст (щоб фронт міг показати, що саме зараз фільтруємо/резервуємо)
             'room' => $room,
             'equipment' => $resolvedEquipment,
             'assistant_id' => $assistantId,
@@ -203,19 +180,9 @@ class DoctorScheduleController extends Controller
         }
 
         $fromDate = Carbon::parse($validated['from_date'])->startOfDay();
-
-        $procedure = isset($validated['procedure_id'])
-            ? Procedure::find($validated['procedure_id'])
-            : null;
-
-        $room = isset($validated['room_id'])
-            ? Room::find($validated['room_id'])
-            : null;
-
-        $equipment = isset($validated['equipment_id'])
-            ? Equipment::find($validated['equipment_id'])
-            : null;
-
+        $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
+        $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
+        $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
@@ -239,7 +206,6 @@ class DoctorScheduleController extends Controller
             'from_date' => $fromDate->toDateString(),
             'slots' => $slots,
             'duration_minutes' => $duration,
-
             'room' => $room,
             'equipment' => $resolvedEquipment,
             'assistant_id' => $assistantId,

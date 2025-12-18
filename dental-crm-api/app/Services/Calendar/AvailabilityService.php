@@ -50,7 +50,7 @@ class AvailabilityService
 
         return [
             'start' => Carbon::parse($date->toDateString() . ' ' . $startTime),
-            'end'   => Carbon::parse($date->toDateString() . ' ' . $endTime),
+            'end' => Carbon::parse($date->toDateString() . ' ' . $endTime),
             'break_start' => $schedule?->break_start
                 ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_start)
                 : null,
@@ -61,11 +61,6 @@ class AvailabilityService
         ];
     }
 
-    /**
-     * Генерує доступні слоти на день.
-     *
-     * @return array{slots: array<int,array{start:string,end:string}>, reason?: string}
-     */
     public function getSlots(
         Doctor $doctor,
         Carbon $date,
@@ -84,14 +79,7 @@ class AvailabilityService
             $assistantId ?? 'any'
         );
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use (
-            $doctor,
-            $date,
-            $durationMinutes,
-            $room,
-            $equipment,
-            $assistantId
-        ) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment, $assistantId) {
             $plan = $this->getDailyPlan($doctor, $date);
 
             if (isset($plan['reason'])) {
@@ -124,15 +112,10 @@ class AvailabilityService
                     ->get()
                 : collect();
 
-            $latestStart = $plan['end']->copy()->subMinutes($durationMinutes);
-            if ($latestStart < $plan['start']) {
-                return ['slots' => [], 'reason' => 'duration_too_long'];
-            }
-
             $period = new CarbonPeriod(
                 $plan['start'],
                 "{$plan['slot_duration']} minutes",
-                $latestStart
+                $plan['end']->copy()->subMinutes($durationMinutes)
             );
 
             $slots = [];
@@ -140,39 +123,37 @@ class AvailabilityService
             foreach ($period as $start) {
                 $end = $start->copy()->addMinutes($durationMinutes);
 
-                // Перерва: якщо слот перетинає break — пропускаємо
+                // перерва
                 if (
-                    $plan['break_start'] &&
-                    $plan['break_end'] &&
-                    $start < $plan['break_end'] &&
-                    $end > $plan['break_start']
+                    $plan['break_start'] && $plan['break_end'] &&
+                    $start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())
                 ) {
                     continue;
                 }
 
-                // Конфлікти лікаря
+                if ($end > $plan['end']) {
+                    continue;
+                }
+
                 if ($this->hasConflict($appointments, $start, $end)) {
                     continue;
                 }
 
-                // Конфлікти кабінету
                 if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
                     continue;
                 }
 
-                // Конфлікти обладнання
                 if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
                     continue;
                 }
 
-                // Конфлікти асистента
                 if ($assistantId && $this->hasConflict($assistantAppointments, $start, $end)) {
                     continue;
                 }
 
                 $slots[] = [
                     'start' => $start->format('H:i'),
-                    'end'   => $end->format('H:i'),
+                    'end' => $end->format('H:i'),
                 ];
             }
 
@@ -187,17 +168,9 @@ class AvailabilityService
         });
     }
 
-    public function resolveRoom(
-        ?Room $room,
-        Procedure $procedure,
-        Carbon $date,
-        Carbon $start,
-        Carbon $end,
-        int $clinicId
-    ): ?Room {
-        if ($room) {
-            return $room;
-        }
+    public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Room
+    {
+        if ($room) return $room;
 
         if (!$procedure->requires_room && !$procedure->default_room_id) {
             return null;
@@ -211,9 +184,7 @@ class AvailabilityService
             $candidateQuery->where('id', $procedure->default_room_id);
         }
 
-        $rooms = $candidateQuery->get();
-
-        foreach ($rooms as $candidate) {
+        foreach ($candidateQuery->get() as $candidate) {
             $hasConflict = Appointment::where('room_id', $candidate->id)
                 ->whereDate('start_at', $date)
                 ->whereNotIn('status', ['cancelled', 'no_show'])
@@ -222,36 +193,25 @@ class AvailabilityService
                 })
                 ->exists();
 
-            if (! $hasConflict) {
-                return $candidate;
-            }
+            if (! $hasConflict) return $candidate;
         }
 
         return null;
     }
 
-    public function resolveEquipment(
-        ?Equipment $equipment,
-        Procedure $procedure,
-        Carbon $date,
-        Carbon $start,
-        Carbon $end,
-        int $clinicId
-    ): ?Equipment {
-        if ($equipment) {
-            return $equipment;
-        }
+    public function resolveEquipment(?Equipment $equipment, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Equipment
+    {
+        if ($equipment) return $equipment;
 
         if (! $procedure->equipment_id) {
             return null;
         }
 
-        $candidateQuery = Equipment::query()
+        $equipments = Equipment::query()
             ->where('clinic_id', $clinicId)
             ->where('is_active', true)
-            ->where('id', $procedure->equipment_id);
-
-        $equipments = $candidateQuery->get();
+            ->where('id', $procedure->equipment_id)
+            ->get();
 
         foreach ($equipments as $candidate) {
             $hasConflict = Appointment::where('equipment_id', $candidate->id)
@@ -262,9 +222,7 @@ class AvailabilityService
                 })
                 ->exists();
 
-            if (! $hasConflict) {
-                return $candidate;
-            }
+            if (! $hasConflict) return $candidate;
         }
 
         return null;
@@ -293,24 +251,13 @@ class AvailabilityService
 
                 if ($preferredTimeOfDay) {
                     $isPreferredTime = match ($preferredTimeOfDay) {
-                        'morning' => $slotStart->betweenIncluded(
-                            $slotStart->copy()->setTime(6, 0),
-                            $slotStart->copy()->setTime(11, 59)
-                        ),
-                        'afternoon' => $slotStart->betweenIncluded(
-                            $slotStart->copy()->setTime(12, 0),
-                            $slotStart->copy()->setTime(16, 59)
-                        ),
-                        'evening' => $slotStart->betweenIncluded(
-                            $slotStart->copy()->setTime(17, 0),
-                            $slotStart->copy()->setTime(20, 59)
-                        ),
+                        'morning' => $slotStart->betweenIncluded($slotStart->copy()->setTime(6, 0), $slotStart->copy()->setTime(11, 59)),
+                        'afternoon' => $slotStart->betweenIncluded($slotStart->copy()->setTime(12, 0), $slotStart->copy()->setTime(16, 59)),
+                        'evening' => $slotStart->betweenIncluded($slotStart->copy()->setTime(17, 0), $slotStart->copy()->setTime(20, 59)),
                         default => false,
                     };
 
-                    if ($isPreferredTime) {
-                        $score += 20;
-                    }
+                    if ($isPreferredTime) $score += 20;
                 }
 
                 $slots[] = [
@@ -325,14 +272,11 @@ class AvailabilityService
             $safetyCounter++;
         }
 
-        usort($slots, fn ($a, $b) => $b['score'] <=> $a['score']);
+        usort($slots, fn($a, $b) => $b['score'] <=> $a['score']);
 
-        $topSlots = array_slice($slots, 0, $limit);
-
-        return array_map(fn ($slot) => [
-            'date' => $slot['date'],
-            'start' => $slot['start'],
-            'end' => $slot['end'],
-        ], $topSlots);
+        return array_map(
+            fn($slot) => ['date' => $slot['date'], 'start' => $slot['start'], 'end' => $slot['end']],
+            array_slice($slots, 0, $limit)
+        );
     }
 }

@@ -14,16 +14,14 @@ const calendarApi = {
   },
 
   getAppointments(params = {}) {
-    // Підтримка мульти-лікар та діапазону дат
     return apiClient.get('/appointments', { params });
   },
 
   getSlots(params = {}) {
-    // Підтримка кількох лікарів або тижневого діапазону
     return apiClient.get('/slots', { params });
   },
 
-  createAppointment(payload = {}) {
+  createAppointment(payload) {
     const {
       doctor_id,
       date,
@@ -57,7 +55,7 @@ const calendarApi = {
     });
   },
 
-  updateAppointment(appointmentId, payload = {}) {
+  updateAppointment(appointmentId, payload) {
     const {
       doctor_id,
       date,
@@ -93,7 +91,7 @@ const calendarApi = {
     });
   },
 
-  cancelAppointment(appointmentId, payload = {}) {
+  cancelAppointment(appointmentId, payload) {
     return apiClient.post(`/appointments/${appointmentId}/cancel`, payload);
   },
 

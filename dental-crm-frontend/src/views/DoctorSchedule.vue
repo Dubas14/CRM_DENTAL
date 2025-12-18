@@ -23,12 +23,24 @@ const selectedEvent = ref(null);
 // ---- Стани розкладу ----
 const doctors = ref([]);
 const procedures = ref([]);
+const rooms = ref([]);
+const equipments = ref([]);
+
 const selectedDoctorId = ref('');
 const selectedProcedureId = ref('');
+const selectedRoomId = ref('');
+const selectedEquipmentId = ref('');
+const selectedAssistantId = ref(''); // поки ID (можна буде зробити dropdown коли буде endpoint)
+const isFollowUp = ref(false);
+const allowSoftConflicts = ref(false);
+
 const selectedDate = ref(new Date().toISOString().slice(0, 10));
 
 const loadingDoctors = ref(true);
 const loadingProcedures = ref(false);
+const loadingRooms = ref(false);
+const loadingEquipments = ref(false);
+
 const error = ref(null);
 
 const appointments = ref([]);
@@ -56,7 +68,7 @@ const appointmentToLink = ref(null);
 const searchResults = ref([]);
 const isSearching = ref(false);
 let searchTimeout = null;
-let autoRefreshInterval = null; // Таймер для автооновлення
+let autoRefreshInterval = null;
 
 // ---- Auth ----
 const { user } = useAuth();
@@ -64,11 +76,11 @@ const { isDoctor } = usePermissions();
 const doctorProfile = computed(() => user.value?.doctor || null);
 
 const clinicId = computed(() =>
-  user.value?.clinic_id ||
-  user.value?.doctor?.clinic_id ||
-  user.value?.doctor?.clinic?.id ||
-  user.value?.clinics?.[0]?.clinic_id ||
-  null,
+    user.value?.clinic_id ||
+    user.value?.doctor?.clinic_id ||
+    user.value?.doctor?.clinic?.id ||
+    user.value?.clinics?.[0]?.clinic_id ||
+    null,
 );
 
 const canOpenWeeklySettings = computed(() => {
@@ -92,20 +104,18 @@ const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value)),
 );
 
-// Фіксація лікаря
+// Фіксація лікаря для доктора
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
     selectedDoctorId.value = String(doctorProfile.value.id);
   }
 };
-
 watch(() => doctorProfile.value?.id, () => { ensureOwnDoctorSelected(); }, { immediate: true });
 
 // === ЛОГІКА ПОШУКУ ===
 watch(bookingName, (newVal) => {
-  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name === newVal) {
-    return;
-  }
+  if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name === newVal) return;
+
   if (selectedPatientForBooking.value && selectedPatientForBooking.value.full_name !== newVal) {
     selectedPatientForBooking.value = null;
   }
@@ -154,24 +164,20 @@ function onOpenCreatePatientFromModal(nameFromModal) {
 async function onPatientCreated(newPatient) {
   if (appointmentToLink.value) {
     try {
-      const apptId = appointmentToLink.value.id || (appointmentToLink.value.extendedProps && appointmentToLink.value.extendedProps.id);
+      const apptId = appointmentToLink.value.id
+          || (appointmentToLink.value.extendedProps && appointmentToLink.value.extendedProps.id);
 
       if (!apptId) throw new Error("Не знайдено ID запису");
 
-      await apiClient.put(`/appointments/${apptId}`, {
-        patient_id: newPatient.id
-      });
+      await apiClient.put(`/appointments/${apptId}`, { patient_id: newPatient.id });
 
       alert(`Пацієнт ${newPatient.full_name} створений і прив'язаний до запису!`);
       await refreshScheduleData();
 
       const updatedAppt = appointments.value.find(a => a.id === apptId);
-      if (updatedAppt) {
-        openAppointment(updatedAppt);
-      }
-
+      if (updatedAppt) openAppointment(updatedAppt);
     } catch (e) {
-      alert('Пацієнта створено, але не вдалося прив\'язати до запису: ' + e.message);
+      alert('Пацієнта створено, але не вдалося прив\'язати до запису: ' + (e.response?.data?.message || e.message));
     } finally {
       appointmentToLink.value = null;
     }
@@ -200,34 +206,31 @@ function clearBookingForm() {
 
 const openWeeklySettings = () => {
   if (!canOpenWeeklySettings.value) return;
-
   router.push({ name: 'doctor-weekly-schedule', params: { id: selectedDoctorId.value } });
 };
 
 // === ЗАВАНТАЖЕННЯ ДАНИХ ===
+const preloadedPatient = ref(null);
 
-// Завантаження пацієнта, якщо ми прийшли з його картки
 const loadLinkedPatient = async () => {
   if (!linkedPatientId.value) return;
   try {
     const { data } = await apiClient.get(`/patients/${linkedPatientId.value}`);
-    preloadedPatient.value = data; // Зберігаємо для авто-вибору
+    preloadedPatient.value = data;
   } catch (e) {
     console.error("Не вдалося завантажити дані пацієнта", e);
   }
 };
-// Змінна для авто-вибору
-const preloadedPatient = ref(null);
 
 const loadDoctors = async () => {
   loadingDoctors.value = true;
   try {
     const { data } = await apiClient.get('/doctors');
-    doctors.value = data;
+    doctors.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
     if (isDoctor.value && doctorProfile.value?.id) {
       selectedDoctorId.value = String(doctorProfile.value.id);
-    } else if (!selectedDoctorId.value && data.length > 0) {
-      selectedDoctorId.value = String(data[0].id);
+    } else if (!selectedDoctorId.value && doctors.value.length > 0) {
+      selectedDoctorId.value = String(doctors.value[0].id);
     }
   } catch (e) {
     error.value = 'Помилка завантаження лікарів';
@@ -248,6 +251,35 @@ const loadProcedures = async () => {
   }
 };
 
+const loadRooms = async () => {
+  rooms.value = [];
+  if (!clinicId.value) return;
+  loadingRooms.value = true;
+  try {
+    const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
+    rooms.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.warn('Rooms endpoint недоступний або помилка', e);
+  } finally {
+    loadingRooms.value = false;
+  }
+};
+
+const loadEquipments = async () => {
+  equipments.value = [];
+  if (!clinicId.value) return;
+  loadingEquipments.value = true;
+  try {
+    // ⚠️ Якщо твій бек має інший шлях (наприклад /equipment) — зміни тут 1 рядок.
+    const { data } = await apiClient.get('/equipments', { params: { clinic_id: clinicId.value } });
+    equipments.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.warn('Equipments endpoint недоступний або помилка', e);
+  } finally {
+    loadingEquipments.value = false;
+  }
+};
+
 const loadAppointments = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
 
@@ -256,7 +288,7 @@ const loadAppointments = async (silent = false) => {
 
   try {
     const { data } = await calendarApi.getDoctorAppointments(selectedDoctorId.value, { date: selectedDate.value });
-    appointments.value = data;
+    appointments.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
   } catch (e) {
     console.error(e);
     if (!silent) appointmentsError.value = 'Не вдалося завантажити записи';
@@ -275,11 +307,9 @@ const selectSlot = (slot) => {
   clearBookingForm();
   bookingSuccess.value = false;
   bookingError.value = null;
-  if (slot.date) {
-    selectedDate.value = slot.date;
-  }
 
-  // АВТО-ВИБІР: Якщо ми прийшли з картки пацієнта
+  if (slot.date) selectedDate.value = slot.date;
+
   if (preloadedPatient.value) {
     selectedPatientForBooking.value = preloadedPatient.value;
     bookingName.value = preloadedPatient.value.full_name;
@@ -312,14 +342,20 @@ const bookSelectedSlot = async () => {
       time: bookingSlot.value.start,
       patient_id: selectedPatientForBooking.value?.id || linkedPatientId.value || null,
       procedure_id: selectedProcedureId.value || null,
+      room_id: selectedRoomId.value || null,
+      equipment_id: selectedEquipmentId.value || null,
+      assistant_id: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+      is_follow_up: !!isFollowUp.value,
+      allow_soft_conflicts: !!allowSoftConflicts.value,
       comment: selectedPatientForBooking.value
-          ? commentText || null
+          ? (commentText || null)
           : `Пацієнт: ${finalName}. ${commentText}`,
       source: 'crm',
     });
+
     bookingSuccess.value = true;
     await refreshScheduleData();
-    setTimeout(() => { bookingSlot.value = null; }, 1500);
+    setTimeout(() => { bookingSlot.value = null; }, 1200);
   } catch (e) {
     bookingError.value = e.response?.data?.message || 'Не вдалося створити запис';
   } finally {
@@ -346,19 +382,23 @@ const onAppointmentCancelled = () => {
 onMounted(async () => {
   await Promise.all([loadDoctors(), loadProcedures()]);
   await loadLinkedPatient();
+  await Promise.all([loadRooms(), loadEquipments()]);
   await refreshScheduleData();
 
-  // Запускаємо авто-оновлення кожні 15 секунд
   autoRefreshInterval = setInterval(() => {
-    // Оновлюємо тільки якщо не відкрито модальне вікно і не йде процес бронювання
     if (!showModal.value && !showCreatePatientModal.value && !bookingSlot.value) {
-      refreshScheduleData(true); // true = silent mode (без спінера)
+      refreshScheduleData(true);
     }
   }, 15000);
 });
 
 watch(() => [selectedDoctorId.value, selectedDate.value], () => {
   refreshScheduleData();
+});
+
+watch(clinicId, () => {
+  loadRooms();
+  loadEquipments();
 });
 
 onUnmounted(() => {
@@ -374,9 +414,7 @@ onUnmounted(() => {
         <p class="text-sm text-slate-400">Бронювання, скасування та робота зі списком очікування в одному місці.</p>
       </div>
       <div class="flex items-center gap-3">
-        <div class="text-xs text-slate-600 animate-pulse">
-          ● Дані оновлюються автоматично
-        </div>
+        <div class="text-xs text-slate-600 animate-pulse">● Дані оновлюються автоматично</div>
 
         <button
             v-if="canOpenWeeklySettings"
@@ -389,11 +427,10 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Вибір лікаря -->
     <div class="flex flex-wrap items-end gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
       <div v-if="!isDoctor" class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
-        <select v-model="selectedDoctorId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingDoctors" @change="refreshScheduleData">
+        <select v-model="selectedDoctorId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingDoctors">
           <option value="" disabled>Оберіть лікаря</option>
           <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
             {{ doctor.full_name }}
@@ -409,17 +446,58 @@ onUnmounted(() => {
 
       <div class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">Дата</span>
-        <input v-model="selectedDate" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" @change="refreshScheduleData" />
+        <input v-model="selectedDate" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
         <span class="text-xs uppercase tracking-wide text-slate-400">Процедура</span>
-        <select v-model="selectedProcedureId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingProcedures" @change="refreshScheduleData">
+        <select v-model="selectedProcedureId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingProcedures">
           <option value="">Без процедури</option>
           <option v-for="procedure in procedures" :key="procedure.id" :value="procedure.id">
             {{ procedure.name }}
           </option>
         </select>
+      </div>
+
+      <div class="flex flex-col gap-1 min-w-[200px]">
+        <span class="text-xs uppercase tracking-wide text-slate-400">Кабінет</span>
+        <select v-model="selectedRoomId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingRooms">
+          <option value="">Будь-який</option>
+          <option v-for="room in rooms" :key="room.id" :value="room.id">
+            {{ room.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1 min-w-[220px]">
+        <span class="text-xs uppercase tracking-wide text-slate-400">Обладнання</span>
+        <select v-model="selectedEquipmentId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingEquipments">
+          <option value="">Будь-яке</option>
+          <option v-for="eq in equipments" :key="eq.id" :value="eq.id">
+            {{ eq.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <span class="text-xs uppercase tracking-wide text-slate-400">Асистент ID</span>
+        <input
+            v-model="selectedAssistantId"
+            type="number"
+            placeholder="ID"
+            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm w-28"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="flex items-center gap-2 text-sm text-slate-300">
+          <input v-model="isFollowUp" type="checkbox" class="accent-emerald-500" />
+          <span>Повторний</span>
+        </label>
+        <label class="flex items-center gap-2 text-sm text-slate-300">
+          <input v-model="allowSoftConflicts" type="checkbox" class="accent-emerald-500" />
+          <span>Дозволити soft</span>
+        </label>
       </div>
 
       <button type="button" class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800" @click="refreshScheduleData">
@@ -432,12 +510,15 @@ onUnmounted(() => {
     <div class="grid xl:grid-cols-3 gap-6">
       <div class="xl:col-span-2 space-y-4">
         <CalendarSlotPicker
-          v-if="selectedDoctorId"
-          :doctor-id="selectedDoctorId"
-          :procedure-id="selectedProcedureId"
-          :date="selectedDate"
-          :refresh-token="slotsRefreshToken"
-          @select-slot="selectSlot"
+            v-if="selectedDoctorId"
+            :doctor-id="selectedDoctorId"
+            :procedure-id="selectedProcedureId"
+            :room-id="selectedRoomId"
+            :equipment-id="selectedEquipmentId"
+            :assistant-id="selectedAssistantId"
+            :date="selectedDate"
+            :refresh-token="slotsRefreshToken"
+            @select-slot="selectSlot"
         />
 
         <div class="rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4 relative">
@@ -458,7 +539,21 @@ onUnmounted(() => {
               <span class="text-sm bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded border border-emerald-500/30">
                 {{ bookingSlot.date || selectedDate }} • {{ bookingSlot.start }} – {{ bookingSlot.end }}
               </span>
-              <span v-if="selectedProcedureId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">{{ procedures.find(p => p.id === Number(selectedProcedureId))?.name }}</span>
+              <span v-if="selectedProcedureId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+                {{ procedures.find(p => p.id === Number(selectedProcedureId))?.name }}
+              </span>
+              <span v-if="selectedRoomId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+                Кабінет: {{ rooms.find(r => r.id === Number(selectedRoomId))?.name || selectedRoomId }}
+              </span>
+              <span v-if="selectedEquipmentId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+                Обладн.: {{ equipments.find(e => e.id === Number(selectedEquipmentId))?.name || selectedEquipmentId }}
+              </span>
+              <span v-if="selectedAssistantId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+                Асистент ID: {{ selectedAssistantId }}
+              </span>
+              <span v-if="isFollowUp" class="text-xs bg-emerald-900/60 px-2 py-1 rounded text-emerald-300">
+                Повторний
+              </span>
             </div>
 
             <div v-if="bookingSuccess" class="bg-emerald-900/30 text-emerald-400 p-3 rounded border border-emerald-500/30">
@@ -540,25 +635,26 @@ onUnmounted(() => {
           <div v-if="appointmentsError" class="text-red-400 text-sm">{{ appointmentsError }}</div>
 
           <div v-if="appointments.length === 0" class="text-slate-500 text-sm italic">Немає записів.</div>
+
           <div v-else class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
             <table class="min-w-full text-sm">
               <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase">
               <tr>
                 <th class="px-4 py-3 text-left font-medium">Час</th>
                 <th class="px-4 py-3 text-left font-medium">Пацієнт</th>
+                <th class="px-4 py-3 text-left font-medium">Деталі</th>
                 <th class="px-4 py-3 text-left font-medium">Статус</th>
                 <th class="px-4 py-3 text-left font-medium">Дії</th>
               </tr>
               </thead>
               <tbody class="divide-y divide-slate-800">
-              <tr v-for="a in appointments" :key="a.id"
-                  class="hover:bg-slate-800/50 transition-colors group">
+              <tr v-for="a in appointments" :key="a.id" class="hover:bg-slate-800/50 transition-colors group">
                 <td class="px-4 py-3 text-emerald-400 font-bold font-mono">
                   {{ a.start_at ? a.start_at.slice(11, 16) : '' }}
                 </td>
+
                 <td class="px-4 py-3 text-slate-200">
                   <div class="font-medium">{{ a.patient?.full_name || a.patient_name || a.comment || '—' }}</div>
-                  <div v-if="a.procedure" class="text-xs text-slate-500">{{ a.procedure.name }}</div>
                   <div v-if="a.patient_id" class="text-[10px] text-blue-400 inline-flex items-center gap-1 mt-0.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> АНКЕТА Є
                   </div>
@@ -566,14 +662,24 @@ onUnmounted(() => {
                     ⚠️ Гість
                   </div>
                 </td>
-                <td class="px-4 py-3">
-                       <span v-if="a.status === 'done'" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                         Виконано
-                       </span>
-                  <span v-else class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">
-                         Заплановано
-                       </span>
+
+                <td class="px-4 py-3 text-xs text-slate-400">
+                  <div>Процедура: <span class="text-slate-200">{{ a.procedure?.name || '—' }}</span></div>
+                  <div v-if="a.room">Кабінет: <span class="text-sky-300">{{ a.room.name }}</span></div>
+                  <div v-if="a.equipment">Обладн.: <span class="text-amber-300">{{ a.equipment.name }}</span></div>
+                  <div v-if="a.assistant">Асистент: <span class="text-indigo-300">{{ a.assistant.full_name || a.assistant.name || a.assistant.id }}</span></div>
+                  <div v-if="a.is_follow_up" class="text-emerald-300">↻ Повторний</div>
                 </td>
+
+                <td class="px-4 py-3">
+                    <span v-if="a.status === 'done'" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Виконано
+                    </span>
+                  <span v-else class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">
+                      {{ a.status || 'planned' }}
+                    </span>
+                </td>
+
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <button class="text-xs text-slate-300 hover:text-white underline" @click="openAppointment(a)">Деталі</button>
@@ -587,10 +693,10 @@ onUnmounted(() => {
         </div>
 
         <AppointmentCancellationCard
-          v-if="cancellationTarget"
-          :appointment="cancellationTarget"
-          @cancelled="onAppointmentCancelled"
-          @close="cancellationTarget = null"
+            v-if="cancellationTarget"
+            :appointment="cancellationTarget"
+            @cancelled="onAppointmentCancelled"
+            @close="cancellationTarget = null"
         />
 
         <AppointmentModal
@@ -612,20 +718,20 @@ onUnmounted(() => {
 
       <div class="space-y-4">
         <WaitlistCandidatesPanel
-          v-if="clinicId"
-          :clinic-id="clinicId"
-          :doctor-id="selectedDoctorId"
-          :procedure-id="selectedProcedureId"
-          :preferred-date="selectedDate"
-          @booked="refreshScheduleData"
-          @refresh="refreshScheduleData"
+            v-if="clinicId"
+            :clinic-id="clinicId"
+            :doctor-id="selectedDoctorId"
+            :procedure-id="selectedProcedureId"
+            :preferred-date="selectedDate"
+            @booked="refreshScheduleData"
+            @refresh="refreshScheduleData"
         />
         <WaitlistRequestForm
-          v-if="clinicId"
-          :clinic-id="clinicId"
-          :default-doctor-id="selectedDoctorId"
-          :default-procedure-id="selectedProcedureId"
-          @created="refreshScheduleData"
+            v-if="clinicId"
+            :clinic-id="clinicId"
+            :default-doctor-id="selectedDoctorId"
+            :default-procedure-id="selectedProcedureId"
+            @created="refreshScheduleData"
         />
         <div v-else class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-sm text-slate-400">
           Потрібен clinic_id для роботи зі списком очікування.
