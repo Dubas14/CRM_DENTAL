@@ -28,8 +28,10 @@ class DatabaseSeeder extends Seeder
             'doctor',
         ];
 
+        $guard = config('auth.defaults.guard', 'web');
+
         foreach ($roles as $roleName) {
-            Role::findOrCreate($roleName);
+            Role::findOrCreate($roleName, $guard);
         }
 
         // Супер-адмін для входу в систему

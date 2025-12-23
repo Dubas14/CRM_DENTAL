@@ -16,31 +16,45 @@ class PatientController extends Controller
         $query = Patient::query()
             ->with('clinic:id,name,city');
 
-        if ($authUser->hasRole('doctor')) {
-            $doctor = $authUser->doctor;
+        // ✅ Access rules priority:
+        // super_admin -> all
+        // clinic_admin / registrar -> patients of own clinics
+        // doctor -> patients from doctor's clinic where:
+        //          has appointment with this doctor OR patient.user_id == authUser.id
+        if (!$authUser->isSuperAdmin()) {
+            $clinicAdminClinicIds = $authUser->clinics()
+                ->wherePivotIn('clinic_role', ['clinic_admin', 'registrar'])
+                ->pluck('clinics.id');
 
-            if (! $doctor) {
-                return response()->json([
-                    'data' => [],
-                    'total' => 0,
-                    'per_page' => 20,
-                    'current_page' => 1,
-                ]);
+            if ($clinicAdminClinicIds->isNotEmpty()) {
+                $query->whereIn('clinic_id', $clinicAdminClinicIds);
+            } elseif ($authUser->hasRole('doctor')) {
+                $doctor = $authUser->doctor;
+
+                if (! $doctor) {
+                    return response()->json([
+                        'data' => [],
+                        'total' => 0,
+                        'per_page' => 20,
+                        'current_page' => 1,
+                    ]);
+                }
+
+                $query->where('clinic_id', $doctor->clinic_id)
+                    ->where(function ($q) use ($doctor, $authUser) {
+                        $q->whereHas('appointments', function ($q) use ($doctor) {
+                            $q->where('doctor_id', $doctor->id);
+                        })->orWhere('user_id', $authUser->id);
+                    });
             }
-
-            $query->where('clinic_id', $doctor->clinic_id)
-                ->where(function ($q) use ($doctor, $authUser) {
-                    $q->whereHas('appointments', function ($q) use ($doctor) {
-                        $q->where('doctor_id', $doctor->id);
-                    })->orWhere('user_id', $authUser->id);
-                });
         }
 
-
+        // explicit clinic filter (additional narrowing)
         if ($request->filled('clinic_id')) {
             $query->where('clinic_id', $request->integer('clinic_id'));
         }
 
+        // search filter
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
@@ -110,6 +124,7 @@ class PatientController extends Controller
             && ! $request->user()->isSuperAdmin()) {
             abort(403, 'У вас немає доступу змінювати клініку пацієнта');
         }
+
         $patient->update($data);
 
         return $patient->load('clinic:id,name,city');
@@ -131,6 +146,7 @@ class PatientController extends Controller
 
         abort(403, 'У вас немає доступу до цього пацієнта');
     }
+
     public function getNotes(Patient $patient)
     {
         return $patient->notes()->with('user')->get();
@@ -138,12 +154,10 @@ class PatientController extends Controller
 
     public function addNote(Request $request, Patient $patient)
     {
-        // 1. Зберігаємо провалідовані дані у змінну
         $validated = $request->validate(['content' => 'required|string']);
 
         $note = $patient->notes()->create([
             'user_id' => $request->user()->id,
-            // 2. Використовуємо масив $validated
             'content' => $validated['content']
         ]);
 
@@ -173,7 +187,6 @@ class PatientController extends Controller
                 }
             }
         }
-
 
         return false;
     }

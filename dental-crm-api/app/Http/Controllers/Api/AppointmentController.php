@@ -322,6 +322,7 @@ class AppointmentController extends Controller
 
         return new AppointmentResource($appointment);
     }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -336,7 +337,7 @@ class AppointmentController extends Controller
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
         ]);
 
-        $query = \App\Models\Appointment::query()
+        $query = Appointment::query()
             ->with(['doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment', 'clinic'])
             ->orderBy('start_at');
 
@@ -359,26 +360,28 @@ class AppointmentController extends Controller
             $query->whereIn('doctor_id', $validated['doctor_ids']);
         }
 
-        // simple access rules
-        if ($user->hasRole('doctor') && $user->doctor?->id) {
-            $query->where('doctor_id', $user->doctor->id);
-        }
-
+        // ✅ Access rules priority:
+        // super_admin -> all
+        // clinic_admin -> own clinics
+        // doctor -> own appointments (only if NOT clinic_admin)
         $clinicAdminClinicIds = $user->clinics()
             ->wherePivot('clinic_role', 'clinic_admin')
             ->pluck('clinics.id');
 
-        if ($clinicAdminClinicIds->isNotEmpty()) {
-            $query->whereIn('clinic_id', $clinicAdminClinicIds);
+        if (!$user->hasRole('super_admin')) {
+            if ($clinicAdminClinicIds->isNotEmpty()) {
+                $query->whereIn('clinic_id', $clinicAdminClinicIds);
+            } elseif ($user->hasRole('doctor') && $user->doctor?->id) {
+                $query->where('doctor_id', $user->doctor->id);
+            }
         }
 
         if (!empty($validated['clinic_id'])) {
             $query->where('clinic_id', $validated['clinic_id']);
         }
 
-        return \App\Http\Resources\AppointmentResource::collection($query->get());
+        return AppointmentResource::collection($query->get());
     }
-
 
     public function cancel(Request $request, Appointment $appointment)
     {

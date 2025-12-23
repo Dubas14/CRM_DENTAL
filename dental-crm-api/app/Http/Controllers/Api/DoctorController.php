@@ -20,11 +20,23 @@ class DoctorController extends Controller
         $query = Doctor::query()
             ->with('clinic:id,name,city');
 
-        if ($authUser->hasRole('doctor')) {
-            $query->where('user_id', $authUser->id);
+        // ✅ Access rules priority:
+        // super_admin -> all
+        // clinic_admin -> doctors of own clinics
+        // doctor -> only self (only if NOT clinic_admin)
+        $clinicAdminClinicIds = $authUser->clinics()
+            ->wherePivot('clinic_role', 'clinic_admin')
+            ->pluck('clinics.id');
+
+        if (!$authUser->hasRole('super_admin')) {
+            if ($clinicAdminClinicIds->isNotEmpty()) {
+                $query->whereIn('clinic_id', $clinicAdminClinicIds);
+            } elseif ($authUser->hasRole('doctor')) {
+                $query->where('user_id', $authUser->id);
+            }
         }
 
-        // фільтр по клініці (на майбутнє)
+        // фільтр по клініці (якщо явно передали)
         if ($request->filled('clinic_id')) {
             $query->where('clinic_id', $request->integer('clinic_id'));
         }
@@ -62,7 +74,9 @@ class DoctorController extends Controller
                 'email'       => $data['email'],
                 'password'    => Hash::make($data['password']),
             ]);
-            Role::findOrCreate('doctor');
+
+            $guard = config('auth.defaults.guard', 'web');
+            Role::findOrCreate('doctor', $guard);
             $user->assignRole('doctor');
 
             // 2) привʼязуємо до клініки як лікаря
@@ -111,10 +125,6 @@ class DoctorController extends Controller
     {
         $authUser = $request->user();
 
-        // хто може редагувати:
-        // - супер адмін
-        // - адмін клініки, де працює лікар
-        // - сам лікар (user_id збігається)
         $canEdit =
             $authUser->isSuperAdmin()
             || $authUser->hasClinicRole($doctor->clinic_id, ['clinic_admin'])
@@ -135,7 +145,6 @@ class DoctorController extends Controller
         $doctor->fill($data);
         $doctor->save();
 
-        // опціонально: оновити імʼя користувача, якщо змінили full_name
         if (array_key_exists('full_name', $data) && $doctor->user) {
             $doctor->user->name = $data['full_name'];
             $doctor->user->save();

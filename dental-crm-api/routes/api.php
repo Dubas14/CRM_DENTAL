@@ -17,7 +17,6 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\Api\DoctorScheduleSettingsController;
 
-
 // ---- AUTH ----
 
 Route::post('/login', function (Request $request) {
@@ -40,9 +39,17 @@ Route::post('/login', function (Request $request) {
 
     // 4. Створення токена
     $token = $user->createToken('crm-spa')->plainTextToken;
+
+    // Підтягуємо ролі + зв'язки для фронта
     $user->load('doctor.clinic', 'roles');
     $roleNames = $user->getRoleNames();
-    $user->setAttribute('global_role', $roleNames->first());
+
+    // ✅ Стабільний global_role з пріоритетом (а не "first()")
+    $globalRole = $user->hasRole('super_admin') ? 'super_admin'
+        : ($user->hasRole('clinic_admin') ? 'clinic_admin'
+            : ($user->hasRole('doctor') ? 'doctor' : 'user'));
+
+    $user->setAttribute('global_role', $globalRole);
     $user->setAttribute('roles', $roleNames);
 
     // 5. Відповідь
@@ -62,7 +69,13 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     $user = $request->user()->load('doctor.clinic', 'roles');
     $roleNames = $user->getRoleNames();
-    $user->setAttribute('global_role', $roleNames->first());
+
+    // ✅ Стабільний global_role з пріоритетом
+    $globalRole = $user->hasRole('super_admin') ? 'super_admin'
+        : ($user->hasRole('clinic_admin') ? 'clinic_admin'
+            : ($user->hasRole('doctor') ? 'doctor' : 'user'));
+
+    $user->setAttribute('global_role', $globalRole);
     $user->setAttribute('roles', $roleNames);
 
     return $user;
@@ -107,7 +120,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'update']);
     Route::get('doctors/{doctor}/appointments', [AppointmentController::class, 'doctorAppointments']);
 
-
     Route::post('appointments', [AppointmentController::class, 'store']);
     Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
@@ -118,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('waitlist/candidates', [WaitlistController::class, 'candidates']);
     Route::post('waitlist/{waitlistEntry}/book', [WaitlistController::class, 'markBooked']);
     Route::post('waitlist/{waitlistEntry}/cancel', [WaitlistController::class, 'cancel']);
+
     Route::get('/me/clinics', function (Request $request) {
         $user = $request->user()->load('clinics');
 
