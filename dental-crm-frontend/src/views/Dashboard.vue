@@ -1,11 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useAuth } from '../composables/useAuth';
+import { usePermissions } from '../composables/usePermissions';
 import apiClient from '../services/apiClient';
+import calendarApi from '../services/calendarApi';
 import { Users, Calendar, Clock, Activity } from 'lucide-vue-next';
 import ActivityChart from '../components/ActivityChart.vue';
 
 const { user } = useAuth();
+const { role, isDoctor } = usePermissions();
+
 const stats = ref({
   patientsCount: 0,
   appointmentsToday: 0,
@@ -13,34 +17,144 @@ const stats = ref({
 });
 
 const loading = ref(true);
-const weeklyActivity = ref([
-  { day: 'Пн', value: 12 },
-  { day: 'Вт', value: 18 },
-  { day: 'Ср', value: 10 },
-  { day: 'Чт', value: 22 },
-  { day: 'Пт', value: 16 },
-  { day: 'Сб', value: 8 },
-  { day: 'Нд', value: 5 }
-]);
+const weeklyActivity = ref([]);
+const upcomingAppointments = ref([]);
 
+const daysShort = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-// Імітація завантаження статистики (поки бекенд не має спеціального ендпоінта)
-// Ми можемо зробити окремий контролер для цього пізніше.
+const greetingName = computed(() => {
+  if (!user.value) return 'гість';
+
+  if (['super_admin', 'clinic_admin'].includes(role.value)) {
+    return 'Адміністратор';
+  }
+
+  if (user.value.doctor) {
+    const doc = user.value.doctor;
+    return doc.full_name || `${doc.first_name || ''} ${doc.last_name || ''}`.trim();
+  }
+
+  return `${user.value.first_name || ''} ${user.value.last_name || ''}`.trim() || 'користувач';
+});
+
+const greetingSubtitle = computed(() => {
+  if (!user.value) return 'Ласкаво просимо!';
+
+  if (role.value === 'super_admin') return 'Суперадміністратор';
+  if (role.value === 'clinic_admin') return 'Адміністратор клініки';
+  if (role.value === 'doctor') return 'Лікар';
+  if (role.value === 'registrar') return 'Реєстратор';
+
+  return 'Користувач';
+});
+
+const formatDateYMD = (date) => date.toISOString().slice(0, 10);
+
+const parseAppointmentDate = (appt) => {
+  if (appt.start_at) return new Date(appt.start_at);
+  if (appt.date && appt.time) return new Date(`${appt.date}T${appt.time}`);
+  if (appt.date) return new Date(`${appt.date}T00:00:00`);
+  return null;
+};
+
+const normalizeCollection = (payload) => {
+  const items = Array.isArray(payload?.data)
+    ? payload.data
+    : Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data?.data)
+        ? payload.data.data
+        : [];
+
+  const total = payload?.meta?.total
+    ?? payload?.total
+    ?? payload?.data?.total
+    ?? items.length;
+
+  return { items, total };
+};
+
+const formatTime = (date) => date?.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) || '—';
+const formatDayMonth = (date) => date?.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) || '';
+
 const loadStats = async () => {
   loading.value = true;
-  try {
-    // Завантажуємо пацієнтів (просто кількість для прикладу)
-    const { data: patients } = await apiClient.get('/patients');
-    stats.value.patientsCount = patients.total || 0;
+  const today = new Date();
+  const startRange = new Date(today);
+  startRange.setDate(today.getDate() - 1);
+  const rangeEnd = new Date(today);
+  rangeEnd.setDate(today.getDate() + 7);
 
-    // Завантажуємо записи на сьогодні
-    const today = new Date().toISOString().slice(0, 10);
-    // Тут потрібен роут для записів поточного лікаря.
-    // Використовуємо існуючий, якщо є doctor_id, або просто заглушку для демо.
-    if (user.value.doctor) {
-      const { data: apps } = await apiClient.get(`/doctors/${user.value.doctor.id}/appointments`, { params: { date: today } });
-      stats.value.appointmentsToday = apps.length;
-      stats.value.nextAppointment = apps.find(a => a.status !== 'done') || null;
+  const appointmentParams = {
+    from_date: formatDateYMD(startRange),
+    to_date: formatDateYMD(rangeEnd)
+  };
+
+  const doctorId = user.value?.doctor?.id;
+  if (isDoctor.value && doctorId) {
+    appointmentParams.doctor_id = doctorId;
+  }
+
+  try {
+    const [patientsResponse, appointmentsResponse] = await Promise.allSettled([
+      apiClient.get('/patients'),
+      calendarApi.getAppointments(appointmentParams)
+    ]);
+
+    if (patientsResponse.status === 'fulfilled') {
+      const normalizedPatients = normalizeCollection(patientsResponse.value.data);
+      stats.value.patientsCount = normalizedPatients.total || normalizedPatients.items.length;
+    }
+
+    if (appointmentsResponse.status === 'fulfilled') {
+      const normalizedAppointments = normalizeCollection(appointmentsResponse.value.data);
+
+      const mappedAppointments = normalizedAppointments.items
+        .map((appt) => {
+          const startDate = parseAppointmentDate(appt);
+          return {
+            ...appt,
+            startDate,
+            patientLabel: appt.patient?.full_name || appt.patient_name || appt.patient?.name || '—',
+            procedureName: appt.procedure?.name || '',
+            displayTime: formatTime(startDate) || (appt.time ? appt.time.slice(0, 5) : '—'),
+            displayDate: formatDayMonth(startDate) || appt.date || '',
+          };
+        })
+        .filter((appt) => appt.startDate);
+
+      const todayStr = formatDateYMD(today);
+      const now = Date.now();
+      const todayAppointments = mappedAppointments.filter((appt) => formatDateYMD(appt.startDate) === todayStr);
+      stats.value.appointmentsToday = todayAppointments.length;
+
+      const upcoming = mappedAppointments
+        .filter((appt) => appt.startDate.getTime() >= now && appt.status !== 'cancelled')
+        .sort((a, b) => a.startDate - b.startDate);
+
+      stats.value.nextAppointment = upcoming[0] || null;
+      upcomingAppointments.value = upcoming.slice(0, 5);
+
+      const rangeMap = Array.from({ length: 7 }).map((_, index) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() + index);
+        return {
+          key: formatDateYMD(d),
+          day: daysShort[d.getDay()],
+          value: 0
+        };
+      });
+
+      mappedAppointments.forEach((appt) => {
+        const dayKey = formatDateYMD(appt.startDate);
+        const entry = rangeMap.find((item) => item.key === dayKey);
+        if (entry) entry.value += 1;
+      });
+
+      weeklyActivity.value = rangeMap.map(({ day, value }) => ({ day, value }));
+    } else {
+      weeklyActivity.value = [];
+      upcomingAppointments.value = [];
     }
   } catch (e) {
     console.error(e);
@@ -49,7 +163,15 @@ const loadStats = async () => {
   }
 };
 
-onMounted(loadStats);
+onMounted(() => {
+  if (user.value) {
+    loadStats();
+  }
+});
+
+watch(() => user.value, (val) => {
+  if (val) loadStats();
+});
 </script>
 
 <template>
@@ -57,7 +179,10 @@ onMounted(loadStats);
     <!-- Привітання -->
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 p-8 text-white shadow-lg">
       <div class="relative z-10">
-        <h1 class="text-3xl font-bold mb-2">Вітаємо, {{ user?.first_name }}! 👋</h1>
+        <div class="flex items-center gap-3 mb-1">
+          <h1 class="text-3xl font-bold">Вітаємо, {{ greetingName }}! 👋</h1>
+          <span class="px-3 py-1 rounded-full bg-white/15 text-sm font-semibold">{{ greetingSubtitle }}</span>
+        </div>
         <p class="text-emerald-100 text-lg">Гарного робочого дня. Сьогодні у вас {{ stats.appointmentsToday }} пацієнтів.</p>
       </div>
       <!-- Декоративні кола -->
@@ -99,10 +224,11 @@ onMounted(loadStats);
           <div>
             <p class="text-slate-400 text-sm font-medium uppercase">Найближчий візит</p>
             <h3 class="text-xl font-bold text-white mt-2 truncate">
-              {{ stats.nextAppointment ? stats.nextAppointment.time.slice(0,5) : '—' }}
+              {{ stats.nextAppointment ? stats.nextAppointment.displayTime : '—' }}
             </h3>
             <p class="text-xs text-slate-500 mt-1" v-if="stats.nextAppointment">
-              {{ stats.nextAppointment.patient_name || 'Без імені' }}
+              {{ stats.nextAppointment.patientLabel || 'Без імені' }}
+              <span v-if="stats.nextAppointment.displayDate" class="text-slate-600">· {{ stats.nextAppointment.displayDate }}</span>
             </p>
           </div>
           <div class="p-3 bg-slate-800 rounded-lg text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
@@ -112,13 +238,42 @@ onMounted(loadStats);
       </div>
     </div>
 
+    <!-- Найближчі візити -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <Clock size="18" class="text-emerald-400" />
+            Найближчі візити
+          </h3>
+          <p class="text-slate-500 text-sm">Перші 5 записів з найближчим часом</p>
+        </div>
+        <router-link :to="{ name: 'schedule' }" class="text-sm text-emerald-400 hover:text-emerald-300">Перейти до розкладу →</router-link>
+      </div>
+
+      <div v-if="loading" class="text-slate-500 text-sm">Завантаження...</div>
+      <div v-else-if="!upcomingAppointments.length" class="text-slate-500 text-sm">Найближчих записів немає.</div>
+      <ul v-else class="space-y-3">
+        <li v-for="appt in upcomingAppointments" :key="appt.id" class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors">
+          <div>
+            <p class="text-white font-semibold">
+              {{ appt.patientLabel }}
+              <span v-if="appt.procedureName" class="text-slate-400 text-xs font-normal">· {{ appt.procedureName }}</span>
+            </p>
+            <p class="text-slate-500 text-xs mt-1">{{ appt.displayDate }} · {{ appt.displayTime }}</p>
+          </div>
+          <span class="text-emerald-400 font-mono text-sm">{{ appt.displayTime }}</span>
+        </li>
+      </ul>
+    </div>
+
     <!-- Секція швидких дій -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">␊
-        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">␊
-          <Activity size="20" class="text-emerald-400"/>␊
-          Швидкі дії␊
-        </h3>␊
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Activity size="20" class="text-emerald-400"/>
+          Швидкі дії
+        </h3>
         <div class="grid grid-cols-2 gap-4">
           <router-link :to="{name: 'schedule'}" class="flex flex-col items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer group">
             <Calendar class="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" size="28"/>
