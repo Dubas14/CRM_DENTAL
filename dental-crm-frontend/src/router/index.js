@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+
 import ClinicsList from '../views/ClinicsList.vue';
 import DoctorsList from '../views/DoctorsList.vue';
 import DoctorDetails from '../views/DoctorDetails.vue';
@@ -6,58 +7,81 @@ import DoctorSchedule from '../views/DoctorSchedule.vue';
 import PatientsList from '../views/PatientsList.vue';
 import PatientDetails from '../views/PatientDetails.vue';
 import Login from '../views/Login.vue';
-import { useAuth } from '../composables/useAuth';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
 import Dashboard from '../views/Dashboard.vue';
 
+import { useAuth } from '../composables/useAuth';
 
 const routes = [
     { path: '/login', name: 'login', component: Login },
+
+    // ✅ Головна сторінка — Dashboard
     {
         path: '/',
-        name: 'dashboard', // <-- Даємо ім'я
-        component: Dashboard, // <-- Вказуємо компонент
-        meta: { requiresAuth: true }
+        name: 'dashboard',
+        component: Dashboard,
+        meta: { requiresAuth: true },
     },
 
-    { path: '/', redirect: '/clinics' },
+    // ✅ Основні модулі
     {
-        path: '/clinics',
-        name: 'clinics',
-        component: ClinicsList,
-        meta: { superOnly: true }, // 🔹 тільки супер-адмін
-    },
-    {
-        path: '/doctors',
-        name: 'doctors',
-        component: DoctorsList,
-        meta: { allowedRoles: ['super_admin', 'clinic_admin'] },
+        path: '/schedule',
+        name: 'schedule',
+        component: DoctorSchedule,
+        meta: { requiresAuth: true },
     },
 
     {
-        path: '/doctors/:id',
-        name: 'doctor-details',
-        component: DoctorDetails,
-        props: true,
-        meta: { allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
+        path: '/calendar-board',
+        name: 'calendar-board',
+        component: () => import('../views/CalendarBoard.vue'),
+        meta: { requiresAuth: true },
     },
-    { path: '/schedule', name: 'schedule', component: DoctorSchedule },
-    { path: '/patients', name: 'patients', component: PatientsList },
+
+    {
+        path: '/patients',
+        name: 'patients',
+        component: PatientsList,
+        meta: { requiresAuth: true },
+    },
     {
         path: '/patients/:id',
         name: 'patient-details',
         component: PatientDetails,
         props: true,
-        meta: { allowedRoles: ['super_admin', 'clinic_admin', 'doctor'] },
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin', 'doctor'] },
     },
 
+    // ✅ Адмінські розділи
+    {
+        path: '/clinics',
+        name: 'clinics',
+        component: ClinicsList,
+        meta: { requiresAuth: true, superOnly: true },
+    },
+    {
+        path: '/doctors',
+        name: 'doctors',
+        component: DoctorsList,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
+    {
+        path: '/doctors/:id',
+        name: 'doctor-details',
+        component: DoctorDetails,
+        props: true,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
+    },
     {
         path: '/doctors/:id/schedule-settings',
         name: 'doctor-weekly-schedule',
         component: DoctorWeeklySchedule,
         props: true,
-        meta: { allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'], allowOwnDoctor: true },
     },
+
+    // ✅ fallback
+    { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 
 const router = createRouter({
@@ -65,7 +89,7 @@ const router = createRouter({
     routes,
 });
 
-// простий guard
+// guard
 router.beforeEach(async (to, from, next) => {
     const publicPages = ['login'];
     if (publicPages.includes(to.name)) return next();
@@ -79,13 +103,18 @@ router.beforeEach(async (to, from, next) => {
     if (!user.value) {
         return next({ name: 'login' });
     }
-    // 🔹 якщо маршрут лише для супер-адміна
+
+    // 🔹 тільки супер-адмін
     if (to.meta.superOnly && user.value.global_role !== 'super_admin') {
-        return next({ name: 'schedule' }); // лікарів кидаємо на розклад
+        return next({ name: 'schedule' });
     }
+
+    // 🔹 ролі
     if (to.meta.allowedRoles) {
         const userRole = user.value.global_role;
+
         const isAllowed = to.meta.allowedRoles.includes(userRole);
+
         const isOwnDoctorRoute =
             to.meta.allowOwnDoctor &&
             userRole === 'doctor' &&

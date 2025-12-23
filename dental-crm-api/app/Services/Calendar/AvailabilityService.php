@@ -50,7 +50,7 @@ class AvailabilityService
 
         return [
             'start' => Carbon::parse($date->toDateString() . ' ' . $startTime),
-            'end' => Carbon::parse($date->toDateString() . ' ' . $endTime),
+            'end'   => Carbon::parse($date->toDateString() . ' ' . $endTime),
             'break_start' => $schedule?->break_start
                 ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_start)
                 : null,
@@ -70,16 +70,23 @@ class AvailabilityService
         ?int $assistantId = null
     ): array {
         $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_%s_%s_%s',
+            'calendar_slots_doctor_%d_%s_%d_room_%s_eq_%s_asst_%s',
             $doctor->id,
             $date->toDateString(),
             $durationMinutes,
             $room?->id ?? 'any',
             $equipment?->id ?? 'any',
-            $assistantId ?? 'any'
+            $assistantId ?? 'any',
         );
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($doctor, $date, $durationMinutes, $room, $equipment, $assistantId) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use (
+            $doctor,
+            $date,
+            $durationMinutes,
+            $room,
+            $equipment,
+            $assistantId
+        ) {
             $plan = $this->getDailyPlan($doctor, $date);
 
             if (isset($plan['reason'])) {
@@ -123,12 +130,11 @@ class AvailabilityService
             foreach ($period as $start) {
                 $end = $start->copy()->addMinutes($durationMinutes);
 
-                // перерва
-                if (
-                    $plan['break_start'] && $plan['break_end'] &&
-                    $start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())
-                ) {
-                    continue;
+                // break
+                if ($plan['break_start'] && $plan['break_end']) {
+                    if ($start->between($plan['break_start'], $plan['break_end']->copy()->subMinute())) {
+                        continue;
+                    }
                 }
 
                 if ($end > $plan['end']) {
@@ -153,7 +159,7 @@ class AvailabilityService
 
                 $slots[] = [
                     'start' => $start->format('H:i'),
-                    'end' => $end->format('H:i'),
+                    'end'   => $end->format('H:i'),
                 ];
             }
 
@@ -273,10 +279,12 @@ class AvailabilityService
         }
 
         usort($slots, fn($a, $b) => $b['score'] <=> $a['score']);
+        $topSlots = array_slice($slots, 0, $limit);
 
-        return array_map(
-            fn($slot) => ['date' => $slot['date'], 'start' => $slot['start'], 'end' => $slot['end']],
-            array_slice($slots, 0, $limit)
-        );
+        return array_map(fn ($slot) => [
+            'date' => $slot['date'],
+            'start' => $slot['start'],
+            'end' => $slot['end'],
+        ], $topSlots);
     }
 }

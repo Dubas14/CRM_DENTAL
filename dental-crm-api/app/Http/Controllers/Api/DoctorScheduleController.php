@@ -4,16 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
+use App\Models\Schedule;
+use App\Models\ScheduleException;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use App\Services\Access\DoctorAccessService;
 use App\Models\Procedure;
 use App\Models\Room;
 use App\Models\Equipment;
-use App\Models\Schedule;
-use App\Models\ScheduleException;
-use App\Services\Access\DoctorAccessService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\RescheduleService;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
 
 class DoctorScheduleController extends Controller
 {
@@ -95,12 +95,18 @@ class DoctorScheduleController extends Controller
             abort(403, 'У вас немає доступу до перегляду розкладу цього лікаря');
         }
 
-        $schedules = Schedule::where('doctor_id', $doctor->id)->orderBy('weekday')->get();
-        $exceptions = ScheduleException::where('doctor_id', $doctor->id)->orderBy('date', 'desc')->limit(50)->get();
+        $schedules = Schedule::where('doctor_id', $doctor->id)
+            ->orderBy('weekday')
+            ->get();
+
+        $exceptions = ScheduleException::where('doctor_id', $doctor->id)
+            ->orderBy('date', 'desc')
+            ->limit(50)
+            ->get();
 
         return response()->json([
-            'doctor' => $doctor,
-            'schedules' => $schedules,
+            'doctor'     => $doctor,
+            'schedules'  => $schedules,
             'exceptions' => $exceptions,
         ]);
     }
@@ -122,6 +128,7 @@ class DoctorScheduleController extends Controller
         }
 
         $date = Carbon::parse($validated['date'])->startOfDay();
+
         $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
         $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
         $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
@@ -132,8 +139,8 @@ class DoctorScheduleController extends Controller
 
         if (isset($plan['reason'])) {
             return response()->json([
-                'date' => $date->toDateString(),
-                'slots' => [],
+                'date'   => $date->toDateString(),
+                'slots'  => [],
                 'reason' => $plan['reason'],
             ]);
         }
@@ -142,7 +149,7 @@ class DoctorScheduleController extends Controller
 
         $resolvedEquipment = $equipment ?? $procedure?->equipment;
 
-        $slotsResult = $availability->getSlots(
+        $slots = $availability->getSlots(
             $doctor,
             $date,
             $duration,
@@ -152,9 +159,9 @@ class DoctorScheduleController extends Controller
         );
 
         return response()->json([
-            'date' => $date->toDateString(),
-            'slots' => $slotsResult['slots'],
-            'reason' => $slotsResult['reason'] ?? null,
+            'date'  => $date->toDateString(),
+            'slots' => $slots['slots'],
+            'reason' => $slots['reason'] ?? null,
             'duration_minutes' => $duration,
             'room' => $room,
             'equipment' => $resolvedEquipment,
@@ -180,6 +187,7 @@ class DoctorScheduleController extends Controller
         }
 
         $fromDate = Carbon::parse($validated['from_date'])->startOfDay();
+
         $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
         $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
         $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;

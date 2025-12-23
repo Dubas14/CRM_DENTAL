@@ -7,6 +7,7 @@ import ToastContainer from './components/ToastContainer.vue';
 import {
   LayoutDashboard,
   Calendar,
+  LayoutGrid,
   Users,
   Stethoscope,
   Building2,
@@ -68,17 +69,35 @@ const isLoginPage = computed(() => route.name === 'login');
 
         <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Головне</p>
 
-        <router-link :to="{name: 'dashboard'}" :class="[route.name === 'dashboard' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
+        <router-link
+            :to="{name: 'dashboard'}"
+            :class="[route.name === 'dashboard' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+        >
           <LayoutDashboard size="20" />
           <span class="font-medium">Дашборд</span>
         </router-link>
 
-        <router-link :to="{name: 'schedule'}" :class="[route.name === 'schedule' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
+        <router-link
+            :to="{name: 'schedule'}"
+            :class="[route.name === 'schedule' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+        >
           <Calendar size="20" />
           <span class="font-medium">Розклад &amp; Waitlist</span>
         </router-link>
 
-        <router-link :to="{name: 'patients'}" :class="[route.name === 'patients' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
+        <!-- ✅ Новий календар у стилі Google Calendar (board/grid) -->
+        <router-link
+            :to="{name: 'calendar-board'}"
+            :class="[route.name === 'calendar-board' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+        >
+          <LayoutGrid size="20" />
+          <span class="font-medium">Календар (Board)</span>
+        </router-link>
+
+        <router-link
+            :to="{name: 'patients'}"
+            :class="[route.name === 'patients' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+        >
           <Users size="20" />
           <span class="font-medium">Пацієнти</span>
         </router-link>
@@ -87,12 +106,18 @@ const isLoginPage = computed(() => route.name === 'login');
         <div v-if="isSuperAdmin" class="mt-6">
           <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Управління</p>
 
-          <router-link :to="{name: 'clinics'}" :class="[route.name === 'clinics' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
+          <router-link
+              :to="{name: 'clinics'}"
+              :class="[route.name === 'clinics' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
             <Building2 size="20" />
             <span class="font-medium">Клініки</span>
           </router-link>
 
-          <router-link :to="{name: 'doctors'}" :class="[route.name === 'doctors' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']">
+          <router-link
+              :to="{name: 'doctors'}"
+              :class="[route.name === 'doctors' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
             <Stethoscope size="20" />
             <span class="font-medium">Лікарі</span>
           </router-link>

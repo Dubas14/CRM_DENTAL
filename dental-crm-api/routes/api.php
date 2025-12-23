@@ -17,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\Api\DoctorScheduleSettingsController;
 
+
 // ---- AUTH ----
 
 Route::post('/login', function (Request $request) {
@@ -107,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('appointments', [AppointmentController::class, 'store']);
     Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
+    Route::get('/appointments', [AppointmentController::class, 'index']);
 
     Route::get('waitlist', [WaitlistController::class, 'index']);
     Route::post('waitlist', [WaitlistController::class, 'store']);

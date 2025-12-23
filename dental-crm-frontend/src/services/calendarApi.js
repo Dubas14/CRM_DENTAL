@@ -13,12 +13,9 @@ const calendarApi = {
     return apiClient.get(`/doctors/${doctorId}/appointments`, { params });
   },
 
+  // якщо ти зробиш /appointments?from_date&to_date&doctor_ids — тут буде зручно
   getAppointments(params = {}) {
     return apiClient.get('/appointments', { params });
-  },
-
-  getSlots(params = {}) {
-    return apiClient.get('/slots', { params });
   },
 
   createAppointment(payload) {

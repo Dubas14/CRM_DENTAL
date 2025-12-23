@@ -322,6 +322,59 @@ class AppointmentController extends Controller
 
         return new AppointmentResource($appointment);
     }
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'date' => ['nullable', 'date'],
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date'],
+            'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
+            'doctor_ids' => ['nullable', 'array'],
+            'doctor_ids.*' => ['integer', 'exists:doctors,id'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+        ]);
+
+        $query = \App\Models\Appointment::query()
+            ->with(['doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment', 'clinic'])
+            ->orderBy('start_at');
+
+        // date OR range
+        if (!empty($validated['date'])) {
+            $query->whereDate('start_at', $validated['date']);
+        } else {
+            if (!empty($validated['from_date'])) {
+                $query->whereDate('start_at', '>=', $validated['from_date']);
+            }
+            if (!empty($validated['to_date'])) {
+                $query->whereDate('start_at', '<=', $validated['to_date']);
+            }
+        }
+
+        // doctor filters
+        if (!empty($validated['doctor_id'])) {
+            $query->where('doctor_id', $validated['doctor_id']);
+        } elseif (!empty($validated['doctor_ids'])) {
+            $query->whereIn('doctor_id', $validated['doctor_ids']);
+        }
+
+        // simple access rules
+        if (($user->global_role ?? null) === 'doctor' && $user->doctor?->id) {
+            $query->where('doctor_id', $user->doctor->id);
+        }
+
+        if (($user->global_role ?? null) === 'clinic_admin' && !empty($user->clinic_id)) {
+            $query->where('clinic_id', $user->clinic_id);
+        }
+
+        if (!empty($validated['clinic_id'])) {
+            $query->where('clinic_id', $validated['clinic_id']);
+        }
+
+        return \App\Http\Resources\AppointmentResource::collection($query->get());
+    }
+
 
     public function cancel(Request $request, Appointment $appointment)
     {
