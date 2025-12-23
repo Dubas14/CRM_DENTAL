@@ -1,49 +1,103 @@
-import axios from 'axios';
-import apiClient from './apiClient'; // Переконайся, що цей файл існує поруч
+// Окремий клієнт для логіну (без інтерсепторів)
+const createLoginClient = () => {
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost/api';
 
-// 1. Спеціальний клієнт ТІЛЬКИ для входу (без токенів, без інтерсепторів)
-const rawApi = axios.create({
-    baseURL: 'http://localhost/api', // Жорстко порт 80 (Docker)
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-    // withCredentials: true <-- ЦЕ МИ ПРИБРАЛИ, щоб не було помилки Network Error
-});
+    // Простий axios для логіну
+    return {
+        post: async (url, data) => {
+            const response = await fetch(`${baseURL}${url}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
 
-// 2. Функція Логіну
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return {
+                data: await response.json()
+            };
+        }
+    };
+};
+
+const loginClient = createLoginClient();
+
+// Функція логіну - ПРОСТА ТА ПРАЦЮЮЧА
 export async function login(email, password) {
-    // Відправляємо запит
-    const { data } = await rawApi.post('/login', { email, password });
+    try {
+        const response = await loginClient.post('/login', { email, password });
+        const { data } = response;
 
-    // Зберігаємо токен
-    localStorage.setItem('auth_token', data.token);
+        // Проста перевірка
+        if (!data.token) {
+            throw new Error('Токен не отримано від сервера');
+        }
 
-    return data.user;
+        // Просте збереження токена
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('auth_token', data.token);
+        }
+
+        return data.user || data;
+
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
+    }
 }
 
-// 3. Функція Виходу (яку вимагала помилка)
+// Функція логауту - ПРОСТА
 export async function logout() {
     try {
-        // Тут використовуємо звичайний apiClient, бо треба передати токен
-        await apiClient.post('/logout');
-    } catch (e) {
-        console.error('Logout error', e);
-    } finally {
-        localStorage.removeItem('auth_token');
+        // Просте очищення токена
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+        }
+    } catch (error) {
+        console.warn('Logout error:', error);
     }
 }
 
-// 4. Функція отримання поточного юзера
+// Отримання поточного користувача - ПРОСТА
 export async function getCurrentUser() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return null;
-
     try {
+        // Динамічний імпорт, щоб уникнути циклічних залежностей
+        const { default: apiClient } = await import('./apiClient');
         const { data } = await apiClient.get('/user');
         return data;
-    } catch (e) {
-        localStorage.removeItem('auth_token');
-        return null;
+    } catch (error) {
+        console.error('Get current user error:', error);
+        throw error;
     }
 }
+
+// Refresh token (якщо потрібно)
+export async function refreshToken() {
+    try {
+        const { default: apiClient } = await import('./apiClient');
+        const { data } = await apiClient.post('/auth/refresh');
+
+        if (data.token && typeof window !== 'undefined') {
+            localStorage.setItem('auth_token', data.token);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Refresh token error:', error);
+        throw error;
+    }
+}
+
+// Експорт за замовчуванням
+export default {
+    login,
+    logout,
+    getCurrentUser,
+    refreshToken
+};

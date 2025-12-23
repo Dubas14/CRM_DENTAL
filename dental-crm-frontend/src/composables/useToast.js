@@ -1,25 +1,36 @@
 import { ref } from 'vue';
 
-// Глобальний стан (щоб працювало з будь-якого компонента)
+// Shared toast state across the app
 const toasts = ref([]);
 
 export function useToast() {
-    /**
-     * Показати повідомлення
-     * @param {string} message - Текст
-     * @param {'success'|'error'|'info'} type - Тип (колір)
-     */
-    const addToast = (message, type = 'success') => {
-        const id = Date.now() + Math.random();
+    const removeToast = (id) => {
+        toasts.value = toasts.value.filter((t) => t.id !== id);
+    };
+
+    const showToast = (message, type = 'info', duration = 4000) => {
+        const id = `${Date.now()}-${Math.random()}`;
         toasts.value.push({ id, message, type });
 
-        // Автоматично видалити через 3 секунди
-        setTimeout(() => removeToast(id), 3000);
+        if (duration) {
+            setTimeout(() => removeToast(id), duration);
+        }
+
+        return id;
     };
 
-    const removeToast = (id) => {
-        toasts.value = toasts.value.filter(t => t.id !== id);
-    };
+    const success = (message, duration) => showToast(message, 'success', duration);
+    const error = (message, duration) => showToast(message, 'error', duration);
+    const warning = (message, duration) => showToast(message, 'warning', duration);
+    const info = (message, duration) => showToast(message, 'info', duration);
 
-    return { toasts, addToast, removeToast };
+    return {
+        toasts,
+        showToast,
+        success,
+        error,
+        warning,
+        info,
+        removeToast,
+    };
 }

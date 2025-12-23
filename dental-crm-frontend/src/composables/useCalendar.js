@@ -1,0 +1,660 @@
+// src/composables/useCalendar.js
+import { computed, onMounted, ref, watch, onUnmounted } from 'vue';
+import { debounce } from 'lodash-es';
+import apiClient from '../services/apiClient';
+import calendarApi from '../services/calendarApi';
+import equipmentApi from '../services/equipmentApi';
+import { useAuth } from './useAuth';
+import { useToast } from './useToast';
+
+export function useCalendar() {
+    const { user } = useAuth();
+    const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+
+    // UI state
+    const viewMode = ref('timeGridWeek');
+    const selectedDoctorId = ref('');
+    const selectedProcedureId = ref('');
+    const selectedEquipmentId = ref('');
+    const selectedRoomId = ref('');
+    const selectedAssistantId = ref('');
+    const isFollowUp = ref(false);
+    const allowSoftConflicts = ref(false);
+
+    // Data
+    const doctors = ref([]);
+    const procedures = ref([]);
+    const rooms = ref([]);
+    const equipments = ref([]);
+
+    const loading = ref(false);
+    const loadingSlots = ref(false);
+    const error = ref(null);
+
+    // Booking modal
+    const isBookingOpen = ref(false);
+    const bookingLoading = ref(false);
+    const bookingError = ref(null);
+    const booking = ref({
+        start: null,
+        end: null,
+        patient_id: '',
+        comment: '',
+        waitlist_entry_id: '',
+    });
+
+    // Calendar data
+    const events = ref([]);
+    const availabilityBgEvents = ref([]);
+    const calendarRef = ref(null);
+
+    // Drag context
+    const dragContextActive = ref(false);
+
+    // Slots cache with TTL
+    const slotsCache = new Map();
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+    // Додано: debounce для оновлення слотів
+    const debouncedRefreshSlots = debounce(async () => {
+        await refreshAvailabilityBackground();
+    }, 300);
+
+    const clinicId = computed(() =>
+        user.value?.clinic_id ||
+        user.value?.doctor?.clinic_id ||
+        user.value?.doctor?.clinic?.id ||
+        user.value?.clinics?.[0]?.clinic_id ||
+        null,
+    );
+
+    // Utility functions
+    const formatDateYMD = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
+    const formatTimeHM = (date) => {
+        const h = String(date.getHours()).padStart(2, '0');
+        const m = String(date.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+    };
+
+    const minutesDiff = (a, b) => Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
+
+    const normalizeDateTimeForCalendar = (value) => {
+        if (!value) return value;
+
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
+            return value.replace(' ', 'T');
+        }
+
+        return value;
+    };
+
+    // Cache management
+    const buildSlotsKey = ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => [
+        doctorId || '',
+        date || '',
+        procedureId || '',
+        roomId || '',
+        equipmentId || '',
+        durationMinutes || '',
+    ].join('|');
+
+    const clearExpiredCache = () => {
+        const now = Date.now();
+        for (const [key, value] of slotsCache.entries()) {
+            if (now - value.timestamp > CACHE_TTL) {
+                slotsCache.delete(key);
+            }
+        }
+    };
+
+    const fetchDoctorSlots = async ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => {
+        clearExpiredCache();
+
+        const key = buildSlotsKey({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
+
+        const cached = slotsCache.get(key);
+        if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+            return cached.data;
+        }
+
+        const params = { date };
+        if (procedureId) params.procedure_id = procedureId;
+        if (roomId) params.room_id = roomId;
+        if (equipmentId) params.equipment_id = equipmentId;
+
+        const { data } = await calendarApi.getDoctorSlots(doctorId, params);
+        const slots = Array.isArray(data?.slots) ? data.slots : [];
+        const set = new Set(slots.map((s) => s.start));
+
+        const result = { slots, set, raw: data };
+        slotsCache.set(key, { data: result, timestamp: Date.now() });
+
+        return result;
+    };
+
+    // Event helpers
+    const buildEventTitle = (appt) => {
+        const patient = appt?.patient?.full_name || 'Пацієнт';
+        const proc = appt?.procedure?.name || '';
+        return proc ? `${patient} • ${proc}` : patient;
+    };
+
+    const mapAppointmentsToEvents = (appts) => appts.map((appt) => ({
+        id: String(appt.id),
+        title: buildEventTitle(appt),
+        start: normalizeDateTimeForCalendar(appt.start_at),
+        end: normalizeDateTimeForCalendar(appt.end_at),
+        extendedProps: {
+            appointment: appt,
+            status: appt.status,
+        },
+        classNames: [`status-${appt.status || 'scheduled'}`],
+    }));
+
+    // Data fetching
+    const fetchDoctors = async () => {
+        const { data } = await apiClient.get('/doctors');
+        doctors.value = Array.isArray(data) ? data : (data?.data || []);
+        if (!selectedDoctorId.value && doctors.value.length) {
+            selectedDoctorId.value = doctors.value[0].id;
+        }
+    };
+
+    const fetchProcedures = async () => {
+        const { data } = await apiClient.get('/procedures');
+        procedures.value = Array.isArray(data) ? data : (data?.data || []);
+    };
+
+    const fetchRooms = async () => {
+        if (!clinicId.value) return;
+        const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
+        rooms.value = Array.isArray(data) ? data : (data?.data || []);
+    };
+
+    const fetchEquipments = async () => {
+        if (!clinicId.value) return;
+        const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
+        equipments.value = Array.isArray(data) ? data : (data?.data || []);
+    };
+
+    const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
+        const { data } = await calendarApi.getAppointments({
+            doctor_id: doctorId,
+            from_date: fromDate,
+            to_date: toDate,
+        });
+
+        return Array.isArray(data) ? data : (data?.data || []);
+    };
+
+    const loadEvents = async () => {
+        if (!selectedDoctorId.value) return;
+
+        loading.value = true;
+        error.value = null;
+
+        try {
+            const api = calendarRef.value?.getApi?.();
+            const view = api?.view;
+
+            const start = view?.activeStart ? new Date(view.activeStart) : new Date();
+            const end = view?.activeEnd ? new Date(view.activeEnd) : new Date(Date.now() + 7 * 86400000);
+
+            const fromDate = formatDateYMD(start);
+            const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
+
+            const appts = await loadAppointmentsRange(selectedDoctorId.value, fromDate, toDate);
+            events.value = mapAppointmentsToEvents(appts);
+        } catch (e) {
+            const message = e.response?.data?.message || e.message || 'Помилка завантаження подій';
+            error.value = message;
+            toastError(message);
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    // Availability slots
+    const mergeSlotsToIntervals = (slots) => {
+        if (!slots.length) return [];
+
+        const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
+        const merged = [];
+
+        for (const s of sorted) {
+            const last = merged[merged.length - 1];
+            if (!last) {
+                merged.push({ start: s.start, end: s.end });
+                continue;
+            }
+            if (last.end === s.start) {
+                last.end = s.end;
+            } else {
+                merged.push({ start: s.start, end: s.end });
+            }
+        }
+        return merged;
+    };
+
+    const getDurationForContext = () => {
+        if (selectedProcedureId.value) {
+            const p = procedures.value.find((x) => x.id === Number(selectedProcedureId.value));
+            return p?.duration_minutes || 30;
+        }
+        return 30;
+    };
+
+    const buildAvailabilityBgForRange = async ({ doctorId, startDate, endDateExclusive, procedureId, roomId, equipmentId, durationMinutes }) => {
+        const api = calendarRef.value?.getApi?.();
+        const view = api?.view;
+        if (view?.type === 'dayGridMonth') return [];
+
+        const cursor = new Date(startDate);
+        const bg = [];
+
+        while (cursor < endDateExclusive) {
+            const date = formatDateYMD(cursor);
+
+            try {
+                const { slots } = await fetchDoctorSlots({
+                    doctorId,
+                    date,
+                    procedureId,
+                    roomId,
+                    equipmentId,
+                    durationMinutes,
+                });
+
+                const intervals = mergeSlotsToIntervals(slots);
+
+                for (const it of intervals) {
+                    bg.push({
+                        id: `free-${doctorId}-${date}-${it.start}`,
+                        start: `${date}T${it.start}:00`,
+                        end: `${date}T${it.end}:00`,
+                        display: 'background',
+                        overlap: true,
+                        backgroundColor: 'rgba(16, 185, 129, 0.22)',
+                        classNames: ['free-slot'],
+                    });
+                }
+            } catch (error) {
+                console.warn(`Помилка завантаження слотів для ${date}:`, error);
+            }
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        return bg;
+    };
+
+    const refreshAvailabilityBackground = async () => {
+        if (!calendarRef.value) return;
+
+        const api = calendarRef.value.getApi();
+        const view = api.view;
+        if (!view) return;
+
+        if (view.type === 'dayGridMonth') {
+            availabilityBgEvents.value = [];
+            return;
+        }
+
+        if (!selectedDoctorId.value) return;
+        if (dragContextActive.value) return;
+
+        loadingSlots.value = true;
+
+        try {
+            const start = new Date(view.activeStart);
+            const end = new Date(view.activeEnd);
+            const duration = getDurationForContext();
+
+            availabilityBgEvents.value = await buildAvailabilityBgForRange({
+                doctorId: selectedDoctorId.value,
+                startDate: start,
+                endDateExclusive: end,
+                procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+                roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                durationMinutes: duration,
+            });
+        } catch (error) {
+            console.error('Помилка оновлення фонових слотів:', error);
+        } finally {
+            loadingSlots.value = false;
+        }
+    };
+
+    // Booking functionality
+    const resetBooking = () => {
+        booking.value = {
+            start: null,
+            end: null,
+            patient_id: '',
+            comment: '',
+            waitlist_entry_id: '',
+        };
+    };
+
+    const openBooking = (info) => {
+        booking.value.start = info.start;
+        booking.value.end = info.end;
+        booking.value.patient_id = '';
+        booking.value.comment = '';
+        booking.value.waitlist_entry_id = '';
+        bookingError.value = null;
+        isBookingOpen.value = true;
+    };
+
+    const closeBooking = () => {
+        isBookingOpen.value = false;
+        bookingError.value = null;
+    };
+
+    const createAppointment = async (payload) => {
+        if (!selectedDoctorId.value || !payload?.start) {
+            toastError('Вкажіть час початку');
+            return;
+        }
+
+        bookingLoading.value = true;
+        bookingError.value = null;
+
+        try {
+            const start = payload.start instanceof Date ? payload.start : new Date(payload.start);
+
+            const apiPayload = {
+                doctor_id: selectedDoctorId.value,
+                date: formatDateYMD(start),
+                time: formatTimeHM(start),
+                patient_id: payload.patient_id ? Number(payload.patient_id) : null,
+                procedure_id: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+                room_id: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                equipment_id: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                assistant_id: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+                is_follow_up: !!isFollowUp.value,
+                allow_soft_conflicts: !!allowSoftConflicts.value,
+                waitlist_entry_id: payload.waitlist_entry_id ? Number(payload.waitlist_entry_id) : null,
+                comment: payload.comment || null,
+                source: 'crm',
+            };
+
+            await calendarApi.createAppointment(apiPayload);
+            toastSuccess('Запис успішно створено');
+            isBookingOpen.value = false;
+            resetBooking();
+
+            await loadEvents();
+            await refreshAvailabilityBackground();
+        } catch (e) {
+            const message = e.response?.data?.message || e.message || 'Помилка створення запису';
+            bookingError.value = message;
+            toastError(message);
+        } finally {
+            bookingLoading.value = false;
+        }
+    };
+
+    // Drag & drop
+    const showDragAvailability = async (event) => {
+        const appt = event?.extendedProps?.appointment;
+        if (!appt) return;
+
+        const api = calendarRef.value?.getApi?.();
+        const view = api?.view;
+        if (!view) return;
+        if (viewMode.value === 'dayGridMonth') return;
+
+        dragContextActive.value = true;
+        loadingSlots.value = true;
+
+        try {
+            const start = new Date(view.activeStart);
+            const end = new Date(view.activeEnd);
+
+            const procedureId = appt?.procedure_id ?? null;
+            const roomId = appt?.room_id ?? null;
+            const equipmentId = appt?.equipment_id ?? null;
+
+            const startOld = appt?.start_at ? new Date(normalizeDateTimeForCalendar(appt.start_at)) : null;
+            const endOld = appt?.end_at ? new Date(normalizeDateTimeForCalendar(appt.end_at)) : null;
+            const duration = (startOld && endOld) ? minutesDiff(startOld, endOld) : 30;
+
+            availabilityBgEvents.value = await buildAvailabilityBgForRange({
+                doctorId: appt?.doctor_id || selectedDoctorId.value,
+                startDate: start,
+                endDateExclusive: end,
+                procedureId,
+                roomId,
+                equipmentId,
+                durationMinutes: duration,
+            });
+        } catch (error) {
+            console.error('Помилка завантаження drag availability:', error);
+        } finally {
+            loadingSlots.value = false;
+        }
+    };
+
+    const hideDragAvailability = async () => {
+        dragContextActive.value = false;
+        await refreshAvailabilityBackground();
+    };
+
+    const handleEventMoveResize = async (info, kind) => {
+        const id = info.event.id;
+        const appt = info.event.extendedProps?.appointment;
+
+        try {
+            const start = info.event.start;
+            if (!start) throw new Error('Не вдалося визначити час початку');
+
+            const date = formatDateYMD(start);
+            const time = formatTimeHM(start);
+
+            const procedureId = appt?.procedure_id ?? null;
+            const roomId = appt?.room_id ?? null;
+            const equipmentId = appt?.equipment_id ?? null;
+
+            const startOld = appt?.start_at ? new Date(normalizeDateTimeForCalendar(appt.start_at)) : null;
+            const endOld = appt?.end_at ? new Date(normalizeDateTimeForCalendar(appt.end_at)) : null;
+            const duration = (startOld && endOld) ? minutesDiff(startOld, endOld) : 30;
+
+            const slotRes = await fetchDoctorSlots({
+                doctorId: appt?.doctor_id || selectedDoctorId.value,
+                date,
+                procedureId,
+                roomId,
+                equipmentId,
+                durationMinutes: duration,
+            });
+
+            if (!slotRes.set.has(time)) {
+                info.revert();
+                toastInfo('Цей час недоступний. Переносьте запис тільки на підсвічений час.');
+                return;
+            }
+
+            const payload = {
+                doctor_id: appt?.doctor_id || selectedDoctorId.value,
+                date,
+                time,
+                patient_id: appt?.patient_id ?? null,
+                procedure_id: appt?.procedure_id ?? null,
+                room_id: appt?.room_id ?? null,
+                equipment_id: appt?.equipment_id ?? null,
+                assistant_id: appt?.assistant_id ?? null,
+                is_follow_up: !!appt?.is_follow_up,
+                allow_soft_conflicts: !!allowSoftConflicts.value,
+            };
+
+            await calendarApi.updateAppointment(id, payload);
+            toastSuccess(kind === 'resize' ? 'Запис змінено' : 'Запис перенесено');
+
+            await loadEvents();
+            await refreshAvailabilityBackground();
+        } catch (e) {
+            info.revert();
+            const msg = e.response?.data?.message || e.message || `Помилка при ${kind}`;
+            toastError(msg);
+        } finally {
+            await hideDragAvailability();
+        }
+    };
+
+    const selectAllow = async (selectInfo) => {
+        try {
+            if (!selectedDoctorId.value) return false;
+
+            const api = calendarRef.value?.getApi?.();
+            const view = api?.view;
+            if (view?.type === 'dayGridMonth') return true;
+
+            const date = formatDateYMD(selectInfo.start);
+            const time = formatTimeHM(selectInfo.start);
+            const duration = minutesDiff(selectInfo.start, selectInfo.end) || 30;
+
+            const slotRes = await fetchDoctorSlots({
+                doctorId: selectedDoctorId.value,
+                date,
+                procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+                roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                durationMinutes: duration,
+            });
+
+            return slotRes.set.has(time);
+        } catch {
+            return true;
+        }
+    };
+
+    const handleSelect = (info) => {
+        openBooking(info);
+    };
+
+    const handleEventClick = (info) => {
+        const appt = info.event.extendedProps?.appointment;
+        const patient = appt?.patient?.full_name || 'Пацієнт';
+        const proc = appt?.procedure?.name || 'без процедури';
+        const room = appt?.room?.name ? `, кабінет: ${appt.room.name}` : '';
+        const eq = appt?.equipment?.name ? `, обладнання: ${appt.equipment.name}` : '';
+        const asst = appt?.assistant?.full_name ? `, асистент: ${appt.assistant.full_name}` : '';
+        // eslint-disable-next-line no-alert
+        alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
+    };
+
+    const handleDatesSet = async () => {
+        await loadEvents();
+        await refreshAvailabilityBackground();
+    };
+
+    const refreshCalendar = async () => {
+        await Promise.all([loadEvents(), refreshAvailabilityBackground()]);
+    };
+
+    const initialize = async () => {
+        try {
+            loading.value = true;
+            await Promise.all([fetchDoctors(), fetchProcedures()]);
+            await Promise.all([fetchRooms(), fetchEquipments()]);
+            await loadEvents();
+            await refreshAvailabilityBackground();
+        } catch (initError) {
+            console.error('Помилка ініціалізації:', initError);
+            const message = initError?.response?.data?.message || initError?.message || 'Помилка ініціалізації';
+            error.value = message;
+            toastError(message);
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    // Cleanup function
+    const cleanup = () => {
+        slotsCache.clear();
+        if (debouncedRefreshSlots?.cancel) {
+            debouncedRefreshSlots.cancel();
+        }
+    };
+
+    // Watchers
+    watch([selectedProcedureId, selectedRoomId, selectedEquipmentId], () => {
+        debouncedRefreshSlots();
+    });
+
+    watch([selectedDoctorId, viewMode], async () => {
+        const api = calendarRef.value?.getApi?.();
+        if (api) api.changeView(viewMode.value);
+        await refreshCalendar();
+    });
+
+    watch(clinicId, async () => {
+        await Promise.all([fetchRooms(), fetchEquipments()]);
+        await refreshAvailabilityBackground();
+    });
+
+    watch(selectedProcedureId, () => {
+        const p = procedures.value.find((x) => x.id === Number(selectedProcedureId.value));
+        if (p?.equipment_id) selectedEquipmentId.value = p.equipment_id;
+    });
+
+    // Auto cleanup on unmount
+    onUnmounted(() => {
+        cleanup();
+    });
+
+    onMounted(async () => {
+        await initialize();
+    });
+
+    return {
+        // refs
+        calendarRef,
+        events,
+        availabilityBgEvents,
+        viewMode,
+        selectedDoctorId,
+        selectedProcedureId,
+        selectedEquipmentId,
+        selectedRoomId,
+        selectedAssistantId,
+        isFollowUp,
+        allowSoftConflicts,
+        doctors,
+        procedures,
+        rooms,
+        equipments,
+        loading,
+        loadingSlots,
+        error,
+        booking,
+        isBookingOpen,
+        bookingLoading,
+        bookingError,
+
+        // methods
+        initialize,
+        refreshCalendar,
+        loadEvents,
+        refreshAvailabilityBackground,
+        createAppointment,
+        closeBooking,
+        openBooking,
+        handleSelect,
+        handleEventClick,
+        handleEventMoveResize,
+        showDragAvailability,
+        hideDragAvailability,
+        selectAllow,
+        handleDatesSet,
+        cleanup,
+    };
+}
