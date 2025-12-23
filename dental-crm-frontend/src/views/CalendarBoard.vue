@@ -38,7 +38,6 @@ const error = ref(null);
 const isBookingOpen = ref(false);
 const bookingLoading = ref(false);
 const bookingError = ref(null);
-const bookingSuccess = ref(null);
 
 const booking = ref({
   start: null, // Date
@@ -52,9 +51,15 @@ const booking = ref({
  * Calendar data
  */
 const events = ref([]);
+const availabilityBgEvents = ref([]); // background подсвітка “вільно”
 const calendarRef = ref(null);
 
-// Беремо clinic_id так само, як ти робив у DoctorSchedule / CalendarModule
+/**
+ * Slots cache (щоб не лупити API 100 разів)
+ * key: doctor|date|proc|room|equip|duration
+ */
+const slotsCache = new Map();
+
 const clinicId = computed(() =>
     user.value?.clinic_id ||
     user.value?.doctor?.clinic_id ||
@@ -70,7 +75,6 @@ const mapCollection = (data) => {
 };
 
 const formatDateYMD = (date) => {
-  // date: Date
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -83,60 +87,56 @@ const formatTimeHM = (date) => {
   return `${h}:${m}`;
 };
 
-const calendarOptions = computed(() => ({
-  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
-  initialView: viewMode.value,
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'timeGridDay,timeGridWeek,dayGridMonth',
-  },
-  height: 'auto',
-  nowIndicator: true,
-  selectable: true,
-  editable: true, // drag & resize
-  eventResizableFromStart: false,
-  slotMinTime: '07:00:00',
-  slotMaxTime: '22:00:00',
-  slotDuration: '00:30:00',
-  allDaySlot: false,
-  weekends: true,
+const minutesDiff = (a, b) => Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
 
-  events: events.value,
+const buildSlotsKey = ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => {
+  return [
+    doctorId || '',
+    date || '',
+    procedureId || '',
+    roomId || '',
+    equipmentId || '',
+    durationMinutes || '',
+  ].join('|');
+};
 
-  select: (info) => {
-    // юзер виділив час (як в Google Calendar)
-    booking.value.start = info.start;
-    booking.value.end = info.end;
-    booking.value.patient_id = '';
-    booking.value.comment = '';
-    booking.value.waitlist_entry_id = '';
-    bookingError.value = null;
-    bookingSuccess.value = null;
-    isBookingOpen.value = true;
-  },
+const fetchDoctorSlots = async ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => {
+  const key = buildSlotsKey({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
+  if (slotsCache.has(key)) return slotsCache.get(key);
 
-  eventClick: (info) => {
-    // клік по запису — покажемо details простим alert-ом (пізніше замінимо на красивий modal)
-    const appt = info.event.extendedProps?.appointment;
-    const patient = appt?.patient?.full_name || 'Пацієнт';
-    const proc = appt?.procedure?.name || 'без процедури';
-    const room = appt?.room?.name ? `, кабінет: ${appt.room.name}` : '';
-    const eq = appt?.equipment?.name ? `, обладнання: ${appt.equipment.name}` : '';
-    const asst = appt?.assistant?.full_name ? `, асистент: ${appt.assistant.full_name}` : '';
-    window.alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
-  },
+  const params = { date };
+  if (procedureId) params.procedure_id = procedureId;
+  if (roomId) params.room_id = roomId;
+  if (equipmentId) params.equipment_id = equipmentId;
 
-  eventDrop: async (info) => {
-    // перетягнули запис (зміна часу)
-    await handleEventMoveResize(info, 'drop');
-  },
+  const { data } = await calendarApi.getDoctorSlots(doctorId, params);
+  // бек повертає: { date, slots: [{start,end}], reason, duration_minutes }
+  const slots = Array.isArray(data?.slots) ? data.slots : [];
+  const set = new Set(slots.map((s) => s.start)); // HH:MM
+  const result = { slots, set, raw: data };
 
-  eventResize: async (info) => {
-    // розтягнули запис (зміна тривалості) — якщо бек не підтримує duration напряму, ми просто змінимо start і time (а end бек перерахує)
-    await handleEventMoveResize(info, 'resize');
-  },
-}));
+  slotsCache.set(key, result);
+  return result;
+};
+
+const buildEventTitle = (appt) => {
+  const patient = appt?.patient?.full_name || 'Пацієнт';
+  const proc = appt?.procedure?.name || '';
+  return proc ? `${patient} • ${proc}` : patient;
+};
+
+const mapAppointmentsToEvents = (appts) => {
+  return appts.map((appt) => ({
+    id: String(appt.id),
+    title: buildEventTitle(appt),
+    start: appt.start_at,
+    end: appt.end_at,
+    extendedProps: {
+      appointment: appt,
+      status: appt.status,
+    },
+  }));
+};
 
 /**
  * Load dictionaries
@@ -167,62 +167,16 @@ const fetchEquipments = async () => {
 };
 
 /**
- * Load appointments -> events
- * Працює так:
- * - якщо є /appointments?from_date&to_date&doctor_id — беремо звідти
- * - якщо нема (404) — fallback: тягнемо по днях через /doctors/{id}/appointments?date=...
+ * Load appointments range
  */
 const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
-  // 1) пробуємо “нормальний” endpoint
-  try {
-    const { data } = await calendarApi.getAppointments({
-      doctor_id: doctorId,
-      from_date: fromDate,
-      to_date: toDate,
-    });
-    return Array.isArray(data) ? data : (data?.data || []);
-  } catch (e) {
-    // якщо немає — fallback
-    if (e?.response?.status !== 404) {
-      throw e;
-    }
-  }
-
-  // 2) fallback: тягнемо по днях
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  const days = [];
-  const cursor = new Date(from);
-
-  while (cursor <= to) {
-    days.push(formatDateYMD(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  const results = await Promise.all(
-      days.map((d) => calendarApi.getDoctorAppointments(doctorId, { date: d }).then(r => r.data).catch(() => []))
-  );
-
-  return results.flat();
-};
-
-const buildEventTitle = (appt) => {
-  const patient = appt?.patient?.full_name || 'Пацієнт';
-  const proc = appt?.procedure?.name || '';
-  return proc ? `${patient} • ${proc}` : patient;
-};
-
-const mapAppointmentsToEvents = (appts) => {
-  return appts.map((appt) => ({
-    id: String(appt.id),
-    title: buildEventTitle(appt),
-    start: appt.start_at, // ISO/string
-    end: appt.end_at,
-    extendedProps: {
-      appointment: appt,
-      status: appt.status,
-    },
-  }));
+  // пробуємо /appointments?doctor_id&from_date&to_date
+  const { data } = await calendarApi.getAppointments({
+    doctor_id: doctorId,
+    from_date: fromDate,
+    to_date: toDate,
+  });
+  return Array.isArray(data) ? data : (data?.data || []);
 };
 
 const loadEvents = async () => {
@@ -235,12 +189,11 @@ const loadEvents = async () => {
     const api = calendarRef.value?.getApi?.();
     const view = api?.view;
 
-    // Якщо календар ще не ініціалізувався — беремо “сьогодні ± 7”
     const start = view?.activeStart ? new Date(view.activeStart) : new Date();
     const end = view?.activeEnd ? new Date(view.activeEnd) : new Date(Date.now() + 7 * 86400000);
 
     const fromDate = formatDateYMD(start);
-    const toDate = formatDateYMD(new Date(end.getTime() - 86400000)); // activeEnd зазвичай exclusive
+    const toDate = formatDateYMD(new Date(end.getTime() - 86400000)); // activeEnd exclusive
 
     const appts = await loadAppointmentsRange(selectedDoctorId.value, fromDate, toDate);
     events.value = mapAppointmentsToEvents(appts);
@@ -251,50 +204,75 @@ const loadEvents = async () => {
   }
 };
 
-const handleEventMoveResize = async (info, kind) => {
-  const id = info.event.id;
-  const appt = info.event.extendedProps?.appointment;
+/**
+ * Availability background (показати “вільні” комірки)
+ * Для спрощення: показуємо доступність за поточним контекстом праворуч:
+ * procedure/room/equipment (для створення запису).
+ */
+const refreshAvailabilityBackground = async () => {
+  const api = calendarRef.value?.getApi?.();
+  const view = api?.view;
+  if (!view) return;
 
-  try {
-    const start = info.event.start;
-    if (!start) throw new Error('Не вдалося визначити час початку');
-
-    const payload = {
-      doctor_id: appt?.doctor_id || selectedDoctorId.value,
-      date: formatDateYMD(start),
-      time: formatTimeHM(start),
-
-      // щоб бек не “забув” контекст
-      patient_id: appt?.patient_id ?? null,
-      procedure_id: appt?.procedure_id ?? null,
-      room_id: appt?.room_id ?? null,
-      equipment_id: appt?.equipment_id ?? null,
-      assistant_id: appt?.assistant_id ?? null,
-      is_follow_up: !!appt?.is_follow_up,
-
-      // drag краще пропускати soft-конфлікти (інакше буде дратувати)
-      allow_soft_conflicts: true,
-    };
-
-    await calendarApi.updateAppointment(id, payload);
-    await loadEvents();
-  } catch (e) {
-    // повертаємо назад
-    info.revert();
-    const msg = e.response?.data?.message || e.message || `Помилка при ${kind}`;
-    window.alert(msg);
+  // У month view не малюємо (забагато)
+  if (viewMode.value === 'dayGridMonth') {
+    availabilityBgEvents.value = [];
+    return;
   }
+
+  if (!selectedDoctorId.value) return;
+
+  const start = new Date(view.activeStart);
+  const end = new Date(view.activeEnd); // exclusive
+  const cursor = new Date(start);
+
+  // беремо “тривалість” по процедурі (якщо є) — інакше 30
+  const duration = selectedProcedureId.value
+      ? (procedures.value.find(p => p.id === Number(selectedProcedureId.value))?.duration_minutes || 30)
+      : 30;
+
+  const bg = [];
+  while (cursor < end) {
+    const date = formatDateYMD(cursor);
+
+    try {
+      const { slots } = await fetchDoctorSlots({
+        doctorId: selectedDoctorId.value,
+        date,
+        procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+        roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+        equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+        durationMinutes: duration,
+      });
+
+      // кожен слот -> background event
+      for (const s of slots) {
+        bg.push({
+          id: `free-${date}-${s.start}`,
+          start: `${date}T${s.start}:00`,
+          end: `${date}T${s.end}:00`,
+          display: 'background',
+          classNames: ['fc-free-slot'],
+        });
+      }
+    } catch {
+      // мовчки
+    }
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  availabilityBgEvents.value = bg;
 };
 
 /**
- * Create appointment from selection (booking modal)
+ * Create appointment from selection
  */
 const createAppointment = async () => {
   if (!selectedDoctorId.value || !booking.value.start) return;
 
   bookingLoading.value = true;
   bookingError.value = null;
-  bookingSuccess.value = null;
 
   try {
     const start = booking.value.start;
@@ -318,8 +296,7 @@ const createAppointment = async () => {
       source: 'crm',
     };
 
-    const { data } = await calendarApi.createAppointment(payload);
-    bookingSuccess.value = `Запис створено (#${data?.id || 'OK'})`;
+    await calendarApi.createAppointment(payload);
     isBookingOpen.value = false;
 
     await loadEvents();
@@ -334,27 +311,179 @@ const closeBooking = () => {
   isBookingOpen.value = false;
 };
 
+/**
+ * Перетягування/resize з превалідацією “вільно/не вільно” через /slots
+ */
+const handleEventMoveResize = async (info, kind) => {
+  const id = info.event.id;
+  const appt = info.event.extendedProps?.appointment;
+
+  try {
+    const start = info.event.start;
+    if (!start) throw new Error('Не вдалося визначити час початку');
+
+    const date = formatDateYMD(start);
+    const time = formatTimeHM(start);
+
+    // контекст беремо з самого запису (НЕ з правої панелі)
+    const procedureId = appt?.procedure_id ?? null;
+    const roomId = appt?.room_id ?? null;
+    const equipmentId = appt?.equipment_id ?? null;
+
+    // duration для превалідації
+    const startOld = appt?.start_at ? new Date(appt.start_at) : null;
+    const endOld = appt?.end_at ? new Date(appt.end_at) : null;
+    const duration = (startOld && endOld) ? minutesDiff(startOld, endOld) : 30;
+
+    // 1) превалідація — чи старт взагалі “доступний” для цього контексту
+    const slotRes = await fetchDoctorSlots({
+      doctorId: appt?.doctor_id || selectedDoctorId.value,
+      date,
+      procedureId,
+      roomId,
+      equipmentId,
+      durationMinutes: duration,
+    });
+
+    if (!slotRes.set.has(time)) {
+      info.revert();
+      window.alert('Цей час недоступний (зайнято / поза графіком / конфлікт по кабінету чи обладнанню). Обери підсвічений вільний слот.');
+      return;
+    }
+
+    // 2) оновлення
+    const payload = {
+      doctor_id: appt?.doctor_id || selectedDoctorId.value,
+      date,
+      time,
+
+      patient_id: appt?.patient_id ?? null,
+      procedure_id: appt?.procedure_id ?? null,
+      room_id: appt?.room_id ?? null,
+      equipment_id: appt?.equipment_id ?? null,
+      assistant_id: appt?.assistant_id ?? null,
+      is_follow_up: !!appt?.is_follow_up,
+
+      allow_soft_conflicts: true,
+    };
+
+    await calendarApi.updateAppointment(id, payload);
+    await loadEvents();
+  } catch (e) {
+    info.revert();
+    const msg = e.response?.data?.message || e.message || `Помилка при ${kind}`;
+    window.alert(msg);
+  }
+};
+
+const calendarOptions = computed(() => ({
+  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
+  initialView: viewMode.value,
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'timeGridDay,timeGridWeek,dayGridMonth',
+  },
+  height: 'auto',
+  nowIndicator: true,
+  selectable: true,
+  editable: true,
+  eventResizableFromStart: false,
+  slotMinTime: '07:00:00',
+  slotMaxTime: '22:00:00',
+  slotDuration: '00:30:00',
+  allDaySlot: false,
+  weekends: true,
+
+  // показуємо і записи, і “вільні” зони
+  events: [...availabilityBgEvents.value, ...events.value],
+
+  selectAllow: async (selectInfo) => {
+    // для створення — дозволяємо тільки якщо старт є у доступних слотах (по правому контексту)
+    try {
+      if (!selectedDoctorId.value) return false;
+      if (viewMode.value === 'dayGridMonth') return true; // в місяці простіше не блокувати
+
+      const date = formatDateYMD(selectInfo.start);
+      const time = formatTimeHM(selectInfo.start);
+      const duration = minutesDiff(selectInfo.start, selectInfo.end) || 30;
+
+      const slotRes = await fetchDoctorSlots({
+        doctorId: selectedDoctorId.value,
+        date,
+        procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+        roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+        equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+        durationMinutes: duration,
+      });
+
+      return slotRes.set.has(time);
+    } catch {
+      return true;
+    }
+  },
+
+  select: (info) => {
+    booking.value.start = info.start;
+    booking.value.end = info.end;
+    booking.value.patient_id = '';
+    booking.value.comment = '';
+    booking.value.waitlist_entry_id = '';
+    bookingError.value = null;
+    isBookingOpen.value = true;
+  },
+
+  eventClick: (info) => {
+    const appt = info.event.extendedProps?.appointment;
+    const patient = appt?.patient?.full_name || 'Пацієнт';
+    const proc = appt?.procedure?.name || 'без процедури';
+    const room = appt?.room?.name ? `, кабінет: ${appt.room.name}` : '';
+    const eq = appt?.equipment?.name ? `, обладнання: ${appt.equipment.name}` : '';
+    const asst = appt?.assistant?.full_name ? `, асистент: ${appt.assistant.full_name}` : '';
+    window.alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
+  },
+
+  eventDrop: async (info) => {
+    await handleEventMoveResize(info, 'drop');
+  },
+
+  eventResize: async (info) => {
+    await handleEventMoveResize(info, 'resize');
+  },
+
+  datesSet: async () => {
+    // коли юзер перелистує тиждень/день — оновлюємо івенти + підсвітку
+    await loadEvents();
+    await refreshAvailabilityBackground();
+  },
+}));
+
 onMounted(async () => {
   await Promise.all([fetchDoctors(), fetchProcedures()]);
   await Promise.all([fetchRooms(), fetchEquipments()]);
   await loadEvents();
+  await refreshAvailabilityBackground();
 });
 
 watch([selectedDoctorId, viewMode], async () => {
-  // перемикач виду або лікаря
-  // важливо: спочатку змінюємо view, потім тягнемо дані
   const api = calendarRef.value?.getApi?.();
   if (api) api.changeView(viewMode.value);
 
   await loadEvents();
+  await refreshAvailabilityBackground();
 });
 
 watch(clinicId, async () => {
   await Promise.all([fetchRooms(), fetchEquipments()]);
+  await refreshAvailabilityBackground();
+});
+
+watch([selectedProcedureId, selectedRoomId, selectedEquipmentId], async () => {
+  // змінився контекст — перемалюємо “вільні” слоти
+  await refreshAvailabilityBackground();
 });
 
 watch([selectedProcedureId], () => {
-  // автопідстановка обладнання з процедури (якщо в процедурі є equipment_id)
   const p = procedures.value.find((x) => x.id === Number(selectedProcedureId.value));
   if (p?.equipment_id) selectedEquipmentId.value = p.equipment_id;
 });
@@ -366,7 +495,7 @@ watch([selectedProcedureId], () => {
       <div>
         <h1 class="text-2xl font-bold text-white">Календар записів (як Google Calendar)</h1>
         <p class="text-slate-400 text-sm">
-          Виділяй час — створюєш запис. Перетягнув — переніс.
+          Виділяй час — створюєш запис. Перетягнув — переніс. Вільні слоти підсвічуються.
         </p>
       </div>
 
@@ -387,7 +516,7 @@ watch([selectedProcedureId], () => {
         <button
             class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white"
             :disabled="loading"
-            @click="loadEvents"
+            @click="() => { loadEvents(); refreshAvailabilityBackground(); }"
         >
           {{ loading ? 'Оновлення...' : 'Оновити' }}
         </button>
@@ -455,7 +584,7 @@ watch([selectedProcedureId], () => {
         </div>
 
         <div class="text-xs text-slate-500 pt-2 border-t border-slate-800">
-          Підказка: виділи час на календарі — зʼявиться модалка створення запису.
+          Підказка: “вільні” слоти підсвічуються. Перенось запис тільки на підсвічений час.
         </div>
       </div>
     </div>
@@ -476,9 +605,6 @@ watch([selectedProcedureId], () => {
         <div class="p-4 space-y-3">
           <div v-if="bookingError" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3">
             {{ bookingError }}
-          </div>
-          <div v-if="bookingSuccess" class="text-sm text-emerald-300 bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-3">
-            {{ bookingSuccess }}
           </div>
 
           <label class="space-y-1 block">
@@ -515,19 +641,69 @@ watch([selectedProcedureId], () => {
 </template>
 
 <style>
-/* FullCalendar базові “косметичні” — без фанатизму */
+/* ===== FullCalendar dark theme fixes ===== */
 .fc {
-  color: white;
+  color: rgba(226, 232, 240, 0.95);
 }
-.fc .fc-toolbar-title {
-  font-size: 1.1rem;
+
+/* grid background */
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: rgba(148, 163, 184, 0.18);
 }
-.fc .fc-button {
-  border-radius: 0.5rem;
+
+.fc .fc-scrollgrid-section-header > *,
+.fc .fc-col-header-cell {
+  background: rgba(15, 23, 42, 0.9);
 }
+
 .fc .fc-timegrid-slot-label,
 .fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number {
-  color: rgba(226, 232, 240, 0.9); /* slate-ish */
+.fc .fc-daygrid-day-number,
+.fc .fc-toolbar-title {
+  color: rgba(226, 232, 240, 0.92) !important;
+}
+
+/* title */
+.fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* buttons */
+.fc .fc-button {
+  border-radius: 0.5rem;
+  border-color: rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.6);
+  color: rgba(226, 232, 240, 0.95);
+}
+.fc .fc-button:hover {
+  background: rgba(15, 23, 42, 0.9);
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* today highlight */
+.fc .fc-day-today {
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+
+/* timegrid background */
+.fc .fc-timegrid-body,
+.fc .fc-timegrid-col-frame {
+  background: rgba(2, 6, 23, 0.35);
+}
+
+/* “free slots” background */
+.fc-free-slot {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+/* event chip */
+.fc .fc-event {
+  border-color: rgba(56, 189, 248, 0.35);
 }
 </style>
