@@ -16,7 +16,7 @@ class PatientController extends Controller
         $query = Patient::query()
             ->with('clinic:id,name,city');
 
-        if ($authUser->global_role === 'doctor') {
+        if ($authUser->hasRole('doctor')) {
             $doctor = $authUser->doctor;
 
             if (! $doctor) {
@@ -160,7 +160,7 @@ class PatientController extends Controller
             return true;
         }
 
-        if ($user->global_role === 'doctor') {
+        if ($user->hasRole('doctor')) {
             $doctor = $user->doctor;
 
             if ($doctor && $doctor->clinic_id === $patient->clinic_id) {

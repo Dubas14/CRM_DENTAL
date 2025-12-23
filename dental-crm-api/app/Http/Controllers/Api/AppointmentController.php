@@ -360,12 +360,16 @@ class AppointmentController extends Controller
         }
 
         // simple access rules
-        if (($user->global_role ?? null) === 'doctor' && $user->doctor?->id) {
+        if ($user->hasRole('doctor') && $user->doctor?->id) {
             $query->where('doctor_id', $user->doctor->id);
         }
 
-        if (($user->global_role ?? null) === 'clinic_admin' && !empty($user->clinic_id)) {
-            $query->where('clinic_id', $user->clinic_id);
+        $clinicAdminClinicIds = $user->clinics()
+            ->wherePivot('clinic_role', 'clinic_admin')
+            ->pluck('clinics.id');
+
+        if ($clinicAdminClinicIds->isNotEmpty()) {
+            $query->whereIn('clinic_id', $clinicAdminClinicIds);
         }
 
         if (!empty($validated['clinic_id'])) {
