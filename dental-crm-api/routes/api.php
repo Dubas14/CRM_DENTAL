@@ -40,12 +40,10 @@ Route::post('/login', function (Request $request) {
 
     // 4. Створення токена
     $token = $user->createToken('crm-spa')->plainTextToken;
-    $user->load('doctor.clinic');
-    // 🔥 МАГІЯ ТУТ:
-    // Ми штучно додаємо поле 'global_role', яке так чекає ваш Фронтенд.
-    // Якщо в базі is_admin = true, ми кажемо фронту, що це 'super_admin'.
-    // В усіх інших випадках — поки що кажемо 'doctor' (або 'user').
-    $user->setAttribute('global_role', $user->is_admin ? 'super_admin' : 'doctor');
+    $user->load('doctor.clinic', 'roles');
+    $roleNames = $user->getRoleNames();
+    $user->setAttribute('global_role', $roleNames->first());
+    $user->setAttribute('roles', $roleNames);
 
     // 5. Відповідь
     return response()->json([
@@ -62,7 +60,12 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user()->load('doctor.clinic');
+    $user = $request->user()->load('doctor.clinic', 'roles');
+    $roleNames = $user->getRoleNames();
+    $user->setAttribute('global_role', $roleNames->first());
+    $user->setAttribute('roles', $roleNames);
+
+    return $user;
 });
 
 // ---- ПУБЛІЧНИЙ health-check ----

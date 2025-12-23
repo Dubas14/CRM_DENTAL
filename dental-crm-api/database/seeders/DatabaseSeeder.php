@@ -16,19 +16,29 @@ use Illuminate\Support\Arr;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $roles = [
+            'super_admin',
+            'clinic_admin',
+            'doctor',
+        ];
+
+        foreach ($roles as $roleName) {
+            Role::findOrCreate($roleName);
+        }
+
         // Супер-адмін для входу в систему
-        User::factory()->create([
+        $superAdmin = User::factory()->create([
             'name' => 'Super Admin',
             'email' => 'admin@admin.com',
             'password' => Hash::make('admin'),
-            'is_admin' => true,
-            'global_role' => 'super_admin',
         ]);
+        $superAdmin->assignRole('super_admin');
 
         $clinics = Clinic::factory(3)->create();
 
@@ -38,8 +48,8 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Clinic ' . ($index + 1) . ' Admin',
                 'email' => 'clinic' . ($index + 1) . '@admin.com',
                 'password' => Hash::make('admin'),
-                'global_role' => 'admin',
             ]);
+            $clinicAdmin->assignRole('clinic_admin');
 
             $clinic->users()->attach($clinicAdmin->id, ['clinic_role' => 'clinic_admin']);
 
@@ -50,8 +60,8 @@ class DatabaseSeeder extends Seeder
                     'name' => fake()->name(),
                     'email' => fake()->unique()->safeEmail(),
                     'password' => Hash::make('password'),
-                    'global_role' => 'doctor',
                 ]);
+                $doctorUser->assignRole('doctor');
 
                 $doctor = Doctor::factory()
                     ->for($clinic)

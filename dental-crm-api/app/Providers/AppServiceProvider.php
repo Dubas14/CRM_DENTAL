@@ -23,10 +23,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // 🔥 МАГІЯ ТУТ:
         // Перед будь-якою перевіркою прав (Policy) запускається цей код.
-        // Якщо юзер має is_admin = true, ми дозволяємо все (return true).
+        // Якщо юзер має роль super_admin, ми дозволяємо все (return true).
 
         Gate::before(function (User $user, $ability) {
-            if ($user->is_admin) {
+            if ($user->hasRole('super_admin')) {
                 return true;
             }
         });

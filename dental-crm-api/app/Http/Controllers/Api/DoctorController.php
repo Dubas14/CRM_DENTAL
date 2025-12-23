@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Clinic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class DoctorController extends Controller
 {
@@ -19,7 +20,7 @@ class DoctorController extends Controller
         $query = Doctor::query()
             ->with('clinic:id,name,city');
 
-        if ($authUser->global_role === 'doctor') {
+        if ($authUser->hasRole('doctor')) {
             $query->where('user_id', $authUser->id);
         }
 
@@ -60,8 +61,9 @@ class DoctorController extends Controller
                 'name'        => $data['full_name'],
                 'email'       => $data['email'],
                 'password'    => Hash::make($data['password']),
-                'global_role' => 'doctor', // звичайний акаунт
             ]);
+            Role::findOrCreate('doctor');
+            $user->assignRole('doctor');
 
             // 2) привʼязуємо до клініки як лікаря
             $clinic = Clinic::findOrFail($data['clinic_id']);

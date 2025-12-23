@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -22,10 +23,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'global_role',
         'first_name',
         'last_name',
-        'is_admin',
     ];
 
     /**
@@ -64,7 +63,7 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->global_role === 'super_admin';
+        return $this->hasRole('super_admin');
     }
 
     public function clinicRole(int $clinicId): ?string
