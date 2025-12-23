@@ -363,6 +363,11 @@ const bookSelectedSlot = async () => {
   }
 };
 
+const fmtTime = (iso) => {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+};
+
 const validatePhoneInput = (event) => {
   let val = event.target.value.replace(/[^0-9+\-() ]/g, '');
   bookingPhone.value = val;
@@ -650,7 +655,7 @@ onUnmounted(() => {
               <tbody class="divide-y divide-slate-800">
               <tr v-for="a in appointments" :key="a.id" class="hover:bg-slate-800/50 transition-colors group">
                 <td class="px-4 py-3 text-emerald-400 font-bold font-mono">
-                  {{ a.start_at ? a.start_at.slice(11, 16) : '' }}
+                  {{ fmtTime(a.start_at) }}
                 </td>
 
                 <td class="px-4 py-3 text-slate-200">

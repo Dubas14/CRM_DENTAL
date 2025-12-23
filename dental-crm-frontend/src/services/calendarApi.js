@@ -1,6 +1,17 @@
 import apiClient from './apiClient';
 
+function pick(obj, keys) {
+  const out = {};
+  keys.forEach((k) => {
+    if (obj[k] !== undefined) out[k] = obj[k];
+  });
+  return out;
+}
+
 const calendarApi = {
+  // -----------------------
+  // Availability (slots)
+  // -----------------------
   getDoctorSlots(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/slots`, { params });
   },
@@ -9,82 +20,112 @@ const calendarApi = {
     return apiClient.get(`/doctors/${doctorId}/recommended-slots`, { params });
   },
 
+  // -----------------------
+  // Appointments
+  // -----------------------
   getDoctorAppointments(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/appointments`, { params });
   },
 
-  // якщо ти зробиш /appointments?from_date&to_date&doctor_ids — тут буде зручно
   getAppointments(params = {}) {
     return apiClient.get('/appointments', { params });
   },
 
+  /**
+   * Create appointment
+   * Supports:
+   *  - date + time (existing flow)
+   *  - start_at + end_at (calendar flow)
+   */
   createAppointment(payload) {
-    const {
-      doctor_id,
-      date,
-      time,
-      patient_id,
-      procedure_id,
-      room_id,
-      equipment_id,
-      assistant_id,
-      is_follow_up,
-      waitlist_entry_id,
-      allow_soft_conflicts,
-      comment,
-      source,
-    } = payload;
+    // якщо прийшло start_at/end_at — шлемо їх напряму
+    if (payload.start_at && payload.end_at) {
+      return apiClient.post('/appointments', {
+        ...pick(payload, [
+          'doctor_id',
+          'patient_id',
+          'procedure_id',
+          'room_id',
+          'equipment_id',
+          'assistant_id',
+          'is_follow_up',
+          'waitlist_entry_id',
+          'allow_soft_conflicts',
+          'comment',
+          'source',
+        ]),
+        start_at: payload.start_at,
+        end_at: payload.end_at,
+      });
+    }
 
+    // fallback: старий варіант (date + time)
     return apiClient.post('/appointments', {
-      doctor_id,
-      date,
-      time,
-      patient_id,
-      procedure_id,
-      room_id,
-      equipment_id,
-      assistant_id,
-      is_follow_up,
-      waitlist_entry_id,
-      allow_soft_conflicts,
-      comment,
-      source,
+      ...pick(payload, [
+        'doctor_id',
+        'date',
+        'time',
+        'patient_id',
+        'procedure_id',
+        'room_id',
+        'equipment_id',
+        'assistant_id',
+        'is_follow_up',
+        'waitlist_entry_id',
+        'allow_soft_conflicts',
+        'comment',
+        'source',
+      ]),
     });
   },
 
+  /**
+   * Update appointment
+   * Supports:
+   *  - date + time
+   *  - start_at + end_at (for drag&drop / resize)
+   */
   updateAppointment(appointmentId, payload) {
-    const {
-      doctor_id,
-      date,
-      time,
-      patient_id,
-      procedure_id,
-      room_id,
-      equipment_id,
-      assistant_id,
-      is_follow_up,
-      waitlist_entry_id,
-      allow_soft_conflicts,
-      status,
-      comment,
-      source,
-    } = payload;
+    // календарний режим: перенос/resize
+    if (payload.start_at && payload.end_at) {
+      return apiClient.put(`/appointments/${appointmentId}`, {
+        ...pick(payload, [
+          'doctor_id',
+          'patient_id',
+          'procedure_id',
+          'room_id',
+          'equipment_id',
+          'assistant_id',
+          'is_follow_up',
+          'waitlist_entry_id',
+          'allow_soft_conflicts',
+          'status',
+          'comment',
+          'source',
+        ]),
+        start_at: payload.start_at,
+        end_at: payload.end_at,
+      });
+    }
 
+    // старий режим: date/time
     return apiClient.put(`/appointments/${appointmentId}`, {
-      doctor_id,
-      date,
-      time,
-      patient_id,
-      procedure_id,
-      room_id,
-      equipment_id,
-      assistant_id,
-      is_follow_up,
-      waitlist_entry_id,
-      allow_soft_conflicts,
-      status,
-      comment,
-      source,
+      ...pick(payload, [
+        'doctor_id',
+        'date',
+        'time',
+        'patient_id',
+        'procedure_id',
+        'room_id',
+        'equipment_id',
+        'assistant_id',
+        'is_follow_up',
+        'waitlist_entry_id',
+        'allow_soft_conflicts',
+        'status',
+        'comment',
+        'source',
+      ]),
     });
   },
 
@@ -92,6 +133,9 @@ const calendarApi = {
     return apiClient.post(`/appointments/${appointmentId}/cancel`, payload);
   },
 
+  // -----------------------
+  // Waitlist
+  // -----------------------
   fetchWaitlist(params) {
     return apiClient.get('/waitlist', { params });
   },
