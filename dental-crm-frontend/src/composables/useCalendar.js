@@ -51,11 +51,22 @@ export function useCalendar() {
     // Drag context
     const dragContextActive = ref(false);
 
+    // Active visible range (from datesSet)
+    const activeRange = ref({
+        start: null, // Date
+        end: null,   // Date (exclusive)
+        fromDate: null, // 'YYYY-MM-DD'
+        toDate: null,   // 'YYYY-MM-DD'
+    });
+
+    // request guards (anti race / anti loop)
+    let eventsReqId = 0;
+    let slotsReqId = 0;
+
     // Slots cache with TTL
     const slotsCache = new Map();
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-    // Додано: debounce для оновлення слотів
     const debouncedRefreshSlots = debounce(async () => {
         await refreshAvailabilityBackground();
     }, 300);
@@ -86,11 +97,9 @@ export function useCalendar() {
 
     const normalizeDateTimeForCalendar = (value) => {
         if (!value) return value;
-
         if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
             return value.replace(' ', 'T');
         }
-
         return value;
     };
 
@@ -107,9 +116,7 @@ export function useCalendar() {
     const clearExpiredCache = () => {
         const now = Date.now();
         for (const [key, value] of slotsCache.entries()) {
-            if (now - value.timestamp > CACHE_TTL) {
-                slotsCache.delete(key);
-            }
+            if (now - value.timestamp > CACHE_TTL) slotsCache.delete(key);
         }
     };
 
@@ -117,11 +124,8 @@ export function useCalendar() {
         clearExpiredCache();
 
         const key = buildSlotsKey({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
-
         const cached = slotsCache.get(key);
-        if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
-            return cached.data;
-        }
+        if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) return cached.data;
 
         const params = { date };
         if (procedureId) params.procedure_id = procedureId;
@@ -150,10 +154,7 @@ export function useCalendar() {
         title: buildEventTitle(appt),
         start: normalizeDateTimeForCalendar(appt.start_at),
         end: normalizeDateTimeForCalendar(appt.end_at),
-        extendedProps: {
-            appointment: appt,
-            status: appt.status,
-        },
+        extendedProps: { appointment: appt, status: appt.status },
         classNames: [`status-${appt.status || 'scheduled'}`],
     }));
 
@@ -161,9 +162,7 @@ export function useCalendar() {
     const fetchDoctors = async () => {
         const { data } = await apiClient.get('/doctors');
         doctors.value = Array.isArray(data) ? data : (data?.data || []);
-        if (!selectedDoctorId.value && doctors.value.length) {
-            selectedDoctorId.value = doctors.value[0].id;
-        }
+        if (!selectedDoctorId.value && doctors.value.length) selectedDoctorId.value = doctors.value[0].id;
     };
 
     const fetchProcedures = async () => {
@@ -184,60 +183,61 @@ export function useCalendar() {
     };
 
     const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
-        const { data } = await calendarApi.getAppointments({
-            doctor_id: doctorId,
-            from_date: fromDate,
-            to_date: toDate,
-        });
-
+        const { data } = await calendarApi.getAppointments({ doctor_id: doctorId, from_date: fromDate, to_date: toDate });
         return Array.isArray(data) ? data : (data?.data || []);
     };
 
-    const loadEvents = async () => {
+    const ensureRange = () => {
+        // якщо datesSet ще не прийшов — беремо з view
+        if (activeRange.value?.fromDate && activeRange.value?.toDate) return activeRange.value;
+
+        const api = calendarRef.value?.getApi?.();
+        const view = api?.view;
+
+        const start = view?.activeStart ? new Date(view.activeStart) : new Date();
+        const end = view?.activeEnd ? new Date(view.activeEnd) : new Date(Date.now() + 7 * 86400000);
+
+        const fromDate = formatDateYMD(start);
+        const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
+
+        activeRange.value = { start, end, fromDate, toDate };
+        return activeRange.value;
+    };
+
+    const loadEvents = async (range = null) => {
         if (!selectedDoctorId.value) return;
 
+        const reqId = ++eventsReqId;
         loading.value = true;
         error.value = null;
 
         try {
-            const api = calendarRef.value?.getApi?.();
-            const view = api?.view;
+            const r = range ? range : ensureRange();
+            const appts = await loadAppointmentsRange(selectedDoctorId.value, r.fromDate, r.toDate);
 
-            const start = view?.activeStart ? new Date(view.activeStart) : new Date();
-            const end = view?.activeEnd ? new Date(view.activeEnd) : new Date(Date.now() + 7 * 86400000);
+            // якщо під час запиту прийшов новіший — не застосовуємо
+            if (reqId !== eventsReqId) return;
 
-            const fromDate = formatDateYMD(start);
-            const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
-
-            const appts = await loadAppointmentsRange(selectedDoctorId.value, fromDate, toDate);
             events.value = mapAppointmentsToEvents(appts);
         } catch (e) {
             const message = e.response?.data?.message || e.message || 'Помилка завантаження подій';
             error.value = message;
             toastError(message);
         } finally {
-            loading.value = false;
+            if (reqId === eventsReqId) loading.value = false;
         }
     };
 
     // Availability slots
     const mergeSlotsToIntervals = (slots) => {
         if (!slots.length) return [];
-
         const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
         const merged = [];
-
         for (const s of sorted) {
             const last = merged[merged.length - 1];
-            if (!last) {
-                merged.push({ start: s.start, end: s.end });
-                continue;
-            }
-            if (last.end === s.start) {
-                last.end = s.end;
-            } else {
-                merged.push({ start: s.start, end: s.end });
-            }
+            if (!last) { merged.push({ start: s.start, end: s.end }); continue; }
+            if (last.end === s.start) last.end = s.end;
+            else merged.push({ start: s.start, end: s.end });
         }
         return merged;
     };
@@ -260,17 +260,8 @@ export function useCalendar() {
 
         while (cursor < endDateExclusive) {
             const date = formatDateYMD(cursor);
-
             try {
-                const { slots } = await fetchDoctorSlots({
-                    doctorId,
-                    date,
-                    procedureId,
-                    roomId,
-                    equipmentId,
-                    durationMinutes,
-                });
-
+                const { slots } = await fetchDoctorSlots({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
                 const intervals = mergeSlotsToIntervals(slots);
 
                 for (const it of intervals) {
@@ -284,17 +275,16 @@ export function useCalendar() {
                         classNames: ['free-slot'],
                     });
                 }
-            } catch (error) {
-                console.warn(`Помилка завантаження слотів для ${date}:`, error);
+            } catch (err) {
+                console.warn(`Помилка завантаження слотів для ${date}:`, err);
             }
-
             cursor.setDate(cursor.getDate() + 1);
         }
 
         return bg;
     };
 
-    const refreshAvailabilityBackground = async () => {
+    const refreshAvailabilityBackground = async (range = null) => {
         if (!calendarRef.value) return;
 
         const api = calendarRef.value.getApi();
@@ -309,38 +299,35 @@ export function useCalendar() {
         if (!selectedDoctorId.value) return;
         if (dragContextActive.value) return;
 
+        const reqId = ++slotsReqId;
         loadingSlots.value = true;
 
         try {
-            const start = new Date(view.activeStart);
-            const end = new Date(view.activeEnd);
-            const duration = getDurationForContext();
+            const r = range ? range : ensureRange();
 
-            availabilityBgEvents.value = await buildAvailabilityBgForRange({
+            const duration = getDurationForContext();
+            const bg = await buildAvailabilityBgForRange({
                 doctorId: selectedDoctorId.value,
-                startDate: start,
-                endDateExclusive: end,
+                startDate: r.start,
+                endDateExclusive: r.end,
                 procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
                 roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
                 equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
                 durationMinutes: duration,
             });
-        } catch (error) {
-            console.error('Помилка оновлення фонових слотів:', error);
+
+            if (reqId !== slotsReqId) return;
+            availabilityBgEvents.value = bg;
+        } catch (err) {
+            console.error('Помилка оновлення фонових слотів:', err);
         } finally {
-            loadingSlots.value = false;
+            if (reqId === slotsReqId) loadingSlots.value = false;
         }
     };
 
-    // Booking functionality
+    // Booking
     const resetBooking = () => {
-        booking.value = {
-            start: null,
-            end: null,
-            patient_id: '',
-            comment: '',
-            waitlist_entry_id: '',
-        };
+        booking.value = { start: null, end: null, patient_id: '', comment: '', waitlist_entry_id: '' };
     };
 
     const openBooking = (info) => {
@@ -391,8 +378,7 @@ export function useCalendar() {
             isBookingOpen.value = false;
             resetBooking();
 
-            await loadEvents();
-            await refreshAvailabilityBackground();
+            await refreshCalendar();
         } catch (e) {
             const message = e.response?.data?.message || e.message || 'Помилка створення запису';
             bookingError.value = message;
@@ -416,9 +402,7 @@ export function useCalendar() {
         loadingSlots.value = true;
 
         try {
-            const start = new Date(view.activeStart);
-            const end = new Date(view.activeEnd);
-
+            const r = ensureRange();
             const procedureId = appt?.procedure_id ?? null;
             const roomId = appt?.room_id ?? null;
             const equipmentId = appt?.equipment_id ?? null;
@@ -429,15 +413,15 @@ export function useCalendar() {
 
             availabilityBgEvents.value = await buildAvailabilityBgForRange({
                 doctorId: appt?.doctor_id || selectedDoctorId.value,
-                startDate: start,
-                endDateExclusive: end,
+                startDate: r.start,
+                endDateExclusive: r.end,
                 procedureId,
                 roomId,
                 equipmentId,
                 durationMinutes: duration,
             });
-        } catch (error) {
-            console.error('Помилка завантаження drag availability:', error);
+        } catch (err) {
+            console.error('Помилка завантаження drag availability:', err);
         } finally {
             loadingSlots.value = false;
         }
@@ -498,8 +482,7 @@ export function useCalendar() {
             await calendarApi.updateAppointment(id, payload);
             toastSuccess(kind === 'resize' ? 'Запис змінено' : 'Запис перенесено');
 
-            await loadEvents();
-            await refreshAvailabilityBackground();
+            await refreshCalendar();
         } catch (e) {
             info.revert();
             const msg = e.response?.data?.message || e.message || `Помилка при ${kind}`;
@@ -536,9 +519,7 @@ export function useCalendar() {
         }
     };
 
-    const handleSelect = (info) => {
-        openBooking(info);
-    };
+    const handleSelect = (info) => openBooking(info);
 
     const handleEventClick = (info) => {
         const appt = info.event.extendedProps?.appointment;
@@ -551,13 +532,28 @@ export function useCalendar() {
         alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
     };
 
-    const handleDatesSet = async () => {
-        await loadEvents();
-        await refreshAvailabilityBackground();
+    // ✅ ВАЖЛИВО: тепер приймає info від FullCalendar
+    const handleDatesSet = async (info) => {
+        // info.start / info.end — це ДІАПАЗОН (end exclusive)
+        if (info?.start && info?.end) {
+            const start = new Date(info.start);
+            const end = new Date(info.end);
+
+            const fromDate = formatDateYMD(start);
+            const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
+
+            activeRange.value = { start, end, fromDate, toDate };
+        } else {
+            ensureRange();
+        }
+
+        await loadEvents(activeRange.value);
+        await refreshAvailabilityBackground(activeRange.value);
     };
 
     const refreshCalendar = async () => {
-        await Promise.all([loadEvents(), refreshAvailabilityBackground()]);
+        const r = ensureRange();
+        await Promise.all([loadEvents(r), refreshAvailabilityBackground(r)]);
     };
 
     const initialize = async () => {
@@ -565,8 +561,7 @@ export function useCalendar() {
             loading.value = true;
             await Promise.all([fetchDoctors(), fetchProcedures()]);
             await Promise.all([fetchRooms(), fetchEquipments()]);
-            await loadEvents();
-            await refreshAvailabilityBackground();
+            await refreshCalendar();
         } catch (initError) {
             console.error('Помилка ініціалізації:', initError);
             const message = initError?.response?.data?.message || initError?.message || 'Помилка ініціалізації';
@@ -577,12 +572,9 @@ export function useCalendar() {
         }
     };
 
-    // Cleanup function
     const cleanup = () => {
         slotsCache.clear();
-        if (debouncedRefreshSlots?.cancel) {
-            debouncedRefreshSlots.cancel();
-        }
+        if (debouncedRefreshSlots?.cancel) debouncedRefreshSlots.cancel();
     };
 
     // Watchers
@@ -590,9 +582,14 @@ export function useCalendar() {
         debouncedRefreshSlots();
     });
 
-    watch([selectedDoctorId, viewMode], async () => {
+    // ✅ РОЗДІЛЕНО:
+    watch(viewMode, async () => {
         const api = calendarRef.value?.getApi?.();
         if (api) api.changeView(viewMode.value);
+        // datesSet прийде автоматом після changeView і сам підтягне дані
+    });
+
+    watch(selectedDoctorId, async () => {
         await refreshCalendar();
     });
 
@@ -606,20 +603,17 @@ export function useCalendar() {
         if (p?.equipment_id) selectedEquipmentId.value = p.equipment_id;
     });
 
-    // Auto cleanup on unmount
-    onUnmounted(() => {
-        cleanup();
-    });
+    onUnmounted(() => cleanup());
 
     onMounted(async () => {
         await initialize();
     });
 
     return {
-        // refs
         calendarRef,
         events,
         availabilityBgEvents,
+
         viewMode,
         selectedDoctorId,
         selectedProcedureId,
@@ -628,32 +622,37 @@ export function useCalendar() {
         selectedAssistantId,
         isFollowUp,
         allowSoftConflicts,
+
         doctors,
         procedures,
         rooms,
         equipments,
+
         loading,
         loadingSlots,
         error,
+
         booking,
         isBookingOpen,
         bookingLoading,
         bookingError,
 
-        // methods
         initialize,
         refreshCalendar,
         loadEvents,
         refreshAvailabilityBackground,
+
         createAppointment,
         closeBooking,
         openBooking,
+
         handleSelect,
         handleEventClick,
         handleEventMoveResize,
         showDragAvailability,
         hideDragAvailability,
         selectAllow,
+
         handleDatesSet,
         cleanup,
     };

@@ -1,6 +1,5 @@
 <script setup>
-import { computed } from 'vue';
-
+import { computed, reactive, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -17,6 +16,7 @@ const {
   calendarRef,
   events,
   availabilityBgEvents,
+
   viewMode,
   selectedDoctorId,
   selectedProcedureId,
@@ -25,31 +25,47 @@ const {
   selectedAssistantId,
   isFollowUp,
   allowSoftConflicts,
+
   doctors,
   procedures,
   rooms,
   equipments,
+
   loading,
   loadingSlots,
   error,
+
   booking,
   isBookingOpen,
   bookingLoading,
   bookingError,
+
   closeBooking,
   createAppointment,
+
   handleSelect,
   handleEventClick,
   handleEventMoveResize,
   showDragAvailability,
   hideDragAvailability,
   selectAllow,
+
   handleDatesSet,
+  refreshCalendar,
 } = useCalendar();
 
-const calendarOptions = computed(() => ({
+const mergedEvents = computed(() => [
+  ...availabilityBgEvents.value,
+  ...events.value,
+]);
+
+// ✅ Стабільний options-об'єкт (не пересоздається на кожен рух)
+const calendarOptions = reactive({
   plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
-  initialView: viewMode.value,
+
+  // initialView не робимо реактивним — view міняє composable через api.changeView
+  initialView: 'timeGridWeek',
+
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
@@ -58,37 +74,35 @@ const calendarOptions = computed(() => ({
 
   timeZone: 'local',
 
-  // ✅ UA locale
+  // ✅ Українська локаль
   locales: [ukLocale],
   locale: 'uk',
 
-  height: 'auto',
+  // ✅ 24h формат часу
+  slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+  eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+
+  // ✅ 24 години, але зі скролом (щоб було “красиво як раніше”)
+  slotMinTime: '00:00:00',
+  slotMaxTime: '24:00:00',
+  scrollTime: '07:00:00',
+  scrollTimeReset: false,
+
+  height: '100%',
   nowIndicator: true,
   selectable: true,
   editable: true,
   eventResizableFromStart: false,
 
-  // ✅ 24h grid + scroll to morning
-  slotMinTime: '00:00:00',
-  slotMaxTime: '24:00:00',
-  scrollTime: '07:00:00',
-
-  // ✅ slot labels like 07:00, 07:30 (no AM/PM)
-  slotLabelFormat: {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  },
-
   slotDuration: '00:30:00',
   allDaySlot: false,
   weekends: true,
 
-  events: [...availabilityBgEvents.value, ...events.value],
+  events: [], // поставимо нижче через watch
 
-  selectAllow,
-  select: handleSelect,
-  eventClick: handleEventClick,
+  selectAllow: (info) => selectAllow(info),
+  select: (info) => handleSelect(info),
+  eventClick: (info) => handleEventClick(info),
 
   eventDragStart: async (info) => {
     await showDragAvailability(info.event);
@@ -103,8 +117,17 @@ const calendarOptions = computed(() => ({
     await handleEventMoveResize(info, 'resize');
   },
 
-  datesSet: handleDatesSet,
-}));
+  datesSet: (info) => {
+    // ✅ важливо: передаємо info в composable,
+    // щоб він зберіг range і не ганявся по колу
+    handleDatesSet(info);
+  },
+});
+
+// ✅ оновлюємо тільки events масив, а не весь options-об’єкт
+watch(mergedEvents, (val) => {
+  calendarOptions.events = val;
+}, { immediate: true });
 
 const onBookingSubmit = (payload) => {
   createAppointment(payload);
@@ -112,25 +135,150 @@ const onBookingSubmit = (payload) => {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Можеш лишити свої фільтри як були — тут просто мінімально -->
-    <div v-if="error" class="rounded-lg bg-red-50 text-red-700 p-3">
-      {{ error }}
+  <div class="p-6 space-y-4">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Календар записів</h1>
+        <p class="text-slate-400 text-sm">
+          Виділяйте час — створюйте запис. Перетягуйте — переносьте. Вільні слоти підсвічуються.
+        </p>
+      </div>
+
+      <div class="flex gap-2 flex-wrap items-center">
+        <select
+            v-model="selectedDoctorId"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Оберіть лікаря"
+            :disabled="loading"
+        >
+          <option disabled value="">Оберіть лікаря</option>
+          <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
+            {{ doc.full_name || doc.name }}
+          </option>
+        </select>
+
+        <select
+            v-model="viewMode"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Виберіть вид"
+        >
+          <option value="timeGridDay">День</option>
+          <option value="timeGridWeek">Тиждень</option>
+          <option value="dayGridMonth">Місяць</option>
+        </select>
+
+        <button
+            class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white disabled:opacity-50"
+            :disabled="loading"
+            @click="refreshCalendar"
+            aria-label="Оновити календар"
+        >
+          <span v-if="loading">Оновлення...</span>
+          <span v-else>Оновити</span>
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading || loadingSlots" class="text-slate-500">
-      Завантаження…
+    <div v-if="loading" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+      <div class="bg-slate-900 border border-slate-700 rounded-lg p-6 flex flex-col items-center gap-3">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+        <p class="text-white">Завантаження календаря...</p>
+      </div>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      <FullCalendar ref="calendarRef" :options="calendarOptions" />
+    <div class="grid lg:grid-cols-4 gap-4">
+      <!-- ✅ ВАЖЛИВО: фіксована висота + overflow, щоб 24h було зі скролом -->
+      <div class="lg:col-span-3 bg-slate-900/60 border border-slate-800 rounded-xl p-3 relative h-[75vh] overflow-hidden">
+        <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3 mb-3">
+          {{ error }}
+        </div>
+
+        <div v-if="loadingSlots" class="absolute top-3 right-3 z-10 flex items-center gap-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+          <span class="text-xs text-slate-400">Оновлення слотів...</span>
+        </div>
+
+        <FullCalendar ref="calendarRef" :options="calendarOptions" />
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
+        <p class="text-white font-semibold">Контекст бронювання</p>
+
+        <label class="space-y-1 block">
+          <span class="text-xs text-slate-400">Процедура</span>
+          <select
+              v-model="selectedProcedureId"
+              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+              aria-label="Виберіть процедуру"
+          >
+            <option value="">Без процедури</option>
+            <option v-for="p in procedures" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+        </label>
+
+        <label class="space-y-1 block">
+          <span class="text-xs text-slate-400">Кабінет</span>
+          <select
+              v-model="selectedRoomId"
+              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+              aria-label="Виберіть кабінет"
+          >
+            <option value="">Будь-який</option>
+            <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</option>
+          </select>
+        </label>
+
+        <label class="space-y-1 block">
+          <span class="text-xs text-slate-400">Обладнання</span>
+          <select
+              v-model="selectedEquipmentId"
+              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+              aria-label="Виберіть обладнання"
+          >
+            <option value="">Будь-яке</option>
+            <option v-for="e in equipments" :key="e.id" :value="e.id">{{ e.name }}</option>
+          </select>
+        </label>
+
+        <label class="space-y-1 block">
+          <span class="text-xs text-slate-400">Асистент ID</span>
+          <input
+              v-model="selectedAssistantId"
+              type="number"
+              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+              placeholder="Напр. 123"
+              aria-label="ID асистента"
+          />
+        </label>
+
+        <div class="space-y-2 text-sm text-slate-300">
+          <label class="flex items-center gap-2">
+            <input v-model="isFollowUp" type="checkbox" class="accent-emerald-500" />
+            <span>Повторний візит</span>
+          </label>
+
+          <label class="flex items-center gap-2">
+            <input v-model="allowSoftConflicts" type="checkbox" class="accent-emerald-500" />
+            <span>Дозволити soft конфлікти</span>
+          </label>
+        </div>
+
+        <div class="text-xs text-slate-500 pt-2 border-t border-slate-800">
+          <p class="mb-1">Підказка:</p>
+          <ul class="space-y-1 list-disc list-inside">
+            <li>Вільні слоти підсвічуються зеленим</li>
+            <li>Переносьте запис тільки на підсвічений час</li>
+            <li>Під час перетягування підсвітка автоматично підлаштовується</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <BookingModal
-        v-if="isBookingOpen"
+        :is-open="isBookingOpen"
         :booking="booking"
-        :loading="bookingLoading"
-        :error="bookingError"
+        :booking-loading="bookingLoading"
+        :booking-error="bookingError"
         @close="closeBooking"
         @submit="onBookingSubmit"
     />
