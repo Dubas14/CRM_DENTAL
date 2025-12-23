@@ -1,0 +1,13 @@
+[90m= [39m[
+    "[34mid[39m" => [35m5[39m,
+    "[34mname[39m" => "[32mEddie Toy[39m",
+    "[34mfirst_name[39m" => [36mnull[39m,
+    "[34mlast_name[39m" => [36mnull[39m,
+    "[34memail[39m" => "[32mzgutkowski@example.com[39m",
+    "[34memail_verified_at[39m" => "[32m2025-12-03T22:22:49.000000Z[39m",
+    "[34mis_admin[39m" => [36mfalse[39m,
+    "[34mglobal_role[39m" => "[32mdoctor[39m",
+    "[34mcreated_at[39m" => "[32m2025-12-03T22:22:49.000000Z[39m",
+    "[34mupdated_at[39m" => "[32m2025-12-23T18:03:41.000000Z[39m",
+  ]
+

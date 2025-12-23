@@ -41,7 +41,7 @@ export function useAuth() {
             user.value = null;
 
             showToast('Ви вийшли з системи', 'info');
-            await router.push({ name: 'Login' });
+            await router.push({ name: 'login' });
 
         } catch (error) {
             console.warn('Logout error:', error);
@@ -50,7 +50,7 @@ export function useAuth() {
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
             }
-            await router.push({ name: 'Login' });
+            await router.push({ name: 'login' });
         }
     };
 
