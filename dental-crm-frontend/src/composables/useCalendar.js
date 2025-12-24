@@ -16,10 +16,14 @@ export function useCalendar() {
     // UI state
     const viewMode = ref('timeGridWeek');
     const selectedDoctorId = ref('');
+    const selectedDoctorIds = ref([]);
     const selectedProcedureId = ref('');
     const selectedEquipmentId = ref('');
     const selectedRoomId = ref('');
+    const selectedRoomIds = ref([]);
     const selectedAssistantId = ref('');
+    const selectedSpecializations = ref([]);
+    const resourceViewType = ref('doctor');
     const isFollowUp = ref(false);
     const allowSoftConflicts = ref(false);
 
@@ -168,14 +172,24 @@ export function useCalendar() {
         return proc ? `${patient} • ${proc}` : patient;
     };
 
-    const mapAppointmentsToEvents = (appts) => appts.map((appt) => ({
-        id: String(appt.id),
-        title: buildEventTitle(appt),
-        start: normalizeDateTimeForCalendar(appt.start_at),
-        end: normalizeDateTimeForCalendar(appt.end_at),
-        extendedProps: { appointment: appt, status: appt.status },
-        classNames: [`status-${appt.status || 'scheduled'}`],
-    }));
+    const mapAppointmentsToEvents = (appts, { resourceType } = {}) => appts
+        .map((appt) => {
+            const resourceId = resourceType === 'doctor'
+                ? appt?.doctor_id
+                : resourceType === 'room'
+                    ? appt?.room_id
+                    : null;
+            return {
+                id: String(appt.id),
+                title: buildEventTitle(appt),
+                start: normalizeDateTimeForCalendar(appt.start_at),
+                end: normalizeDateTimeForCalendar(appt.end_at),
+                resourceId: resourceId ? String(resourceId) : undefined,
+                extendedProps: { appointment: appt, status: appt.status },
+                classNames: [`status-${appt.status || 'scheduled'}`],
+            };
+        })
+        .filter((event) => event);
 
     const calendarBlockColors = {
         vacation: 'rgba(248, 113, 113, 0.25)',
@@ -187,10 +201,11 @@ export function useCalendar() {
     const resolveCalendarBlockType = (block) =>
         block?.type || block?.block_type || block?.kind || 'block';
 
-    const mapCalendarBlocksToEvents = (blocks) => blocks.map((block) => {
+    const mapCalendarBlocksToEvents = (blocks, { resourceType } = {}) => blocks.map((block) => {
         const type = resolveCalendarBlockType(block);
         const start = normalizeDateTimeForCalendar(block.start_at || block.start || block.from);
         const end = normalizeDateTimeForCalendar(block.end_at || block.end || block.to);
+        const resourceId = resourceType === 'doctor' ? block?.doctor_id : null;
         return {
             id: `calendar-block-${block.id || `${type}-${start}`}`,
             start,
@@ -198,6 +213,7 @@ export function useCalendar() {
             display: 'background',
             backgroundColor: calendarBlockColors[type] || 'rgba(148, 163, 184, 0.22)',
             classNames: ['calendar-block', `calendar-block-${type}`],
+            resourceId: resourceId ? String(resourceId) : undefined,
             extendedProps: { block, type },
         };
     });
@@ -211,14 +227,29 @@ export function useCalendar() {
         null;
 
     const filteredDoctors = computed(() => {
-        if (!clinicId.value) return doctors.value;
-        return doctors.value.filter((doctor) => Number(resolveDoctorClinicId(doctor)) === Number(clinicId.value));
+        const base = clinicId.value
+            ? doctors.value.filter((doctor) => Number(resolveDoctorClinicId(doctor)) === Number(clinicId.value))
+            : doctors.value;
+
+        if (!selectedSpecializations.value.length) return base;
+        return base.filter((doctor) => selectedSpecializations.value.includes(doctor.specialization));
     });
 
+    const specializations = computed(() => {
+        const list = new Set();
+        doctors.value.forEach((doctor) => {
+            if (doctor?.specialization) list.add(doctor.specialization);
+        });
+        return Array.from(list).sort((a, b) => a.localeCompare(b));
+    });
+
+    const isResourceView = computed(() => viewMode.value.startsWith('resourceTimeGrid'));
+
     const syncSelectedDoctorWithClinic = () => {
-        const list = clinicId.value ? filteredDoctors.value : doctors.value;
+        const list = filteredDoctors.value;
         if (!list.length) {
             selectedDoctorId.value = '';
+            selectedDoctorIds.value = [];
             events.value = [];
             availabilityBgEvents.value = [];
             return;
@@ -228,6 +259,20 @@ export function useCalendar() {
         if (!hasSelected) {
             selectedDoctorId.value = String(list[0].id);
         }
+
+        const validIds = new Set(list.map((doctor) => String(doctor.id)));
+        const synced = selectedDoctorIds.value.filter((id) => validIds.has(String(id)));
+        if (!synced.length) {
+            selectedDoctorIds.value = list.map((doctor) => String(doctor.id));
+        } else {
+            selectedDoctorIds.value = synced;
+        }
+    };
+
+    const syncSelectedRooms = () => {
+        const validIds = new Set(rooms.value.map((room) => String(room.id)));
+        const synced = selectedRoomIds.value.filter((id) => validIds.has(String(id)));
+        selectedRoomIds.value = synced.length ? synced : rooms.value.map((room) => String(room.id));
     };
 
     const fetchDoctors = async () => {
@@ -264,6 +309,7 @@ export function useCalendar() {
         }
         const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
         rooms.value = Array.isArray(data) ? data : (data?.data || []);
+        syncSelectedRooms();
     };
 
     const fetchEquipments = async () => {
@@ -311,8 +357,21 @@ export function useCalendar() {
         return activeRange.value;
     };
 
+    const resolveDoctorIdsForEvents = () => {
+        if (isResourceView.value && resourceViewType.value === 'doctor') {
+            return selectedDoctorIds.value.length ? selectedDoctorIds.value : [];
+        }
+
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            return selectedDoctorIds.value.length ? selectedDoctorIds.value : (selectedDoctorId.value ? [selectedDoctorId.value] : []);
+        }
+
+        return selectedDoctorId.value ? [selectedDoctorId.value] : [];
+    };
+
     const loadEvents = async (range = null) => {
-        if (!selectedDoctorId.value) return;
+        const doctorIds = resolveDoctorIdsForEvents();
+        if (!doctorIds.length) return;
 
         const reqId = ++eventsReqId;
         loading.value = true;
@@ -320,12 +379,24 @@ export function useCalendar() {
 
         try {
             const r = range ? range : ensureRange();
-            const appts = await loadAppointmentsRange(selectedDoctorId.value, r.fromDate, r.toDate);
+            const apptBatches = await Promise.all(
+                doctorIds.map((doctorId) => loadAppointmentsRange(doctorId, r.fromDate, r.toDate)),
+            );
+            const appts = apptBatches.flat();
 
             // якщо під час запиту прийшов новіший — не застосовуємо
             if (reqId !== eventsReqId) return;
 
-            events.value = mapAppointmentsToEvents(appts);
+            let mapped = mapAppointmentsToEvents(appts, {
+                resourceType: isResourceView.value ? resourceViewType.value : null,
+            });
+
+            if (isResourceView.value && resourceViewType.value === 'room' && selectedRoomIds.value.length) {
+                const allowed = new Set(selectedRoomIds.value.map((id) => String(id)));
+                mapped = mapped.filter((event) => event.resourceId && allowed.has(String(event.resourceId)));
+            }
+
+            events.value = mapped;
         } catch (e) {
             const message = e.response?.data?.message || e.message || 'Помилка завантаження подій';
             error.value = message;
@@ -336,21 +407,32 @@ export function useCalendar() {
     };
 
     const loadCalendarBlocks = async (range = null) => {
-        if (!selectedDoctorId.value) return;
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            calendarBlocks.value = [];
+            return;
+        }
+
+        const doctorIds = resolveDoctorIdsForEvents();
+        if (!doctorIds.length) return;
 
         const reqId = ++blocksReqId;
 
         try {
             const r = range ? range : ensureRange();
-            const blocks = await loadCalendarBlocksRange({
-                doctorId: selectedDoctorId.value,
-                fromDate: r.fromDate,
-                toDate: r.toDate,
-            });
+            const blocksBatches = await Promise.all(
+                doctorIds.map((doctorId) => loadCalendarBlocksRange({
+                    doctorId,
+                    fromDate: r.fromDate,
+                    toDate: r.toDate,
+                })),
+            );
+            const blocks = blocksBatches.flat();
 
             if (reqId !== blocksReqId) return;
 
-            calendarBlocks.value = mapCalendarBlocksToEvents(blocks);
+            calendarBlocks.value = mapCalendarBlocksToEvents(blocks, {
+                resourceType: isResourceView.value ? resourceViewType.value : null,
+            });
         } catch (e) {
             console.warn('Помилка завантаження блоків календаря:', e);
         }
@@ -378,7 +460,17 @@ export function useCalendar() {
         return 30;
     };
 
-    const buildAvailabilityBgForRange = async ({ doctorId, startDate, endDateExclusive, procedureId, roomId, equipmentId, assistantId, durationMinutes }) => {
+    const buildAvailabilityBgForRange = async ({
+        doctorId,
+        startDate,
+        endDateExclusive,
+        procedureId,
+        roomId,
+        equipmentId,
+        assistantId,
+        durationMinutes,
+        resourceId,
+    }) => {
         const api = calendarRef.value?.getApi?.();
         const view = api?.view;
         if (view?.type === 'dayGridMonth') return [];
@@ -401,6 +493,7 @@ export function useCalendar() {
                         overlap: true,
                         backgroundColor: 'rgba(16, 185, 129, 0.22)',
                         classNames: ['free-slot'],
+                        resourceId: resourceId ? String(resourceId) : undefined,
                     });
                 }
             } catch (err) {
@@ -424,7 +517,7 @@ export function useCalendar() {
             return;
         }
 
-        if (!selectedDoctorId.value) return;
+        if (!resolveDoctorIdsForEvents().length) return;
         if (dragContextActive.value) return;
 
         const reqId = ++slotsReqId;
@@ -434,16 +527,26 @@ export function useCalendar() {
             const r = range ? range : ensureRange();
 
             const duration = getDurationForContext();
-            const bg = await buildAvailabilityBgForRange({
-                doctorId: selectedDoctorId.value,
-                startDate: r.start,
-                endDateExclusive: r.end,
-                procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
-                roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
-                equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
-                assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
-                durationMinutes: duration,
-            });
+            if (isResourceView.value && resourceViewType.value === 'room') {
+                availabilityBgEvents.value = [];
+                return;
+            }
+
+            const doctorIds = resolveDoctorIdsForEvents();
+            const bgBatches = await Promise.all(
+                doctorIds.map((doctorId) => buildAvailabilityBgForRange({
+                    doctorId,
+                    startDate: r.start,
+                    endDateExclusive: r.end,
+                    procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+                    roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                    equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                    assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+                    durationMinutes: duration,
+                    resourceId: isResourceView.value ? doctorId : null,
+                })),
+            );
+            const bg = bgBatches.flat();
 
             if (reqId !== slotsReqId) return;
             availabilityBgEvents.value = bg;
@@ -634,12 +737,19 @@ export function useCalendar() {
             const date = formatDateYMD(selectInfo.start);
             const time = formatTimeHM(selectInfo.start);
             const duration = minutesDiff(selectInfo.start, selectInfo.end) || 30;
+            const resourceId = selectInfo?.resource?.id;
+            const doctorId = resourceViewType.value === 'doctor' && resourceId
+                ? resourceId
+                : selectedDoctorId.value;
+            const roomId = resourceViewType.value === 'room' && resourceId
+                ? resourceId
+                : selectedRoomId.value;
 
             const slotRes = await fetchDoctorSlots({
-                doctorId: selectedDoctorId.value,
+                doctorId,
                 date,
                 procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
-                roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                roomId: roomId ? Number(roomId) : null,
                 equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
                 assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
                 durationMinutes: duration,
@@ -651,7 +761,16 @@ export function useCalendar() {
         }
     };
 
-    const handleSelect = (info) => openBooking(info);
+    const handleSelect = (info) => {
+        const resourceId = info?.resource?.id;
+        if (resourceViewType.value === 'doctor' && resourceId) {
+            selectedDoctorId.value = String(resourceId);
+        }
+        if (resourceViewType.value === 'room' && resourceId) {
+            selectedRoomId.value = String(resourceId);
+        }
+        openBooking(info);
+    };
 
     const handleEventClick = (info) => {
         const appt = info.event.extendedProps?.appointment;
@@ -722,6 +841,10 @@ export function useCalendar() {
         selectedAssistantId.value = '';
     });
 
+    watch(selectedSpecializations, () => {
+        syncSelectedDoctorWithClinic();
+    });
+
     // ✅ РОЗДІЛЕНО:
     watch(viewMode, async () => {
         const api = calendarRef.value?.getApi?.();
@@ -730,6 +853,33 @@ export function useCalendar() {
     });
 
     watch(selectedDoctorId, async () => {
+        if (selectedDoctorId.value && !selectedDoctorIds.value.includes(String(selectedDoctorId.value))) {
+            selectedDoctorIds.value = [...new Set([...selectedDoctorIds.value, String(selectedDoctorId.value)])];
+        }
+        await refreshCalendar();
+    });
+
+    watch(selectedDoctorIds, async () => {
+        if (isResourceView.value && resourceViewType.value === 'doctor') {
+            if (!selectedDoctorIds.value.length) {
+                syncSelectedDoctorWithClinic();
+            }
+            await refreshCalendar();
+        }
+    });
+
+    watch(selectedRoomIds, async () => {
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            await refreshCalendar();
+        }
+    });
+
+    watch([resourceViewType, viewMode], async () => {
+        if (resourceViewType.value === 'room') {
+            syncSelectedRooms();
+        } else {
+            syncSelectedDoctorWithClinic();
+        }
         await refreshCalendar();
     });
 
@@ -760,10 +910,16 @@ export function useCalendar() {
 
         viewMode,
         selectedDoctorId,
+        selectedDoctorIds,
         selectedProcedureId,
         selectedEquipmentId,
         selectedRoomId,
+        selectedRoomIds,
         selectedAssistantId,
+        selectedSpecializations,
+        resourceViewType,
+        specializations,
+        isResourceView,
         isFollowUp,
         allowSoftConflicts,
 

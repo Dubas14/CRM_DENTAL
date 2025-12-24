@@ -2,6 +2,8 @@
 import { computed, reactive, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
+import resourceCommonPlugin from '@fullcalendar/resource-common';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ukLocale from '@fullcalendar/core/locales/uk';
@@ -20,11 +22,15 @@ const {
 
   viewMode,
   selectedDoctorId,
+  selectedDoctorIds,
   selectedProcedureId,
   selectedEquipmentId,
   selectedRoomId,
+  selectedRoomIds,
   selectedAssistantId,
   selectedClinicId,
+  selectedSpecializations,
+  resourceViewType,
   isFollowUp,
   allowSoftConflicts,
 
@@ -36,6 +42,8 @@ const {
   assistants,
   clinics,
   showClinicSelector,
+  specializations,
+  isResourceView,
 
   loading,
   loadingSlots,
@@ -60,6 +68,29 @@ const {
   refreshCalendar,
 } = useCalendar();
 
+const selectedDoctorResources = computed(() =>
+  doctors.value.filter((doctor) => selectedDoctorIds.value.includes(String(doctor.id))),
+);
+
+const selectedRoomResources = computed(() =>
+  rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
+);
+
+const calendarResources = computed(() => {
+  if (!isResourceView.value) return [];
+  if (resourceViewType.value === 'doctor') {
+    return selectedDoctorResources.value.map((doctor) => ({
+      id: String(doctor.id),
+      title: doctor.full_name || doctor.name || `#${doctor.id}`,
+    }));
+  }
+
+  return selectedRoomResources.value.map((room) => ({
+    id: String(room.id),
+    title: room.name || `#${room.id}`,
+  }));
+});
+
 const calendarEventSources = computed(() => [
   availabilityBgEvents.value,
   calendarBlocks.value,
@@ -83,7 +114,7 @@ watch([requiresAssistant, assistants], () => {
 
 // ✅ Стабільний options-об'єкт (не пересоздається на кожен рух)
 const calendarOptions = reactive({
-  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
+  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin, resourceTimeGridPlugin, resourceCommonPlugin],
 
   // initialView не робимо реактивним — view міняє composable через api.changeView
   initialView: 'timeGridWeek',
@@ -121,6 +152,8 @@ const calendarOptions = reactive({
   weekends: true,
 
   eventSources: [], // поставимо нижче через watch
+  resources: [],
+  resourceAreaWidth: '18%',
 
   selectAllow: (info) => selectAllow(info),
   select: (info) => handleSelect(info),
@@ -149,6 +182,14 @@ const calendarOptions = reactive({
 // ✅ оновлюємо тільки events масив, а не весь options-об’єкт
 watch(calendarEventSources, (val) => {
   calendarOptions.eventSources = val;
+}, { immediate: true });
+
+watch(calendarResources, (val) => {
+  calendarOptions.resources = val;
+}, { immediate: true });
+
+watch(resourceViewType, (val) => {
+  calendarOptions.resourceAreaHeaderContent = val === 'room' ? 'Кабінети' : 'Лікарі';
 }, { immediate: true });
 
 const onBookingSubmit = (payload) => {
@@ -181,6 +222,18 @@ const onBookingSubmit = (payload) => {
         </select>
 
         <select
+            v-model="selectedSpecializations"
+            multiple
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Фільтр спеціалізацій"
+            :disabled="loading || !specializations.length"
+        >
+          <option v-for="spec in specializations" :key="spec" :value="spec">
+            {{ spec }}
+          </option>
+        </select>
+
+        <select
             v-model="selectedDoctorId"
             class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
             aria-label="Оберіть лікаря"
@@ -193,6 +246,40 @@ const onBookingSubmit = (payload) => {
         </select>
 
         <select
+            v-if="isResourceView"
+            v-model="resourceViewType"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Ресурсний режим"
+        >
+          <option value="doctor">Лікарі</option>
+          <option value="room">Кабінети</option>
+        </select>
+
+        <select
+            v-if="isResourceView && resourceViewType === 'doctor'"
+            v-model="selectedDoctorIds"
+            multiple
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Оберіть лікарів"
+        >
+          <option v-for="doc in filteredDoctors" :key="doc.id" :value="String(doc.id)">
+            {{ doc.full_name || doc.name }}
+          </option>
+        </select>
+
+        <select
+            v-if="isResourceView && resourceViewType === 'room'"
+            v-model="selectedRoomIds"
+            multiple
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Оберіть кабінети"
+        >
+          <option v-for="room in rooms" :key="room.id" :value="String(room.id)">
+            {{ room.name }}
+          </option>
+        </select>
+
+        <select
             v-model="viewMode"
             class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
             aria-label="Виберіть вид"
@@ -200,6 +287,8 @@ const onBookingSubmit = (payload) => {
           <option value="timeGridDay">День</option>
           <option value="timeGridWeek">Тиждень</option>
           <option value="dayGridMonth">Місяць</option>
+          <option value="resourceTimeGridDay">Multi (день)</option>
+          <option value="resourceTimeGridWeek">Multi (тиждень)</option>
         </select>
 
         <button
