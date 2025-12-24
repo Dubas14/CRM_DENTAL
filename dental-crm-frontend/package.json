@@ -12,6 +12,8 @@
     "@fullcalendar/core": "^6.1.20",
     "@fullcalendar/daygrid": "^6.1.20",
     "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/resource-common": "5.11.5",
+    "@fullcalendar/resource-timegrid": "5.11.5",
     "@fullcalendar/timegrid": "^6.1.20",
     "@fullcalendar/vue3": "^6.1.20",
     "axios": "^1.13.2",
