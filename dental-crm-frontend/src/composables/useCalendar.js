@@ -797,7 +797,7 @@ export function useCalendar() {
         alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
     };
 
-    // ✅ ВАЖЛИВО: тепер приймає info від FullCalendar
+    // ✅ ВАЖЛИВО: отримує info з календаря (QCalendar)
     const handleDatesSet = async (info) => {
         // 1) оновлюємо activeRange
         if (info?.start && info?.end) {
