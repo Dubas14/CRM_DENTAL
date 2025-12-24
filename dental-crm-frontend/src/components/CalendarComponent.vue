@@ -16,6 +16,7 @@ const {
   calendarRef,
   events,
   availabilityBgEvents,
+  calendarBlocks,
 
   viewMode,
   selectedDoctorId,
@@ -59,9 +60,10 @@ const {
   refreshCalendar,
 } = useCalendar();
 
-const mergedEvents = computed(() => [
-  ...availabilityBgEvents.value,
-  ...events.value,
+const calendarEventSources = computed(() => [
+  availabilityBgEvents.value,
+  calendarBlocks.value,
+  events.value,
 ]);
 
 const selectedProcedure = computed(() =>
@@ -118,7 +120,7 @@ const calendarOptions = reactive({
   allDaySlot: false,
   weekends: true,
 
-  events: [], // поставимо нижче через watch
+  eventSources: [], // поставимо нижче через watch
 
   selectAllow: (info) => selectAllow(info),
   select: (info) => handleSelect(info),
@@ -145,8 +147,8 @@ const calendarOptions = reactive({
 });
 
 // ✅ оновлюємо тільки events масив, а не весь options-об’єкт
-watch(mergedEvents, (val) => {
-  calendarOptions.events = val;
+watch(calendarEventSources, (val) => {
+  calendarOptions.eventSources = val;
 }, { immediate: true });
 
 const onBookingSubmit = (payload) => {
