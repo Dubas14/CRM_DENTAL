@@ -351,7 +351,7 @@ class AppointmentController extends Controller
         $appointments = $appointments->map(fn ($appointment) => $appointment->load([
             'clinic:id,name',
             'doctor:id,full_name,clinic_id',
-            'assistant:id,full_name',
+            'assistant:id,name,first_name,last_name',
             'patient:id,full_name,phone',
             'procedure:id,name,duration_minutes',
             'procedureStep:id,procedure_id,name,duration_minutes,order',
@@ -379,7 +379,7 @@ class AppointmentController extends Controller
             ->with([
                 'clinic:id,name',
                 'doctor:id,full_name,clinic_id',
-                'assistant:id,full_name',
+                'assistant:id,name,first_name,last_name',
                 'patient:id,full_name,phone',
                 'procedure:id,name,duration_minutes',
                 'procedureStep:id,procedure_id,name,duration_minutes,order',
@@ -548,7 +548,7 @@ class AppointmentController extends Controller
         $appointment = $appointment->fresh([
             'clinic:id,name',
             'doctor:id,full_name,clinic_id',
-            'assistant:id,full_name',
+            'assistant:id,name,first_name,last_name',
             'patient:id,full_name,phone',
             'procedure:id,name,duration_minutes',
             'procedureStep:id,procedure_id,name,duration_minutes,order',

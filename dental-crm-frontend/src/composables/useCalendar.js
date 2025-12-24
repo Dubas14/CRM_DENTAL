@@ -347,8 +347,8 @@ export function useCalendar() {
         const { data } = await calendarApi.getCalendarBlocks({
             doctor_id: doctorId,
             from_date: fromDate,
-            to_date: toDate,
-            clinic_id: clinicId.value,
+            from: fromDate,
+            to: toDate,
         });
 
         return Array.isArray(data) ? data : (data?.data || []);

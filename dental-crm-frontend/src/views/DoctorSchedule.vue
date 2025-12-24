@@ -453,12 +453,14 @@ const loadAppointments = async (silent = false) => {
 
 const loadCalendarBlocks = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
+  if (!clinicId.value) return;
   if (!silent) loadingCalendarBlocks.value = true;
   calendarBlocksError.value = null;
   try {
     const { data } = await calendarApi.getCalendarBlocks({
-      doctor_id: Number(selectedDoctorId.value),
-      date: selectedDate.value,
+      clinic_id: clinicId.value,
+      from: selectedDate.value,
+      to: selectedDate.value,
     });
     calendarBlocks.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
   } catch (e) {
