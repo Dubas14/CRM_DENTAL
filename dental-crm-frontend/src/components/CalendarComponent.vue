@@ -213,106 +213,147 @@ const onBookingSubmit = (payload) => {
 <template>
   <div class="p-6 space-y-4">
     <div class="flex items-start justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-2xl font-bold text-white">Календар записів</h1>
-        <p class="text-slate-400 text-sm">
-          Виділяйте час — створюйте запис. Перетягуйте — переносьте. Вільні слоти підсвічуються.
-        </p>
-      </div>
+      <p class="text-slate-400 text-sm max-w-2xl">
+        Виділяйте час — створюйте запис. Перетягуйте — переносьте. Вільні слоти підсвічуються.
+      </p>
 
-      <div class="flex gap-2 flex-wrap items-center">
-        <select
+      <div class="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <label
             v-if="showClinicSelector"
-            v-model="selectedClinicId"
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Оберіть клініку"
-            :disabled="loading"
+            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]"
         >
-          <option disabled value="">Оберіть клініку</option>
-          <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
-            {{ clinic.name }}
-          </option>
-        </select>
+          <span>Клініка</span>
+          <select
+              v-model="selectedClinicId"
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Оберіть клініку"
+              :disabled="loading"
+          >
+            <option disabled value="">Оберіть клініку</option>
+            <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+              {{ clinic.name }}
+            </option>
+          </select>
+        </label>
 
-        <select
-            v-model="selectedSpecializations"
-            multiple
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Фільтр спеціалізацій"
-            :disabled="loading || !specializations.length"
-        >
-          <option v-for="spec in specializations" :key="spec" :value="spec">
-            {{ spec }}
-          </option>
-        </select>
+        <fieldset class="flex flex-col gap-1 text-xs text-slate-400 min-w-[220px]">
+          <legend class="text-xs text-slate-400">Спеціалізації</legend>
+          <div
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm max-h-28 overflow-y-auto space-y-1"
+              role="group"
+              aria-label="Фільтр спеціалізацій"
+              :aria-disabled="loading || !specializations.length"
+          >
+            <label
+                v-for="spec in specializations"
+                :key="spec"
+                class="flex items-center gap-2 text-slate-200"
+            >
+              <input
+                  v-model="selectedSpecializations"
+                  type="checkbox"
+                  :value="spec"
+                  class="accent-emerald-500"
+                  :disabled="loading || !specializations.length"
+              />
+              <span>{{ spec }}</span>
+            </label>
+            <p v-if="!specializations.length" class="text-xs text-slate-500">
+              Немає доступних спеціалізацій
+            </p>
+          </div>
+        </fieldset>
 
-        <select
-            v-model="selectedDoctorId"
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Оберіть лікаря"
-            :disabled="loading"
-        >
-          <option disabled value="">Оберіть лікаря</option>
-          <option v-for="doc in filteredDoctors" :key="doc.id" :value="doc.id">
-            {{ doc.full_name || doc.name }}
-          </option>
-        </select>
+        <label class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]">
+          <span>Лікар</span>
+          <select
+              v-model="selectedDoctorId"
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Оберіть лікаря"
+              :disabled="loading"
+          >
+            <option disabled value="">Оберіть лікаря</option>
+            <option v-for="doc in filteredDoctors" :key="doc.id" :value="doc.id">
+              {{ doc.full_name || doc.name }}
+            </option>
+          </select>
+        </label>
 
-        <select
+        <label
             v-if="isResourceView"
-            v-model="resourceViewType"
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Ресурсний режим"
+            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]"
         >
-          <option value="doctor">Лікарі</option>
-          <option value="room">Кабінети</option>
-        </select>
+          <span>Група ресурсів</span>
+          <select
+              v-model="resourceViewType"
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Ресурсний режим"
+          >
+            <option value="doctor">Лікарі</option>
+            <option value="room">Кабінети</option>
+          </select>
+        </label>
 
-        <select
+        <label
             v-if="isResourceView && resourceViewType === 'doctor'"
-            v-model="selectedDoctorIds"
-            multiple
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Оберіть лікарів"
+            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
         >
-          <option v-for="doc in filteredDoctors" :key="doc.id" :value="String(doc.id)">
-            {{ doc.full_name || doc.name }}
-          </option>
-        </select>
+          <span>Лікарі у групі</span>
+          <select
+              v-model="selectedDoctorIds"
+              multiple
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Оберіть лікарів"
+          >
+            <option v-for="doc in filteredDoctors" :key="doc.id" :value="String(doc.id)">
+              {{ doc.full_name || doc.name }}
+            </option>
+          </select>
+        </label>
 
-        <select
+        <label
             v-if="isResourceView && resourceViewType === 'room'"
-            v-model="selectedRoomIds"
-            multiple
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Оберіть кабінети"
+            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
         >
-          <option v-for="room in rooms" :key="room.id" :value="String(room.id)">
-            {{ room.name }}
-          </option>
-        </select>
+          <span>Кабінети у групі</span>
+          <select
+              v-model="selectedRoomIds"
+              multiple
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Оберіть кабінети"
+          >
+            <option v-for="room in rooms" :key="room.id" :value="String(room.id)">
+              {{ room.name }}
+            </option>
+          </select>
+        </label>
 
-        <select
-            v-model="viewMode"
-            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-            aria-label="Виберіть вид"
-        >
-          <option value="timeGridDay">День</option>
-          <option value="timeGridWeek">Тиждень</option>
-          <option value="dayGridMonth">Місяць</option>
-          <option value="resourceTimeGridDay">Multi (день)</option>
-          <option value="resourceTimeGridWeek">Multi (тиждень)</option>
-        </select>
+        <label class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]">
+          <span>Вид</span>
+          <select
+              v-model="viewMode"
+              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+              aria-label="Виберіть вид"
+          >
+            <option value="timeGridDay">День</option>
+            <option value="timeGridWeek">Тиждень</option>
+            <option value="dayGridMonth">Місяць</option>
+            <option value="resourceTimeGridDay">Multi (день)</option>
+            <option value="resourceTimeGridWeek">Multi (тиждень)</option>
+          </select>
+        </label>
 
-        <button
-            class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white disabled:opacity-50"
-            :disabled="loading"
-            @click="refreshCalendar"
-            aria-label="Оновити календар"
-        >
-          <span v-if="loading">Оновлення...</span>
-          <span v-else>Оновити</span>
-        </button>
+        <div class="flex flex-col justify-end min-w-[140px]">
+          <button
+              class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white disabled:opacity-50"
+              :disabled="loading"
+              @click="refreshCalendar"
+              aria-label="Оновити календар"
+          >
+            <span v-if="loading">Оновлення...</span>
+            <span v-else>Оновити</span>
+          </button>
+        </div>
       </div>
     </div>
 
