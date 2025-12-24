@@ -28,6 +28,7 @@ const {
   allowSoftConflicts,
 
   doctors,
+  filteredDoctors,
   procedures,
   rooms,
   equipments,
@@ -184,7 +185,7 @@ const onBookingSubmit = (payload) => {
             :disabled="loading"
         >
           <option disabled value="">Оберіть лікаря</option>
-          <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
+          <option v-for="doc in filteredDoctors" :key="doc.id" :value="doc.id">
             {{ doc.full_name || doc.name }}
           </option>
         </select>

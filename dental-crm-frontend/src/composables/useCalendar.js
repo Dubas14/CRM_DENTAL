@@ -176,10 +176,36 @@ export function useCalendar() {
     }));
 
     // Data fetching
+    const resolveDoctorClinicId = (doctor) =>
+        doctor?.clinic_id ||
+        doctor?.clinic?.id ||
+        doctor?.clinic?.clinic_id ||
+        doctor?.clinics?.[0]?.clinic_id ||
+        null;
+
+    const filteredDoctors = computed(() => {
+        if (!clinicId.value) return doctors.value;
+        return doctors.value.filter((doctor) => Number(resolveDoctorClinicId(doctor)) === Number(clinicId.value));
+    });
+
+    const syncSelectedDoctorWithClinic = () => {
+        const list = clinicId.value ? filteredDoctors.value : doctors.value;
+        if (!list.length) {
+            selectedDoctorId.value = '';
+            events.value = [];
+            availabilityBgEvents.value = [];
+            return;
+        }
+
+        const hasSelected = list.some((doctor) => Number(doctor.id) === Number(selectedDoctorId.value));
+        if (!hasSelected) {
+            selectedDoctorId.value = String(list[0].id);
+        }
+    };
+
     const fetchDoctors = async () => {
         const { data } = await apiClient.get('/doctors');
         doctors.value = Array.isArray(data) ? data : (data?.data || []);
-        if (!selectedDoctorId.value && doctors.value.length) selectedDoctorId.value = doctors.value[0].id;
     };
 
     const fetchProcedures = async () => {
@@ -613,6 +639,7 @@ export function useCalendar() {
         try {
             loading.value = true;
             await Promise.all([fetchDoctors(), fetchProcedures(), fetchClinics()]);
+            syncSelectedDoctorWithClinic();
             await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
             await refreshCalendar();
         } catch (initError) {
@@ -653,6 +680,7 @@ export function useCalendar() {
     });
 
     watch(clinicId, async () => {
+        syncSelectedDoctorWithClinic();
         await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
         await refreshAvailabilityBackground();
     });
@@ -685,6 +713,7 @@ export function useCalendar() {
         allowSoftConflicts,
 
         doctors,
+        filteredDoctors,
         procedures,
         rooms,
         equipments,
