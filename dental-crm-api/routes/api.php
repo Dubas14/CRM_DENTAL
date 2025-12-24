@@ -12,10 +12,13 @@ use App\Http\Controllers\Api\ProcedureController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\WaitlistController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\AssistantController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\Api\DoctorScheduleSettingsController;
+use App\Support\RoleHierarchy;
 
 // ---- AUTH ----
 
@@ -45,12 +48,10 @@ Route::post('/login', function (Request $request) {
     $roleNames = $user->getRoleNames();
 
     // ✅ Стабільний global_role з пріоритетом (а не "first()")
-    $globalRole = $user->hasRole('super_admin') ? 'super_admin'
-        : ($user->hasRole('clinic_admin') ? 'clinic_admin'
-            : ($user->hasRole('doctor') ? 'doctor' : 'user'));
+    RoleHierarchy::ensureRolesExist();
+    $globalRole = RoleHierarchy::highestRole($roleNames->all()) ?? 'user';
 
     $user->setAttribute('global_role', $globalRole);
-    $user->setAttribute('global_role', $roleNames->first() ?? 'user');
 
     // 5. Відповідь
     return response()->json([
@@ -71,9 +72,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     $roleNames = $user->getRoleNames();
 
     // ✅ Стабільний global_role з пріоритетом
-    $globalRole = $user->hasRole('super_admin') ? 'super_admin'
-        : ($user->hasRole('clinic_admin') ? 'clinic_admin'
-            : ($user->hasRole('doctor') ? 'doctor' : 'user'));
+    RoleHierarchy::ensureRolesExist();
+    $globalRole = RoleHierarchy::highestRole($roleNames->all()) ?? 'user';
 
     $user->setAttribute('global_role', $globalRole);
     $user->setAttribute('roles', $roleNames);
@@ -94,9 +94,14 @@ Route::get('/health', function () {
 // ---- ЗАХИЩЕНІ CRM-РОУТИ ----
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('roles', [RoleController::class, 'index']);
+    Route::get('roles/users', [RoleController::class, 'users']);
+    Route::put('roles/users/{user}', [RoleController::class, 'updateUserRoles']);
+
     Route::apiResource('clinics', ClinicController::class);
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
+    Route::apiResource('assistants', AssistantController::class)->only(['index', 'store']);
     Route::apiResource('rooms', RoomController::class);
     Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
