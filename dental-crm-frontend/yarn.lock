@@ -32,95 +32,6 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.28.5"
 
-"@fullcalendar/common@~5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/common/-/common-5.11.5.tgz"
-  integrity sha512-3iAYiUbHXhjSVXnYWz27Od2cslztUPsOwiwKlfGvQxBixv2Kl6a8IPwaijKFYJHXdwYmfPoEgK7rvqAGVoIYwA==
-  dependencies:
-    tslib "^2.1.0"
-
-"@fullcalendar/core@~5.11.5", "@fullcalendar/core@5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/core/-/core-5.11.5.tgz"
-  integrity sha512-M/WQuq1+uUHxFDEIu2ib/aaPZ70VsRk2ITECo/WCLSLTVWcHPXwEg83reyP3G8JrMM4gRL4vScEHhX0U5aoNSw==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    preact "~10.12.1"
-    tslib "^2.1.0"
-
-"@fullcalendar/daygrid@~5.11.5", "@fullcalendar/daygrid@5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/daygrid/-/daygrid-5.11.5.tgz"
-  integrity sha512-hMpq0U3Nucys2jDD+crbkJCr+tVt3fDw04OE3fbpisuzqtrHxIzRmnUOdbWUjJQyToAAkt7UVUQ9E7hYdmvyGA==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/interaction@5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/interaction/-/interaction-5.11.5.tgz"
-  integrity sha512-Vg9uw8zKXZc2RP7it88U8R/kxJIQsK4pyv+s+RhlvT5NBZ9KLOh5y2xGCS4A4hyY7qLrzugxnKYlu6NwNqJ/RQ==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/premium-common@~5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/premium-common/-/premium-common-5.11.5.tgz"
-  integrity sha512-QMLOm+MKxvsbji4wt7YGqB73IqwHD+y2JD1DZ3t0LCq2Ul6QtQjNxRP7/7DklXPI8atXoJRRXzwqRq+8O9FFHw==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/resource-common@~5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/resource-common/-/resource-common-5.11.5.tgz"
-  integrity sha512-r7Jsd9ge65m9AShyWAOUUdRulyOKI3p0a7lOcilQ1KXDy0d1O2KpPa27sqRzpofLoDoSrteVP7dirU8Lg20sTA==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    "@fullcalendar/premium-common" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/resource-daygrid@^5.11.5", "@fullcalendar/resource-daygrid@~5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/resource-daygrid/-/resource-daygrid-5.11.5.tgz"
-  integrity sha512-/QCdpZ1Soy8xfT6W3/JDi4l9ZIsPe92monvH2o7zJ6NcVd5vVQY0AwGYdQNWyNd5WJy5jVC9/pX1lhE0ARup9A==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    "@fullcalendar/daygrid" "~5.11.5"
-    "@fullcalendar/premium-common" "~5.11.5"
-    "@fullcalendar/resource-common" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/resource-timegrid@^5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/resource-timegrid/-/resource-timegrid-5.11.5.tgz"
-  integrity sha512-pq1tGd5U7oEK5makuEec8zWVTIOCTvHI/xW92fOZoI5JhSq4qAR5xl3SdYCrDheHhtztkQyEmP3bfQnC4dnQSw==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    "@fullcalendar/premium-common" "~5.11.5"
-    "@fullcalendar/resource-common" "~5.11.5"
-    "@fullcalendar/resource-daygrid" "~5.11.5"
-    "@fullcalendar/timegrid" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/timegrid@~5.11.5", "@fullcalendar/timegrid@5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/timegrid/-/timegrid-5.11.5.tgz"
-  integrity sha512-OEH5mrTclwxgUbb51N6qr7ifzNkR74ygUEFpiMLyyUjkp7a76N6BsAP5mBQnTOpTTUZBu9tAOmfcnvi7skUayQ==
-  dependencies:
-    "@fullcalendar/common" "~5.11.5"
-    "@fullcalendar/daygrid" "~5.11.5"
-    tslib "^2.1.0"
-
-"@fullcalendar/vue3@5.11.5":
-  version "5.11.5"
-  resolved "https://registry.npmjs.org/@fullcalendar/vue3/-/vue3-5.11.5.tgz"
-  integrity sha512-813zzFAuW9/ysysLhjxFKIThUrT23qjf1EKymyj0tCnrFtfTrpbk1k/txRQ5dwITanHEU3iFxgE/d+PlswL/bg==
-  dependencies:
-    "@fullcalendar/core" "~5.11.5"
-    tslib "^2.1.0"
-
 "@jridgewell/gen-mapping@^0.3.2":
   version "0.3.13"
   resolved "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz"
@@ -182,6 +93,11 @@
   version "1.0.0-beta.47"
   resolved "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.0.0-beta.47.tgz"
   integrity sha512-fodvSMf6Aqwa0wEUSTPewmmZOD44rc5Tpr5p9NkwQ6W1SSpUKzD3SwpJIgANDOhwiYhDuiIaYPGB7Ujkx1q0UQ==
+
+"@rolldown/binding-linux-x64-musl@1.0.0-beta.47":
+  version "1.0.0-beta.47"
+  resolved "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.0.0-beta.47.tgz"
+  integrity sha512-Rxm5hYc0mGjwLh5sjlGmMygxAaV2gnsx7CNm2lsb47oyt5UQyPDZf3GP/ct8BEcwuikdqzsrrlIp8+kCSvMFNQ==
 
 "@rolldown/pluginutils@1.0.0-beta.47":
   version "1.0.0-beta.47"
@@ -653,6 +569,11 @@ lightningcss-linux-x64-gnu@1.30.2:
   resolved "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.30.2.tgz"
   integrity sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==
 
+lightningcss-linux-x64-musl@1.30.2:
+  version "1.30.2"
+  resolved "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.30.2.tgz"
+  integrity sha512-XJaLUUFXb6/QG2lGIW6aIk6jKdtjtcffUT0NKvIqhSBY3hh9Ch+1LCeH80dR9q9LBjG3ewbDjnumefsLsP6aiA==
+
 lightningcss@^1.30.2:
   version "1.30.2"
   resolved "https://registry.npmjs.org/lightningcss/-/lightningcss-1.30.2.tgz"
@@ -845,11 +766,6 @@ postcss@^8.0.0, postcss@^8.1.0, postcss@^8.2.14, postcss@^8.4.21, postcss@^8.4.4
     picocolors "^1.1.1"
     source-map-js "^1.2.1"
 
-preact@~10.12.1:
-  version "10.12.1"
-  resolved "https://registry.npmjs.org/preact/-/preact-10.12.1.tgz"
-  integrity sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==
-
 proxy-from-env@^1.1.0:
   version "1.1.0"
   resolved "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz"
@@ -1003,11 +919,6 @@ ts-interface-checker@^0.1.9:
   resolved "https://registry.npmjs.org/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz"
   integrity sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==
 
-tslib@^2.1.0:
-  version "2.8.1"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
-  integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
-
 update-browserslist-db@^1.2.0:
   version "1.2.3"
   resolved "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz"
@@ -1043,7 +954,7 @@ vue-router@^4.6.3:
   dependencies:
     "@vue/devtools-api" "^6.6.4"
 
-vue@^3.0.11, vue@^3.2.25, vue@^3.5.0, vue@^3.5.24, vue@>=3.0.1, vue@3.5.26:
+vue@^3.2.25, vue@^3.5.0, vue@^3.5.24, vue@>=3.0.1, vue@3.5.26:
   version "3.5.26"
   resolved "https://registry.npmjs.org/vue/-/vue-3.5.26.tgz"
   integrity sha512-SJ/NTccVyAoNUJmkM9KUqPcYlY+u8OVL1X5EW9RIs3ch5H2uERxyyIUI4MRxVCSOiEcupX9xNGde1tL9ZKpimA==
