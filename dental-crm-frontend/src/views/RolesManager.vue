@@ -34,7 +34,7 @@ const fetchUsers = async () => {
       acc[user.id] = (user.roles || []).map((role) => role.name);
       return acc;
     }, {});
-    const meta = data.meta ?? {};
+    const meta = data.meta ?? data ?? {};
     totalPages.value = meta.last_page ?? 1;
     totalItems.value = meta.total ?? users.value.length;
     currentPage.value = meta.current_page ?? currentPage.value;
