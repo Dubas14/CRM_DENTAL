@@ -157,6 +157,25 @@ const calendarApi = {
   },
 
   // -----------------------
+  // Calendar blocks
+  // -----------------------
+  getCalendarBlocks(params) {
+    return apiClient.get('/calendar-blocks', { params });
+  },
+
+  createCalendarBlock(payload) {
+    return apiClient.post('/calendar-blocks', payload);
+  },
+
+  updateCalendarBlock(blockId, payload) {
+    return apiClient.put(`/calendar-blocks/${blockId}`, payload);
+  },
+
+  deleteCalendarBlock(blockId) {
+    return apiClient.delete(`/calendar-blocks/${blockId}`);
+  },
+
+  // -----------------------
   // Waitlist
   // -----------------------
   fetchWaitlist(params) {

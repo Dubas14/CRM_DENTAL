@@ -56,6 +56,28 @@ const appointmentsError = ref(null);
 const slotsRefreshToken = ref(0);
 const cancellationTarget = ref(null);
 
+// ---- Calendar blocks ----
+const calendarBlocks = ref([]);
+const loadingCalendarBlocks = ref(false);
+const calendarBlocksError = ref(null);
+const calendarBlockSaving = ref(false);
+const calendarBlockFormError = ref(null);
+const editingCalendarBlockId = ref(null);
+
+const calendarBlockForm = ref({
+  type: 'break',
+  start: '',
+  end: '',
+  note: '',
+});
+
+const calendarBlockTypes = [
+  { value: 'break', label: 'Перерва', badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
+  { value: 'meeting', label: 'Зустріч', badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30' },
+  { value: 'vacation', label: 'Відпустка', badge: 'bg-rose-500/10 text-rose-300 border-rose-500/30' },
+  { value: 'other', label: 'Інше', badge: 'bg-slate-500/10 text-slate-300 border-slate-500/30' },
+];
+
 // ---- Бронювання ----
 const bookingSlot = ref(null);
 const bookingLoading = ref(false);
@@ -390,8 +412,27 @@ const loadAppointments = async (silent = false) => {
   }
 };
 
+const loadCalendarBlocks = async (silent = false) => {
+  if (!selectedDoctorId.value || !selectedDate.value) return;
+  if (!silent) loadingCalendarBlocks.value = true;
+  calendarBlocksError.value = null;
+  try {
+    const { data } = await calendarApi.getCalendarBlocks({
+      doctor_id: Number(selectedDoctorId.value),
+      date: selectedDate.value,
+    });
+    calendarBlocks.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error(e);
+    if (!silent) calendarBlocksError.value = 'Не вдалося завантажити блоки.';
+  } finally {
+    if (!silent) loadingCalendarBlocks.value = false;
+  }
+};
+
 const refreshScheduleData = async (silent = false) => {
   slotsRefreshToken.value += 1;
+  await loadCalendarBlocks(silent);
   await loadAppointments(silent);
 };
 
@@ -459,6 +500,102 @@ const bookSelectedSlot = async () => {
 const fmtTime = (iso) => {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+};
+
+const fmtTimeInput = (iso) => {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+const getCalendarBlockType = (type) =>
+    calendarBlockTypes.find((entry) => entry.value === type)
+    || { value: type, label: type || 'Блок', badge: 'bg-slate-500/10 text-slate-300 border-slate-500/30' };
+
+const buildDateTime = (date, time) => {
+  if (!date || !time) return null;
+  return `${date}T${time}:00`;
+};
+
+const resetCalendarBlockForm = () => {
+  calendarBlockForm.value = {
+    type: 'break',
+    start: '',
+    end: '',
+    note: '',
+  };
+  calendarBlockFormError.value = null;
+  editingCalendarBlockId.value = null;
+};
+
+const applyCalendarBlockToForm = (block) => {
+  if (!block) return;
+  editingCalendarBlockId.value = block.id;
+  calendarBlockForm.value = {
+    type: block.type || 'break',
+    start: fmtTimeInput(block.start_at),
+    end: fmtTimeInput(block.end_at),
+    note: block.note || '',
+  };
+  calendarBlockFormError.value = null;
+};
+
+const saveCalendarBlock = async () => {
+  if (!selectedDoctorId.value || !selectedDate.value) return;
+  calendarBlockFormError.value = null;
+
+  if (!calendarBlockForm.value.type || !calendarBlockForm.value.start || !calendarBlockForm.value.end) {
+    calendarBlockFormError.value = 'Вкажіть тип блоку та час.';
+    return;
+  }
+
+  const startAt = buildDateTime(selectedDate.value, calendarBlockForm.value.start);
+  const endAt = buildDateTime(selectedDate.value, calendarBlockForm.value.end);
+
+  if (!startAt || !endAt) {
+    calendarBlockFormError.value = 'Невірний час блоку.';
+    return;
+  }
+
+  calendarBlockSaving.value = true;
+  try {
+    const payload = {
+      doctor_id: Number(selectedDoctorId.value),
+      type: calendarBlockForm.value.type,
+      start_at: startAt,
+      end_at: endAt,
+      note: calendarBlockForm.value.note?.trim() || null,
+    };
+
+    if (editingCalendarBlockId.value) {
+      await calendarApi.updateCalendarBlock(editingCalendarBlockId.value, payload);
+    } else {
+      await calendarApi.createCalendarBlock(payload);
+    }
+
+    resetCalendarBlockForm();
+    await refreshScheduleData();
+  } catch (e) {
+    console.error(e);
+    calendarBlockFormError.value = e.response?.data?.message || 'Не вдалося зберегти блок.';
+  } finally {
+    calendarBlockSaving.value = false;
+  }
+};
+
+const deleteCalendarBlock = async (block) => {
+  if (!block?.id) return;
+  const confirmed = window.confirm('Видалити цей блок?');
+  if (!confirmed) return;
+  try {
+    await calendarApi.deleteCalendarBlock(block.id);
+    if (editingCalendarBlockId.value === block.id) {
+      resetCalendarBlockForm();
+    }
+    await refreshScheduleData();
+  } catch (e) {
+    console.error(e);
+    calendarBlocksError.value = e.response?.data?.message || 'Не вдалося видалити блок.';
+  }
 };
 
 const validatePhoneInput = (event) => {
@@ -863,6 +1000,118 @@ onUnmounted(() => {
       </div>
 
       <div class="space-y-4">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold text-emerald-300">Блоки календаря</h3>
+              <p class="text-xs text-slate-500">Додавайте паузи, зустрічі чи інші блоки.</p>
+            </div>
+            <button
+                type="button"
+                class="text-xs text-slate-300 border border-slate-700 rounded-lg px-2 py-1 hover:bg-slate-800"
+                @click="resetCalendarBlockForm"
+            >
+              Очистити
+            </button>
+          </div>
+
+          <div class="grid gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label class="space-y-1 block">
+                <span class="text-[10px] uppercase tracking-wide text-slate-400">Тип блоку</span>
+                <select v-model="calendarBlockForm.type" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm">
+                  <option v-for="type in calendarBlockTypes" :key="type.value" :value="type.value">
+                    {{ type.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="space-y-1 block">
+                <span class="text-[10px] uppercase tracking-wide text-slate-400">Нотатка (optional)</span>
+                <input
+                    v-model="calendarBlockForm.note"
+                    type="text"
+                    placeholder="Коротка примітка"
+                    class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label class="space-y-1 block">
+                <span class="text-[10px] uppercase tracking-wide text-slate-400">Start</span>
+                <input v-model="calendarBlockForm.start" type="time" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+              </label>
+              <label class="space-y-1 block">
+                <span class="text-[10px] uppercase tracking-wide text-slate-400">End</span>
+                <input v-model="calendarBlockForm.end" type="time" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+              </label>
+            </div>
+
+            <div v-if="calendarBlockFormError" class="text-xs text-rose-400">
+              {{ calendarBlockFormError }}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-60"
+                  :disabled="calendarBlockSaving"
+                  @click="saveCalendarBlock"
+              >
+                {{ calendarBlockSaving ? 'Збереження...' : (editingCalendarBlockId ? 'Оновити блок' : 'Створити блок') }}
+              </button>
+              <span v-if="editingCalendarBlockId" class="text-xs text-slate-400">Редагування активне</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs uppercase tracking-wide text-slate-500">Блоки на {{ selectedDate }}</h4>
+              <span v-if="loadingCalendarBlocks" class="text-xs text-slate-500 animate-pulse">Оновлення...</span>
+            </div>
+
+            <div v-if="calendarBlocksError" class="text-xs text-rose-400">
+              {{ calendarBlocksError }}
+            </div>
+
+            <div v-if="calendarBlocks.length === 0 && !loadingCalendarBlocks" class="text-xs text-slate-500 italic">
+              Немає блоків на цю дату.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                  v-for="block in calendarBlocks"
+                  :key="block.id"
+                  class="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+              >
+                <div class="space-y-1">
+                  <span
+                      class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border"
+                      :class="getCalendarBlockType(block.type).badge"
+                  >
+                    {{ getCalendarBlockType(block.type).label }}
+                  </span>
+                  <div class="text-sm text-slate-200">
+                    {{ fmtTime(block.start_at) }} – {{ fmtTime(block.end_at) }}
+                  </div>
+                  <div v-if="block.note" class="text-xs text-slate-500">
+                    {{ block.note }}
+                  </div>
+                </div>
+                <div class="flex flex-col items-end gap-2 text-xs">
+                  <button class="text-slate-300 hover:text-white" type="button" @click="applyCalendarBlockToForm(block)">
+                    Редагувати
+                  </button>
+                  <button class="text-rose-400 hover:text-rose-300" type="button" @click="deleteCalendarBlock(block)">
+                    Видалити
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <WaitlistCandidatesPanel
             v-if="clinicId"
             :clinic-id="clinicId"
