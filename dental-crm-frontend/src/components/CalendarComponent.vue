@@ -1,16 +1,25 @@
 <script setup>
+// ⚠️ ВАЖЛИВО: для FullCalendar v5 з бандлерами — core/vdom та core мають бути першими
+import '@fullcalendar/core/vdom';
+import '@fullcalendar/core';
+
 import { computed, reactive, watch } from 'vue';
 import FullCalendar from '@fullcalendar/vue3';
+
 import timeGridPlugin from '@fullcalendar/timegrid';
-import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
+
+import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
+import resourceDayGridPlugin from '@fullcalendar/resource-daygrid';
+
 import ukLocale from '@fullcalendar/core/locales/uk';
 
 import { useAuth } from '../composables/useAuth';
 import { useCalendar } from '../composables/useCalendar';
 import BookingModal from './BookingModal.vue';
 
+// (можна лишити, але useAuth має бути "чистим" — без onMounted всередині composable)
 useAuth();
 
 const {
@@ -68,15 +77,16 @@ const {
 } = useCalendar();
 
 const selectedDoctorResources = computed(() =>
-  doctors.value.filter((doctor) => selectedDoctorIds.value.includes(String(doctor.id))),
+    doctors.value.filter((doctor) => selectedDoctorIds.value.includes(String(doctor.id))),
 );
 
 const selectedRoomResources = computed(() =>
-  rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
+    rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
 );
 
 const calendarResources = computed(() => {
   if (!isResourceView.value) return [];
+
   if (resourceViewType.value === 'doctor') {
     return selectedDoctorResources.value.map((doctor) => ({
       id: String(doctor.id),
@@ -97,13 +107,16 @@ const calendarEventSources = computed(() => [
 ]);
 
 const selectedProcedure = computed(() =>
-  procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
+    procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
 );
 
 const requiresAssistant = computed(() => !!selectedProcedure.value?.requires_assistant);
 
 const assistantLabel = (assistant) =>
-  assistant.full_name || assistant.name || `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() || `#${assistant.id}`;
+    assistant.full_name ||
+    assistant.name ||
+    `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() ||
+    `#${assistant.id}`;
 
 watch([requiresAssistant, assistants], () => {
   if (requiresAssistant.value && assistants.value.length === 1 && !selectedAssistantId.value) {
@@ -111,30 +124,33 @@ watch([requiresAssistant, assistants], () => {
   }
 });
 
-// ✅ Стабільний options-об'єкт (не пересоздається на кожен рух)
+// ✅ options як reactive — ок, але без "лівих" плагінів
 const calendarOptions = reactive({
-  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin, resourceTimeGridPlugin, resourceCommonPlugin],
+  // ❌ НІЯКОГО resourceCommonPlugin — це не плагін
+  plugins: [
+    timeGridPlugin,
+    dayGridPlugin,
+    interactionPlugin,
+    resourceTimeGridPlugin,
+    resourceDayGridPlugin,
+  ],
 
-  // initialView не робимо реактивним — view міняє composable через api.changeView
   initialView: 'timeGridWeek',
 
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
-    right: 'timeGridDay,timeGridWeek,dayGridMonth',
+    right: 'timeGridDay,timeGridWeek,dayGridMonth,resourceTimeGridDay,resourceTimeGridWeek',
   },
 
   timeZone: 'local',
 
-  // ✅ Українська локаль
   locales: [ukLocale],
   locale: 'uk',
 
-  // ✅ 24h формат часу
   slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
   eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 
-  // ✅ 24 години, але зі скролом (щоб було “красиво як раніше”)
   slotMinTime: '00:00:00',
   slotMaxTime: '24:00:00',
   scrollTime: '07:00:00',
@@ -150,9 +166,10 @@ const calendarOptions = reactive({
   allDaySlot: false,
   weekends: true,
 
-  eventSources: [], // поставимо нижче через watch
+  eventSources: [],
   resources: [],
   resourceAreaWidth: '18%',
+  resourceAreaHeaderContent: 'Лікарі',
 
   selectAllow: (info) => selectAllow(info),
   select: (info) => handleSelect(info),
@@ -172,13 +189,10 @@ const calendarOptions = reactive({
   },
 
   datesSet: (info) => {
-    // ✅ важливо: передаємо info в composable,
-    // щоб він зберіг range і не ганявся по колу
     handleDatesSet(info);
   },
 });
 
-// ✅ оновлюємо тільки events масив, а не весь options-об’єкт
 watch(calendarEventSources, (val) => {
   calendarOptions.eventSources = val;
 }, { immediate: true });
@@ -310,7 +324,6 @@ const onBookingSubmit = (payload) => {
     </div>
 
     <div class="grid lg:grid-cols-4 gap-4">
-      <!-- ✅ ВАЖЛИВО: фіксована висота + overflow, щоб 24h було зі скролом -->
       <div class="lg:col-span-3 bg-slate-900/60 border border-slate-800 rounded-xl p-3 relative h-[75vh] overflow-hidden">
         <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3 mb-3">
           {{ error }}

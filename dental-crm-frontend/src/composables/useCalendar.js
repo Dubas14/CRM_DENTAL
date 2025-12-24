@@ -10,7 +10,7 @@ import { useAuth } from './useAuth';
 import { useToast } from './useToast';
 
 export function useCalendar() {
-    const { user } = useAuth();
+    const { user, initAuth } = useAuth();
     const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
     // UI state
@@ -331,15 +331,26 @@ export function useCalendar() {
     };
 
     const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
-        const { data } = await calendarApi.getAppointments({ doctor_id: doctorId, from_date: fromDate, to_date: toDate });
+        const { data } = await calendarApi.getAppointments({
+            doctor_id: doctorId,
+            from_date: fromDate,
+            to_date: toDate,
+            clinic_id: clinicId.value, // ✅
+        });
+
         return Array.isArray(data) ? data : (data?.data || []);
     };
 
     const loadCalendarBlocksRange = async ({ doctorId, fromDate, toDate }) => {
-        const { data } = await calendarApi.getCalendarBlocks({ doctor_id: doctorId, from_date: fromDate, to_date: toDate });
+        const { data } = await calendarApi.getCalendarBlocks({
+            doctor_id: doctorId,
+            from_date: fromDate,
+            to_date: toDate,
+            clinic_id: clinicId.value,
+        });
+
         return Array.isArray(data) ? data : (data?.data || []);
     };
-
     const ensureRange = () => {
         // якщо datesSet ще не прийшов — беремо з view
         if (activeRange.value?.fromDate && activeRange.value?.toDate) return activeRange.value;
@@ -785,22 +796,59 @@ export function useCalendar() {
 
     // ✅ ВАЖЛИВО: тепер приймає info від FullCalendar
     const handleDatesSet = async (info) => {
-        // info.start / info.end — це ДІАПАЗОН (end exclusive)
+        // 1) оновлюємо activeRange
         if (info?.start && info?.end) {
             const start = new Date(info.start);
             const end = new Date(info.end);
 
             const fromDate = formatDateYMD(start);
-            const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
+            const toDate = formatDateYMD(new Date(end.getTime() - 86400000)); // end exclusive → мінус 1 день
 
             activeRange.value = { start, end, fromDate, toDate };
         } else {
             ensureRange();
         }
 
-        await loadEvents(activeRange.value);
-        await loadCalendarBlocks(activeRange.value);
-        await refreshAvailabilityBackground(activeRange.value);
+        // 2) будуємо ключ діапазону + контекст (щоб не фетчити одне й те саме без кінця)
+        const viewType = info?.view?.type || viewMode.value;
+        const r = activeRange.value;
+
+        const key = [
+            viewType,
+            r?.fromDate,
+            r?.toDate,
+            clinicId.value,
+            resourceViewType.value,
+            selectedDoctorId.value,
+            (selectedDoctorIds.value || []).join(','),
+            (selectedRoomIds.value || []).join(','),
+            selectedProcedureId.value,
+            selectedRoomId.value,
+            selectedEquipmentId.value,
+            selectedAssistantId.value,
+        ].join('|');
+
+        // 3) анти-петля: якщо це той самий ключ — нічого не робимо
+        if (key === datesSetKey) return;
+        if (datesSetInFlight) return;
+
+        datesSetKey = key;
+        datesSetInFlight = true;
+
+        try {
+            // якщо нема клініки або нема лікарів для показу — не запускаємо фетч
+            const doctorIds = resolveDoctorIdsForEvents();
+            if (!clinicId.value || !doctorIds.length) return;
+
+            // 4) грузимо все разом (менше шансів на “дьорг” календаря)
+            await Promise.all([
+                loadEvents(r),
+                loadCalendarBlocks(r),
+                refreshAvailabilityBackground(r),
+            ]);
+        } finally {
+            datesSetInFlight = false;
+        }
     };
 
     const refreshCalendar = async () => {
@@ -811,6 +859,7 @@ export function useCalendar() {
     const initialize = async () => {
         try {
             loading.value = true;
+            await initAuth();
             await Promise.all([fetchDoctors(), fetchProcedures(), fetchClinics()]);
             syncSelectedDoctorWithClinic();
             await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
@@ -874,7 +923,7 @@ export function useCalendar() {
         }
     });
 
-    watch([resourceViewType, viewMode], async () => {
+    watch(resourceViewType, async () => {
         if (resourceViewType.value === 'room') {
             syncSelectedRooms();
         } else {

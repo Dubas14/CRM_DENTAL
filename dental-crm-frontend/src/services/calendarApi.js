@@ -9,59 +9,38 @@ function pick(obj, keys) {
 }
 
 const calendarApi = {
-  // -----------------------
   // Availability (slots)
-  // -----------------------
   getDoctorSlots(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/slots`, { params });
   },
-
   getRecommendedSlots(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/recommended-slots`, { params });
   },
 
-  // -----------------------
   // Appointments
-  // -----------------------
   getDoctorAppointments(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/appointments`, { params });
   },
-
-  // -----------------------
-  // Calendar blocks
-  // -----------------------
-  getCalendarBlocks(params) {
-    return apiClient.get('/calendar-blocks', { params });
-  },
-
-  createCalendarBlock(payload) {
-    return apiClient.post('/calendar-blocks', payload);
-  },
-
-  updateCalendarBlock(id, payload) {
-    return apiClient.put(`/calendar-blocks/${id}`, payload);
-  },
-
-  deleteCalendarBlock(id) {
-    return apiClient.delete(`/calendar-blocks/${id}`);
-  },
-
   getAppointments(params = {}) {
     return apiClient.get('/appointments', { params });
   },
 
+  // Calendar blocks
   getCalendarBlocks(params = {}) {
     return apiClient.get('/calendar-blocks', { params });
   },
+  createCalendarBlock(payload) {
+    return apiClient.post('/calendar-blocks', payload);
+  },
+  updateCalendarBlock(blockId, payload) {
+    return apiClient.put(`/calendar-blocks/${blockId}`, payload);
+  },
+  deleteCalendarBlock(blockId) {
+    return apiClient.delete(`/calendar-blocks/${blockId}`);
+  },
 
-  /**
-   * Create appointment
-   * Supports:
-   *  - date + time (existing flow)
-   *  - start_at + end_at (calendar flow)
-   */
+  // Create appointment
   createAppointment(payload) {
-    // якщо прийшло start_at/end_at — шлемо їх напряму
     if (payload.start_at && payload.end_at) {
       return apiClient.post('/appointments', {
         ...pick(payload, [
@@ -76,13 +55,13 @@ const calendarApi = {
           'allow_soft_conflicts',
           'comment',
           'source',
+          'clinic_id', // якщо буде потрібно
         ]),
         start_at: payload.start_at,
         end_at: payload.end_at,
       });
     }
 
-    // fallback: старий варіант (date + time)
     return apiClient.post('/appointments', {
       ...pick(payload, [
         'doctor_id',
@@ -98,6 +77,7 @@ const calendarApi = {
         'allow_soft_conflicts',
         'comment',
         'source',
+        'clinic_id', // якщо буде потрібно
       ]),
     });
   },
@@ -116,18 +96,12 @@ const calendarApi = {
         'comment',
         'source',
         'steps',
+        'clinic_id', // якщо буде потрібно
       ]),
     });
   },
 
-  /**
-   * Update appointment
-   * Supports:
-   *  - date + time
-   *  - start_at + end_at (for drag&drop / resize)
-   */
   updateAppointment(appointmentId, payload) {
-    // календарний режим: перенос/resize
     if (payload.start_at && payload.end_at) {
       return apiClient.put(`/appointments/${appointmentId}`, {
         ...pick(payload, [
@@ -143,13 +117,13 @@ const calendarApi = {
           'status',
           'comment',
           'source',
+          'clinic_id', // якщо буде потрібно
         ]),
         start_at: payload.start_at,
         end_at: payload.end_at,
       });
     }
 
-    // старий режим: date/time
     return apiClient.put(`/appointments/${appointmentId}`, {
       ...pick(payload, [
         'doctor_id',
@@ -166,6 +140,7 @@ const calendarApi = {
         'status',
         'comment',
         'source',
+        'clinic_id', // якщо буде потрібно
       ]),
     });
   },
@@ -174,44 +149,19 @@ const calendarApi = {
     return apiClient.post(`/appointments/${appointmentId}/cancel`, payload);
   },
 
-  // -----------------------
-  // Calendar blocks
-  // -----------------------
-  getCalendarBlocks(params) {
-    return apiClient.get('/calendar-blocks', { params });
-  },
-
-  createCalendarBlock(payload) {
-    return apiClient.post('/calendar-blocks', payload);
-  },
-
-  updateCalendarBlock(blockId, payload) {
-    return apiClient.put(`/calendar-blocks/${blockId}`, payload);
-  },
-
-  deleteCalendarBlock(blockId) {
-    return apiClient.delete(`/calendar-blocks/${blockId}`);
-  },
-
-  // -----------------------
   // Waitlist
-  // -----------------------
   fetchWaitlist(params) {
     return apiClient.get('/waitlist', { params });
   },
-
   createWaitlistEntry(payload) {
     return apiClient.post('/waitlist', payload);
   },
-
   getWaitlistCandidates(params) {
     return apiClient.get('/waitlist/candidates', { params });
   },
-
   markWaitlistBooked(entryId) {
     return apiClient.post(`/waitlist/${entryId}/book`);
   },
-
   cancelWaitlistEntry(entryId) {
     return apiClient.post(`/waitlist/${entryId}/cancel`);
   },

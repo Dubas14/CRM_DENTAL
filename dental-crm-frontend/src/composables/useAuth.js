@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from './useToast';
 import authApi from '../services/authApi';
@@ -7,14 +7,15 @@ import authApi from '../services/authApi';
 const user = ref(null);
 const loadingUser = ref(false);
 
+// щоб не робити restoreSession по 10 разів
+const _sessionInitPromise = ref(null);
+
 export function useAuth() {
     const router = useRouter();
     const { showToast } = useToast();
 
-    // Комп'ютед властивості
     const isLoggedIn = computed(() => !!user.value);
 
-    // ПРОСТА функція логіну
     const login = async (email, password) => {
         try {
             loadingUser.value = true;
@@ -24,7 +25,6 @@ export function useAuth() {
 
             showToast('Успішний вхід!', 'success');
             return result;
-
         } catch (error) {
             const message = error.message || 'Помилка входу';
             showToast(message, 'error');
@@ -34,7 +34,6 @@ export function useAuth() {
         }
     };
 
-    // ПРОСТА функція логауту
     const logout = async () => {
         try {
             await authApi.logout();
@@ -42,19 +41,18 @@ export function useAuth() {
 
             showToast('Ви вийшли з системи', 'info');
             await router.push({ name: 'login' });
-
         } catch (error) {
             console.warn('Logout error:', error);
-            // Все одно очищаємо
             user.value = null;
+
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
             }
+
             await router.push({ name: 'login' });
         }
     };
 
-    // Отримання даних користувача
     const fetchUser = async () => {
         try {
             loadingUser.value = true;
@@ -70,7 +68,6 @@ export function useAuth() {
         }
     };
 
-    // Відновлення сесії
     const restoreSession = async () => {
         if (typeof window === 'undefined') return;
 
@@ -80,16 +77,21 @@ export function useAuth() {
                 await fetchUser();
             } catch (error) {
                 console.warn('Cannot restore session:', error);
-                // Очищаємо недійсний токен
                 localStorage.removeItem('auth_token');
             }
         }
     };
 
-    // Автоматичне відновлення при завантаженні
-    onMounted(() => {
-        restoreSession();
-    });
+    // ✅ ОДНОРАЗОВА ініціалізація (викликати з App.vue або layout)
+    const initAuth = async () => {
+        if (_sessionInitPromise.value) return _sessionInitPromise.value;
+
+        _sessionInitPromise.value = (async () => {
+            await restoreSession();
+        })();
+
+        return _sessionInitPromise.value;
+    };
 
     return {
         user,
@@ -99,5 +101,6 @@ export function useAuth() {
         logout,
         fetchUser,
         restoreSession,
+        initAuth,
     };
 }
