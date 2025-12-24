@@ -61,10 +61,6 @@ const {
   refreshCalendar,
 } = useCalendar();
 
-const qcalendarRef = ref(null);
-const selectedDate = ref('');
-const activeRange = ref({ start: null, end: null });
-
 const formatDateYMD = (date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -89,6 +85,10 @@ const toQCalendarDateTime = (value) => {
   }
   return value;
 };
+
+const qcalendarRef = ref(null);
+const selectedDate = ref(formatDateYMD(new Date()));
+const activeRange = ref({ start: null, end: null });
 
 const calendarView = computed(() => {
   if (viewMode.value === 'dayGridMonth') return 'month';
@@ -182,7 +182,11 @@ const addMonths = (date, amount) => {
 };
 
 const updateRange = () => {
-  const base = selectedDate.value ? new Date(`${selectedDate.value}T00:00:00`) : new Date();
+  let base = selectedDate.value ? new Date(`${selectedDate.value}T00:00:00`) : new Date();
+  if (Number.isNaN(base.getTime())) {
+    base = new Date();
+    selectedDate.value = formatDateYMD(base);
+  }
   let start = base;
   let end = base;
 
