@@ -282,9 +282,24 @@ export function useCalendar() {
         doctors.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
+    const dedupeByKey = (items, keyFn) => {
+        const map = new Map();
+        items.forEach((item) => {
+            if (!item) return;
+            const key = keyFn(item);
+            if (key === undefined || key === null || key === '') {
+                map.set(Symbol('procedure'), item);
+                return;
+            }
+            if (!map.has(key)) map.set(key, item);
+        });
+        return Array.from(map.values());
+    };
+
     const fetchProcedures = async () => {
         const { data } = await apiClient.get('/procedures');
-        procedures.value = Array.isArray(data) ? data : (data?.data || []);
+        const list = Array.isArray(data) ? data : (data?.data || []);
+        procedures.value = dedupeByKey(list, (proc) => proc.id ?? proc.procedure_id ?? proc.name);
     };
 
     const fetchClinics = async () => {
