@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\AssistantController;
+use App\Http\Controllers\Api\ClinicWorkingHoursController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -99,6 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('roles/users/{user}', [RoleController::class, 'updateUserRoles']);
 
     Route::apiResource('clinics', ClinicController::class);
+    Route::get('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'show']);
+    Route::put('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'update']);
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('assistants', AssistantController::class)->only(['index', 'store']);

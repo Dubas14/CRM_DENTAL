@@ -33,11 +33,26 @@ class RoleController extends Controller
             $query->role($role);
         }
 
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_').'%';
+            $query->where(function ($q) use ($like) {
+                $q->where('email', 'ilike', $like)
+                    ->orWhere('name', 'ilike', $like)
+                    ->orWhere('first_name', 'ilike', $like)
+                    ->orWhere('last_name', 'ilike', $like)
+                    ->orWhereRaw("concat_ws(' ', first_name, last_name) ILIKE ?", [$like]);
+            });
+        }
+
         if (! $authUser->hasRole('super_admin')) {
             $query->whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'));
         }
 
-        return response()->json($query->orderBy('name')->get());
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = min(max($perPage, 1), 100);
+
+        return response()->json($query->orderBy('name')->paginate($perPage));
     }
 
     public function updateUserRoles(Request $request, User $user)

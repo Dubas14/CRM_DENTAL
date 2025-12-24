@@ -8,6 +8,7 @@ const props = defineProps({
   equipmentId: { type: [Number, String, null], default: null },
   roomId: { type: [Number, String, null], default: null },
   assistantId: { type: [Number, String, null], default: null },
+  assistants: { type: Array, default: () => [] },
   date: { type: String, required: true },
   durationMinutes: { type: Number, default: null },
   autoLoad: { type: Boolean, default: true },
@@ -27,6 +28,12 @@ const slotEquipment = ref(null);
 const slotAssistantId = ref(null);
 
 const hasNoSlots = computed(() => !loading.value && slots.value.length === 0);
+const slotAssistantName = computed(() => {
+  if (!slotAssistantId.value) return null;
+  const match = props.assistants.find((assistant) => Number(assistant.id) === Number(slotAssistantId.value));
+  if (!match) return `#${slotAssistantId.value}`;
+  return match.full_name || match.name || `${match.first_name || ''} ${match.last_name || ''}`.trim() || `#${match.id}`;
+});
 
 const loadSlots = async () => {
   if (!props.date || !props.doctorId) return;
@@ -113,7 +120,7 @@ onMounted(() => {
     <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
       <span v-if="slotRoom" class="mr-3">Кабінет: <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span>
       <span v-if="slotEquipment" class="mr-3">Обладнання: <strong class="text-amber-300">{{ slotEquipment.name || `#${slotEquipment.id}` }}</strong></span>
-      <span v-if="slotAssistantId">Асистент ID: <strong class="text-indigo-300">{{ slotAssistantId }}</strong></span>
+      <span v-if="slotAssistantId">Асистент: <strong class="text-indigo-300">{{ slotAssistantName }}</strong></span>
     </div>
 
     <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3">

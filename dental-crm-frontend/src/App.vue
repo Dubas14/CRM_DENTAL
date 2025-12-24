@@ -15,6 +15,7 @@ import {
   ClipboardList,
   UserCheck,
   Shield,
+  Settings,
   LogOut,
   Menu,
   X
@@ -152,6 +153,14 @@ const isLoginPage = computed(() => route.name === 'login');
           >
             <UserCheck size="20" />
             <span class="font-medium">Асистенти</span>
+          </router-link>
+
+          <router-link
+            :to="{name: 'clinic-settings'}"
+            :class="[route.name === 'clinic-settings' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
+            <Settings size="20" />
+            <span class="font-medium">Налаштування клініки</span>
           </router-link>
         </div>
 
