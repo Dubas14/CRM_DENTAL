@@ -12,6 +12,7 @@ import WaitlistCandidatesPanel from '../components/WaitlistCandidatesPanel.vue';
 import WaitlistRequestForm from '../components/WaitlistRequestForm.vue';
 import AppointmentCancellationCard from '../components/AppointmentCancellationCard.vue';
 import assistantApi from '../services/assistantApi';
+import clinicApi from '../services/clinicApi';
 
 const route = useRoute();
 const router = useRouter();
@@ -27,12 +28,14 @@ const procedures = ref([]);
 const rooms = ref([]);
 const equipments = ref([]);
 const assistants = ref([]);
+const clinics = ref([]);
 
 const selectedDoctorId = ref('');
 const selectedProcedureId = ref('');
 const selectedRoomId = ref('');
 const selectedEquipmentId = ref('');
 const selectedAssistantId = ref('');
+const selectedClinicId = ref('');
 const isFollowUp = ref(false);
 const allowSoftConflicts = ref(false);
 
@@ -78,12 +81,22 @@ const { user } = useAuth();
 const { isDoctor } = usePermissions();
 const doctorProfile = computed(() => user.value?.doctor || null);
 
-const clinicId = computed(() =>
+const defaultClinicId = computed(() =>
     user.value?.clinic_id ||
     user.value?.doctor?.clinic_id ||
     user.value?.doctor?.clinic?.id ||
     user.value?.clinics?.[0]?.clinic_id ||
+    '',
+);
+
+const clinicId = computed(() =>
+    selectedClinicId.value ||
+    defaultClinicId.value ||
     null,
+);
+
+const showClinicSelector = computed(() =>
+    clinics.value.length > 1 || user.value?.global_role === 'super_admin',
 );
 
 const canOpenWeeklySettings = computed(() => {
@@ -271,6 +284,23 @@ const loadProcedures = async () => {
   }
 };
 
+const loadClinics = async () => {
+  if (user.value?.global_role === 'super_admin') {
+    const { data } = await clinicApi.list();
+    clinics.value = data.data ?? data;
+  } else {
+    const { data } = await clinicApi.listMine();
+    clinics.value = (data.clinics ?? []).map((clinic) => ({
+      id: clinic.clinic_id,
+      name: clinic.clinic_name,
+    }));
+  }
+
+  if (!selectedClinicId.value) {
+    selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
+  }
+};
+
 const loadRooms = async () => {
   rooms.value = [];
   if (!clinicId.value) return;
@@ -419,7 +449,7 @@ const onAppointmentCancelled = () => {
 
 // === LIFECYCLE ===
 onMounted(async () => {
-  await Promise.all([loadDoctors(), loadProcedures()]);
+  await Promise.all([loadDoctors(), loadProcedures(), loadClinics()]);
   await loadLinkedPatient();
   await Promise.all([loadRooms(), loadEquipments(), loadAssistants()]);
   await refreshScheduleData();
@@ -439,6 +469,12 @@ watch(clinicId, () => {
   loadRooms();
   loadEquipments();
   loadAssistants();
+});
+
+watch(selectedClinicId, () => {
+  selectedRoomId.value = '';
+  selectedEquipmentId.value = '';
+  selectedAssistantId.value = '';
 });
 
 watch([selectedProcedureId, assistants], () => {
@@ -482,6 +518,16 @@ onUnmounted(() => {
     </div>
 
     <div class="flex flex-wrap items-end gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <div v-if="showClinicSelector" class="flex flex-col gap-1 min-w-[200px]">
+        <span class="text-xs uppercase tracking-wide text-slate-400">Клініка</span>
+        <select v-model="selectedClinicId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm">
+          <option value="" disabled>Оберіть клініку</option>
+          <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+            {{ clinic.name }}
+          </option>
+        </select>
+      </div>
+
       <div v-if="!isDoctor" class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
         <select v-model="selectedDoctorId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingDoctors">
