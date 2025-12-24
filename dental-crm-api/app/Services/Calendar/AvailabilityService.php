@@ -3,6 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\Models\Appointment;
+use App\Models\CalendarBlock;
 use App\Models\Doctor;
 use App\Models\Equipment;
 use App\Models\Procedure;
@@ -70,13 +71,14 @@ class AvailabilityService
         ?int $assistantId = null
     ): array {
         $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_room_%s_eq_%s_asst_%s',
+            'calendar_slots_doctor_%d_%s_%d_room_%s_eq_%s_asst_%s_v%s',
             $doctor->id,
             $date->toDateString(),
             $durationMinutes,
             $room?->id ?? 'any',
             $equipment?->id ?? 'any',
             $assistantId ?? 'any',
+            $this->getSlotsCacheVersion($doctor->id, $date),
         );
 
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use (
@@ -98,10 +100,25 @@ class AvailabilityService
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->get();
 
+            $dayStart = $date->copy()->startOfDay();
+            $dayEnd = $date->copy()->endOfDay();
+
+            $blocks = CalendarBlock::where('doctor_id', $doctor->id)
+                ->where('start_at', '<', $dayEnd)
+                ->where('end_at', '>', $dayStart)
+                ->get();
+
             $roomAppointments = $room
                 ? Appointment::where('room_id', $room->id)
                     ->whereDate('start_at', $date)
                     ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->get()
+                : collect();
+
+            $roomBlocks = $room
+                ? CalendarBlock::where('room_id', $room->id)
+                    ->where('start_at', '<', $dayEnd)
+                    ->where('end_at', '>', $dayStart)
                     ->get()
                 : collect();
 
@@ -112,10 +129,24 @@ class AvailabilityService
                     ->get()
                 : collect();
 
+            $equipmentBlocks = $equipment
+                ? CalendarBlock::where('equipment_id', $equipment->id)
+                    ->where('start_at', '<', $dayEnd)
+                    ->where('end_at', '>', $dayStart)
+                    ->get()
+                : collect();
+
             $assistantAppointments = $assistantId
                 ? Appointment::where('assistant_id', $assistantId)
                     ->whereDate('start_at', $date)
                     ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->get()
+                : collect();
+
+            $assistantBlocks = $assistantId
+                ? CalendarBlock::where('assistant_id', $assistantId)
+                    ->where('start_at', '<', $dayEnd)
+                    ->where('end_at', '>', $dayStart)
                     ->get()
                 : collect();
 
@@ -145,7 +176,15 @@ class AvailabilityService
                     continue;
                 }
 
+                if ($this->hasConflict($blocks, $start, $end)) {
+                    continue;
+                }
+
                 if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
+                    continue;
+                }
+
+                if ($room && $this->hasConflict($roomBlocks, $start, $end)) {
                     continue;
                 }
 
@@ -153,7 +192,15 @@ class AvailabilityService
                     continue;
                 }
 
+                if ($equipment && $this->hasConflict($equipmentBlocks, $start, $end)) {
+                    continue;
+                }
+
                 if ($assistantId && $this->hasConflict($assistantAppointments, $start, $end)) {
+                    continue;
+                }
+
+                if ($assistantId && $this->hasConflict($assistantBlocks, $start, $end)) {
                     continue;
                 }
 
@@ -169,9 +216,31 @@ class AvailabilityService
 
     public function hasConflict(Collection $appointments, Carbon $start, Carbon $end): bool
     {
-        return $appointments->contains(function (Appointment $appt) use ($start, $end) {
-            return $start < $appt->end_at && $end > $appt->start_at;
+        return $appointments->contains(function ($entry) use ($start, $end) {
+            return $start < $entry->end_at && $end > $entry->start_at;
         });
+    }
+
+    public static function bumpSlotsCacheVersion(int $doctorId, Carbon $date): void
+    {
+        $versionKey = self::slotsCacheVersionKey($doctorId, $date);
+
+        Cache::add($versionKey, 1, now()->addDays(7));
+        Cache::increment($versionKey);
+    }
+
+    private function getSlotsCacheVersion(int $doctorId, Carbon $date): int
+    {
+        $versionKey = self::slotsCacheVersionKey($doctorId, $date);
+
+        Cache::add($versionKey, 1, now()->addDays(7));
+
+        return (int) Cache::get($versionKey, 1);
+    }
+
+    private static function slotsCacheVersionKey(int $doctorId, Carbon $date): string
+    {
+        return sprintf('calendar_slots_version_doctor_%d_%s', $doctorId, $date->toDateString());
     }
 
     public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Room

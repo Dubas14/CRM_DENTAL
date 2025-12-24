@@ -3,6 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\Models\Appointment;
+use App\Models\CalendarBlock;
 use App\Models\Doctor;
 use App\Models\Equipment;
 use App\Models\Procedure;
@@ -58,6 +59,15 @@ class ConflictChecker
             $result['hard'][] = ['code' => 'doctor_busy', 'message' => 'Лікар вже зайнятий у цей час'];
         }
 
+        $doctorBlockConflict = CalendarBlock::where('doctor_id', $doctor->id)
+            ->where('start_at', '<', $endAt)
+            ->where('end_at', '>', $startAt)
+            ->exists();
+
+        if ($doctorBlockConflict) {
+            $result['hard'][] = ['code' => 'doctor_blocked', 'message' => 'Час заблокований у календарі лікаря'];
+        }
+
         if ($patientId) {
             $patientConflict = Appointment::where('patient_id', $patientId)
                 ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
@@ -94,6 +104,15 @@ class ConflictChecker
             if ($roomConflict) {
                 $result['hard'][] = ['code' => 'room_busy', 'message' => 'Кабінет зайнятий у цей час'];
             }
+
+            $roomBlockConflict = CalendarBlock::where('room_id', $room->id)
+                ->where('start_at', '<', $endAt)
+                ->where('end_at', '>', $startAt)
+                ->exists();
+
+            if ($roomBlockConflict) {
+                $result['hard'][] = ['code' => 'room_blocked', 'message' => 'Кабінет заблокований у цей час'];
+            }
         }
 
         if ($procedure?->equipment_id) {
@@ -113,6 +132,15 @@ class ConflictChecker
                 if ($equipmentConflict) {
                     $result['hard'][] = ['code' => 'equipment_busy', 'message' => 'Обладнання зайняте у цей час'];
                 }
+
+                $equipmentBlockConflict = CalendarBlock::where('equipment_id', $equipment->id)
+                    ->where('start_at', '<', $endAt)
+                    ->where('end_at', '>', $startAt)
+                    ->exists();
+
+                if ($equipmentBlockConflict) {
+                    $result['hard'][] = ['code' => 'equipment_blocked', 'message' => 'Обладнання заблоковане у цей час'];
+                }
             }
         }
         if ($procedure?->requires_assistant && $assistantId) {
@@ -128,6 +156,15 @@ class ConflictChecker
 
             if ($assistantConflict) {
                 $result['hard'][] = ['code' => 'assistant_busy', 'message' => 'Асистент зайнятий у цей час'];
+            }
+
+            $assistantBlockConflict = CalendarBlock::where('assistant_id', $assistantId)
+                ->where('start_at', '<', $endAt)
+                ->where('end_at', '>', $startAt)
+                ->exists();
+
+            if ($assistantBlockConflict) {
+                $result['hard'][] = ['code' => 'assistant_blocked', 'message' => 'Асистент заблокований у цей час'];
             }
         }
 
