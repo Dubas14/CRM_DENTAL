@@ -27,6 +27,25 @@ const calendarApi = {
     return apiClient.get(`/doctors/${doctorId}/appointments`, { params });
   },
 
+  // -----------------------
+  // Calendar blocks
+  // -----------------------
+  getCalendarBlocks(params) {
+    return apiClient.get('/calendar-blocks', { params });
+  },
+
+  createCalendarBlock(payload) {
+    return apiClient.post('/calendar-blocks', payload);
+  },
+
+  updateCalendarBlock(id, payload) {
+    return apiClient.put(`/calendar-blocks/${id}`, payload);
+  },
+
+  deleteCalendarBlock(id) {
+    return apiClient.delete(`/calendar-blocks/${id}`);
+  },
+
   getAppointments(params = {}) {
     return apiClient.get('/appointments', { params });
   },
