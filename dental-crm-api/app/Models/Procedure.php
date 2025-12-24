@@ -46,4 +46,10 @@ class Procedure extends Model
     {
         return $this->hasMany(Appointment::class);
     }
+
+    public function doctors()
+    {
+        return $this->belongsToMany(Doctor::class)
+            ->withPivot('custom_duration_minutes');
+    }
 }
