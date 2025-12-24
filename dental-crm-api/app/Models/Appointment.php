@@ -23,6 +23,7 @@ class Appointment extends Model
         'clinic_id',
         'doctor_id',
         'procedure_id',
+        'procedure_step_id',
         'room_id',
         'assistant_id',
         'equipment_id',
@@ -53,6 +54,11 @@ class Appointment extends Model
     public function procedure()
     {
         return $this->belongsTo(Procedure::class);
+    }
+
+    public function procedureStep()
+    {
+        return $this->belongsTo(ProcedureStep::class);
     }
     public function assistant()
     {

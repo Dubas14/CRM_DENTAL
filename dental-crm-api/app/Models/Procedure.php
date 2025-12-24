@@ -47,6 +47,11 @@ class Procedure extends Model
         return $this->hasMany(Appointment::class);
     }
 
+    public function steps()
+    {
+        return $this->hasMany(ProcedureStep::class)->orderBy('order');
+    }
+
     public function doctors()
     {
         return $this->belongsToMany(Doctor::class)

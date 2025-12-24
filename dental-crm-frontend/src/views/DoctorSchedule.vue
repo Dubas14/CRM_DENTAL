@@ -88,6 +88,8 @@ const bookingName = ref('');
 const bookingPhone = ref('');
 const bookingComment = ref('');
 const selectedPatientForBooking = ref(null);
+const useProcedureSteps = ref(false);
+const stepBookings = ref([]);
 
 // Змінна для збереження ID запису, до якого треба прив'язати створеного пацієнта
 const appointmentToLink = ref(null);
@@ -144,11 +146,47 @@ const selectedDoctor = computed(() =>
 const selectedProcedure = computed(() =>
     procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
 );
+const selectedProcedureSteps = computed(() => selectedProcedure.value?.steps || []);
+const hasProcedureSteps = computed(() => selectedProcedureSteps.value.length > 0);
 
 const requiresAssistant = computed(() => !!selectedProcedure.value?.requires_assistant);
 const requiresRoom = computed(() => !!selectedProcedure.value?.requires_room);
 const defaultRoomId = computed(() => selectedProcedure.value?.default_room_id || '');
 const defaultEquipmentId = computed(() => selectedProcedure.value?.equipment_id || '');
+
+const padTime = (value) => String(value).padStart(2, '0');
+
+const buildDateTimeFromParts = (date, time) => {
+  if (!date || !time) return null;
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  return new Date(year, month - 1, day, hour, minute);
+};
+
+const formatDateTimeParts = (date) => ({
+  date: `${date.getFullYear()}-${padTime(date.getMonth() + 1)}-${padTime(date.getDate())}`,
+  time: `${padTime(date.getHours())}:${padTime(date.getMinutes())}`,
+});
+
+const initializeStepBookings = (baseDate, baseTime) => {
+  if (!baseDate || !baseTime || !hasProcedureSteps.value) {
+    stepBookings.value = [];
+    return;
+  }
+
+  let current = buildDateTimeFromParts(baseDate, baseTime);
+  stepBookings.value = selectedProcedureSteps.value.map((step) => {
+    const entry = formatDateTimeParts(current);
+    current = new Date(current.getTime() + (step.duration_minutes || 0) * 60000);
+    return {
+      procedure_step_id: step.id,
+      name: step.name,
+      duration_minutes: step.duration_minutes,
+      date: entry.date,
+      time: entry.time,
+    };
+  });
+};
 
 const assistantLabel = (assistant) =>
     assistant.full_name || assistant.name || `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() || `#${assistant.id}`;
@@ -283,6 +321,7 @@ function clearBookingForm() {
   bookingError.value = null;
   bookingSuccess.value = false;
   searchResults.value = [];
+  stepBookings.value = [];
 }
 
 const openWeeklySettings = () => {
@@ -443,6 +482,9 @@ const selectSlot = (slot) => {
   bookingError.value = null;
 
   if (slot.date) selectedDate.value = slot.date;
+  if (useProcedureSteps.value) {
+    initializeStepBookings(slot.date || selectedDate.value, slot.start);
+  }
 
   if (preloadedPatient.value) {
     selectedPatientForBooking.value = preloadedPatient.value;
@@ -470,10 +512,8 @@ const bookSelectedSlot = async () => {
 
   bookingLoading.value = true;
   try {
-    await calendarApi.createAppointment({
+    const basePayload = {
       doctor_id: Number(selectedDoctorId.value),
-      date: bookingSlot.value.date || selectedDate.value,
-      time: bookingSlot.value.start,
       patient_id: selectedPatientForBooking.value?.id || linkedPatientId.value || null,
       procedure_id: selectedProcedureId.value || null,
       room_id: selectedRoomId.value || null,
@@ -482,10 +522,35 @@ const bookSelectedSlot = async () => {
       is_follow_up: !!isFollowUp.value,
       allow_soft_conflicts: !!allowSoftConflicts.value,
       comment: selectedPatientForBooking.value
-          ? (commentText || null)
-          : `Пацієнт: ${finalName}. ${commentText}`,
+        ? (commentText || null)
+        : `Пацієнт: ${finalName}. ${commentText}`,
       source: 'crm',
-    });
+    };
+
+    if (useProcedureSteps.value && hasProcedureSteps.value) {
+      const invalidStep = stepBookings.value.find((step) => !step.date || !step.time);
+      if (invalidStep) {
+        bookingError.value = 'Заповніть дату та час для кожного етапу.';
+        bookingLoading.value = false;
+        return;
+      }
+
+      await calendarApi.createAppointmentSeries({
+        ...basePayload,
+        procedure_id: selectedProcedureId.value,
+        steps: stepBookings.value.map((step) => ({
+          procedure_step_id: step.procedure_step_id,
+          date: step.date,
+          time: step.time,
+        })),
+      });
+    } else {
+      await calendarApi.createAppointment({
+        ...basePayload,
+        date: bookingSlot.value.date || selectedDate.value,
+        time: bookingSlot.value.start,
+      });
+    }
 
     bookingSuccess.value = true;
     await refreshScheduleData();
@@ -645,6 +710,24 @@ watch(selectedClinicId, () => {
   selectedRoomId.value = '';
   selectedEquipmentId.value = '';
   selectedAssistantId.value = '';
+});
+
+watch(selectedProcedureId, () => {
+  if (!hasProcedureSteps.value) {
+    useProcedureSteps.value = false;
+    stepBookings.value = [];
+  } else if (useProcedureSteps.value && bookingSlot.value) {
+    initializeStepBookings(bookingSlot.value.date || selectedDate.value, bookingSlot.value.start);
+  }
+});
+
+watch(useProcedureSteps, (enabled) => {
+  if (enabled && bookingSlot.value) {
+    initializeStepBookings(bookingSlot.value.date || selectedDate.value, bookingSlot.value.start);
+  }
+  if (!enabled) {
+    stepBookings.value = [];
+  }
 });
 
 watch([selectedProcedureId, assistants], () => {
@@ -839,6 +922,32 @@ onUnmounted(() => {
               </span>
             </div>
 
+            <div v-if="hasProcedureSteps" class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-2 text-sm text-slate-300">
+                <input v-model="useProcedureSteps" type="checkbox" class="accent-emerald-500" />
+                <span>Створити серію по етапах</span>
+              </label>
+              <button
+                v-if="useProcedureSteps && bookingSlot"
+                type="button"
+                class="text-xs text-emerald-300 hover:text-emerald-200"
+                @click="initializeStepBookings(bookingSlot.date || selectedDate, bookingSlot.start)"
+              >
+                Заповнити за вибраним слотом
+              </button>
+            </div>
+
+            <div v-if="useProcedureSteps && hasProcedureSteps" class="rounded-lg border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+              <div class="text-xs uppercase text-slate-400">Розклад етапів (можна змінювати)</div>
+              <div v-for="(step, index) in stepBookings" :key="`step-booking-${index}`" class="grid md:grid-cols-4 gap-2 items-center">
+                <div class="text-sm text-slate-200 md:col-span-2">
+                  {{ step.name }} • {{ step.duration_minutes }} хв
+                </div>
+                <input v-model="step.date" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-2 py-1 text-sm" />
+                <input v-model="step.time" type="time" class="rounded-lg bg-slate-900 border border-slate-700 px-2 py-1 text-sm" />
+              </div>
+            </div>
+
             <div v-if="bookingSuccess" class="bg-emerald-900/30 text-emerald-400 p-3 rounded border border-emerald-500/30">
               ✅ Запис успішно створено!
             </div>
@@ -948,6 +1057,7 @@ onUnmounted(() => {
 
                 <td class="px-4 py-3 text-xs text-slate-400">
                   <div>Процедура: <span class="text-slate-200">{{ a.procedure?.name || '—' }}</span></div>
+                  <div v-if="a.procedure_step">Етап: <span class="text-slate-200">{{ a.procedure_step.name }}</span></div>
                   <div v-if="a.room">Кабінет: <span class="text-sky-300">{{ a.room.name }}</span></div>
                   <div v-if="a.equipment">Обладн.: <span class="text-amber-300">{{ a.equipment.name }}</span></div>
                   <div v-if="a.assistant">Асистент: <span class="text-indigo-300">{{ a.assistant.full_name || a.assistant.name || a.assistant.id }}</span></div>

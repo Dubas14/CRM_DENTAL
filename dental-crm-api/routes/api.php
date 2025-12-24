@@ -135,6 +135,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('calendar-blocks', CalendarBlockController::class);
 
     Route::post('appointments', [AppointmentController::class, 'store']);
+    Route::post('appointments/series', [AppointmentController::class, 'storeSeries']);
     Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
     Route::get('/appointments', [AppointmentController::class, 'index']);

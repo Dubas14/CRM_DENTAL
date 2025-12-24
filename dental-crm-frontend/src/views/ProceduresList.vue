@@ -26,6 +26,7 @@ const editForm = ref({
   requires_room: false,
   requires_assistant: false,
   equipment_id: '',
+  steps: [],
 });
 const savingEdit = ref(false);
 
@@ -37,7 +38,38 @@ const form = ref({
   requires_room: false,
   requires_assistant: false,
   equipment_id: '',
+  steps: [],
 });
+
+const createStep = (overrides = {}) => ({
+  name: '',
+  duration_minutes: 30,
+  order: 1,
+  ...overrides,
+});
+
+const normalizeSteps = (steps) =>
+  (steps || []).map((step, index) => ({
+    name: step.name,
+    duration_minutes: step.duration_minutes ?? 30,
+    order: index + 1,
+  }));
+
+const addFormStep = () => {
+  form.value.steps.push(createStep({ order: form.value.steps.length + 1 }));
+};
+
+const removeFormStep = (index) => {
+  form.value.steps.splice(index, 1);
+};
+
+const addEditStep = () => {
+  editForm.value.steps.push(createStep({ order: editForm.value.steps.length + 1 }));
+};
+
+const removeEditStep = (index) => {
+  editForm.value.steps.splice(index, 1);
+};
 
 const loadClinics = async () => {
   if (user.value?.global_role === 'super_admin') {
@@ -86,6 +118,7 @@ const resetForm = () => {
     requires_room: false,
     requires_assistant: false,
     equipment_id: '',
+    steps: [],
   };
 };
 
@@ -104,6 +137,7 @@ const createProcedure = async () => {
       ...form.value,
       clinic_id: form.value.clinic_id || selectedClinicId.value,
       equipment_id: form.value.equipment_id || null,
+      steps: normalizeSteps(form.value.steps),
     });
     showForm.value = false;
     resetForm();
@@ -126,6 +160,7 @@ const startEdit = (procedure) => {
     requires_room: !!procedure.requires_room,
     requires_assistant: !!procedure.requires_assistant,
     equipment_id: procedure.equipment_id || '',
+    steps: (procedure.steps || []).map((step) => createStep(step)),
   };
 };
 
@@ -145,6 +180,7 @@ const updateProcedure = async (procedure) => {
       requires_room: editForm.value.requires_room,
       requires_assistant: editForm.value.requires_assistant,
       equipment_id: editForm.value.equipment_id || null,
+      steps: normalizeSteps(editForm.value.steps),
     });
     await fetchProcedures();
     editingProcedureId.value = null;
@@ -277,6 +313,38 @@ onMounted(async () => {
         </label>
       </div>
 
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-xs uppercase text-slate-400">Етапи процедури</label>
+          <button type="button" class="text-xs text-emerald-300 hover:text-emerald-200" @click="addFormStep">
+            + Додати етап
+          </button>
+        </div>
+        <div v-if="!form.steps.length" class="text-xs text-slate-500">Етапи не додані.</div>
+        <div v-for="(step, index) in form.steps" :key="`new-step-${index}`" class="flex flex-wrap items-center gap-2">
+          <input
+            v-model="step.name"
+            type="text"
+            placeholder="Назва етапу"
+            class="flex-1 min-w-[180px] rounded-lg bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+          />
+          <input
+            v-model.number="step.duration_minutes"
+            type="number"
+            min="5"
+            class="w-28 rounded-lg bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+          />
+          <span class="text-xs text-slate-400">хв</span>
+          <button
+            type="button"
+            class="text-xs text-red-400 hover:text-red-300"
+            @click="removeFormStep(index)"
+          >
+            Видалити
+          </button>
+        </div>
+      </div>
+
       <div class="flex items-center justify-between gap-3">
         <span v-if="createError" class="text-sm text-red-400">❌ {{ createError }}</span>
         <button
@@ -301,6 +369,7 @@ onMounted(async () => {
               <th class="text-left py-2 px-3">Назва</th>
               <th class="text-left py-2 px-3">Категорія</th>
               <th class="text-left py-2 px-3">Тривалість</th>
+              <th class="text-left py-2 px-3">Етапи</th>
               <th class="text-left py-2 px-3">Обладнання</th>
               <th class="text-left py-2 px-3">Вимоги</th>
               <th class="text-right py-2 px-3">Дії</th>
@@ -335,6 +404,38 @@ onMounted(async () => {
                   class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
                 />
                 <span v-else class="text-slate-400">{{ procedure.duration_minutes }} хв</span>
+              </td>
+              <td class="py-2 px-3">
+                <div v-if="editingProcedureId === procedure.id" class="space-y-2">
+                  <div v-if="!editForm.steps.length" class="text-xs text-slate-500">Етапи не додані.</div>
+                  <div v-for="(step, index) in editForm.steps" :key="`edit-step-${index}`" class="flex flex-wrap items-center gap-2">
+                    <input
+                      v-model="step.name"
+                      type="text"
+                      placeholder="Назва етапу"
+                      class="flex-1 min-w-[160px] rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-slate-100"
+                    />
+                    <input
+                      v-model.number="step.duration_minutes"
+                      type="number"
+                      min="5"
+                      class="w-24 rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-slate-100"
+                    />
+                    <span class="text-[10px] text-slate-400">хв</span>
+                    <button type="button" class="text-[10px] text-red-400 hover:text-red-300" @click="removeEditStep(index)">
+                      ✕
+                    </button>
+                  </div>
+                  <button type="button" class="text-xs text-emerald-300 hover:text-emerald-200" @click="addEditStep">
+                    + Додати етап
+                  </button>
+                </div>
+                <div v-else class="text-xs text-slate-400">
+                  <span v-if="procedure.steps?.length">
+                    {{ procedure.steps.map(step => step.name).join(', ') }}
+                  </span>
+                  <span v-else>—</span>
+                </div>
               </td>
               <td class="py-2 px-3">
                 <select
