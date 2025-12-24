@@ -104,8 +104,19 @@ const selectedRoomResources = computed(() =>
   rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
 );
 
+const fallbackResource = computed(() => {
+  if (isResourceView.value) return null;
+  const doctor = doctors.value.find((doc) => String(doc.id) === String(selectedDoctorId.value));
+  return {
+    id: selectedDoctorId.value ? String(selectedDoctorId.value) : 'schedule',
+    title: doctor?.full_name || doctor?.name || 'Розклад',
+  };
+});
+
 const calendarResources = computed(() => {
-  if (!isResourceView.value) return [];
+  if (!isResourceView.value) {
+    return fallbackResource.value ? [fallbackResource.value] : [];
+  }
 
   if (resourceViewType.value === 'doctor') {
     return selectedDoctorResources.value.map((doctor) => ({
@@ -127,7 +138,9 @@ const calendarEvents = computed(() => {
     title: event.title || '',
     start: toQCalendarDateTime(event.start),
     end: toQCalendarDateTime(event.end),
-    resourceId: event.resourceId ? String(event.resourceId) : undefined,
+    resourceId: event.resourceId
+      ? String(event.resourceId)
+      : (!isResourceView.value && fallbackResource.value ? fallbackResource.value.id : undefined),
     bgcolor: event.display === 'background' ? (event.backgroundColor || 'rgba(148, 163, 184, 0.22)') : undefined,
     color: event.display === 'background' ? 'transparent' : undefined,
     class: Array.isArray(event.classNames) ? event.classNames.join(' ') : undefined,
