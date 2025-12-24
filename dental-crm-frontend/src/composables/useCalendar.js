@@ -73,6 +73,8 @@ export function useCalendar() {
     let eventsReqId = 0;
     let slotsReqId = 0;
     let blocksReqId = 0;
+    let datesSetKey = '';
+    let datesSetInFlight = false;
 
     // Slots cache with TTL
     const slotsCache = new Map();
