@@ -1,19 +1,7 @@
 <script setup>
-// ⚠️ ВАЖЛИВО: для FullCalendar v5 з бандлерами — core/vdom та core мають бути першими
-import '@fullcalendar/core/vdom';
-import '@fullcalendar/core';
-
-import { computed, reactive, watch } from 'vue';
-import FullCalendar from '@fullcalendar/vue3';
-
-import timeGridPlugin from '@fullcalendar/timegrid';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-
-import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid';
-import resourceDayGridPlugin from '@fullcalendar/resource-daygrid';
-
-import ukLocale from '@fullcalendar/core/locales/uk';
+import { computed, onMounted, ref, watch } from 'vue';
+import { QCalendarScheduler } from '@quasar/quasar-ui-qcalendar';
+import '@quasar/quasar-ui-qcalendar/dist/index.css';
 
 import { useAuth } from '../composables/useAuth';
 import { useCalendar } from '../composables/useCalendar';
@@ -67,21 +55,53 @@ const {
 
   handleSelect,
   handleEventClick,
-  handleEventMoveResize,
-  showDragAvailability,
-  hideDragAvailability,
   selectAllow,
 
   handleDatesSet,
   refreshCalendar,
 } = useCalendar();
 
+const qcalendarRef = ref(null);
+const selectedDate = ref('');
+const activeRange = ref({ start: null, end: null });
+
+const formatDateYMD = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const formatTimeHM = (date) => {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const toQCalendarDateTime = (value) => {
+  if (!value) return value;
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return `${formatDateYMD(date)} ${formatTimeHM(date)}`;
+  }
+  if (typeof value === 'string') {
+    return value.replace('T', ' ').replace('Z', '');
+  }
+  return value;
+};
+
+const calendarView = computed(() => {
+  if (viewMode.value === 'dayGridMonth') return 'month';
+  if (viewMode.value === 'timeGridDay' || viewMode.value === 'resourceTimeGridDay') return 'day';
+  return 'week';
+});
+
 const selectedDoctorResources = computed(() =>
-    doctors.value.filter((doctor) => selectedDoctorIds.value.includes(String(doctor.id))),
+  doctors.value.filter((doctor) => selectedDoctorIds.value.includes(String(doctor.id))),
 );
 
 const selectedRoomResources = computed(() =>
-    rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
+  rooms.value.filter((room) => selectedRoomIds.value.includes(String(room.id))),
 );
 
 const calendarResources = computed(() => {
@@ -100,23 +120,32 @@ const calendarResources = computed(() => {
   }));
 });
 
-const calendarEventSources = computed(() => [
-  availabilityBgEvents.value,
-  calendarBlocks.value,
-  events.value,
-]);
+const calendarEvents = computed(() => {
+  const sources = [...availabilityBgEvents.value, ...calendarBlocks.value, ...events.value];
+  return sources.map((event) => ({
+    id: String(event.id),
+    title: event.title || '',
+    start: toQCalendarDateTime(event.start),
+    end: toQCalendarDateTime(event.end),
+    resourceId: event.resourceId ? String(event.resourceId) : undefined,
+    bgcolor: event.display === 'background' ? (event.backgroundColor || 'rgba(148, 163, 184, 0.22)') : undefined,
+    color: event.display === 'background' ? 'transparent' : undefined,
+    class: Array.isArray(event.classNames) ? event.classNames.join(' ') : undefined,
+    extendedProps: event.extendedProps,
+  }));
+});
 
 const selectedProcedure = computed(() =>
-    procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
+  procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
 );
 
 const requiresAssistant = computed(() => !!selectedProcedure.value?.requires_assistant);
 
 const assistantLabel = (assistant) =>
-    assistant.full_name ||
-    assistant.name ||
-    `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() ||
-    `#${assistant.id}`;
+  assistant.full_name ||
+  assistant.name ||
+  `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() ||
+  `#${assistant.id}`;
 
 watch([requiresAssistant, assistants], () => {
   if (requiresAssistant.value && assistants.value.length === 1 && !selectedAssistantId.value) {
@@ -124,90 +153,142 @@ watch([requiresAssistant, assistants], () => {
   }
 });
 
-// ✅ options як reactive — ок, але без "лівих" плагінів
-const calendarOptions = reactive({
-  // ❌ НІЯКОГО resourceCommonPlugin — це не плагін
-  plugins: [
-    timeGridPlugin,
-    dayGridPlugin,
-    interactionPlugin,
-    resourceTimeGridPlugin,
-    resourceDayGridPlugin,
-  ],
+const startOfWeek = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day; // Monday start
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
-  initialView: 'timeGridWeek',
+const startOfMonth = (date) => {
+  const d = new Date(date);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'timeGridDay,timeGridWeek,dayGridMonth,resourceTimeGridDay,resourceTimeGridWeek',
-  },
+const addDays = (date, amount) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + amount);
+  return d;
+};
 
-  timeZone: 'local',
+const addMonths = (date, amount) => {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + amount);
+  return d;
+};
 
-  locales: [ukLocale],
-  locale: 'uk',
+const updateRange = () => {
+  const base = selectedDate.value ? new Date(`${selectedDate.value}T00:00:00`) : new Date();
+  let start = base;
+  let end = base;
 
-  slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-  eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+  if (calendarView.value === 'day') {
+    start = new Date(base);
+    start.setHours(0, 0, 0, 0);
+    end = addDays(start, 1);
+  } else if (calendarView.value === 'month') {
+    start = startOfMonth(base);
+    end = addMonths(start, 1);
+  } else {
+    start = startOfWeek(base);
+    end = addDays(start, 7);
+  }
 
-  slotMinTime: '00:00:00',
-  slotMaxTime: '24:00:00',
-  scrollTime: '07:00:00',
-  scrollTimeReset: false,
+  activeRange.value = { start, end };
 
-  height: '100%',
-  nowIndicator: true,
-  selectable: true,
-  editable: true,
-  eventResizableFromStart: false,
+  calendarRef.value = {
+    getApi: () => ({
+      view: {
+        type: viewMode.value,
+        activeStart: start,
+        activeEnd: end,
+      },
+    }),
+  };
 
-  slotDuration: '00:30:00',
-  allDaySlot: false,
-  weekends: true,
+  handleDatesSet({
+    start,
+    end,
+    view: { type: viewMode.value },
+  });
+};
 
-  eventSources: [],
-  resources: [],
-  resourceAreaWidth: '18%',
-  resourceAreaHeaderContent: 'Лікарі',
+const onIntervalClick = async (payload) => {
+  const scope = payload?.scope || payload;
+  const date = scope?.timestamp?.date || scope?.date;
+  const time = scope?.timestamp?.time || scope?.time;
+  if (!date || !time) return;
 
-  selectAllow: (info) => selectAllow(info),
-  select: (info) => handleSelect(info),
-  eventClick: (info) => handleEventClick(info),
+  const start = new Date(`${date}T${time}`);
+  const end = new Date(start.getTime() + 30 * 60000);
+  const resourceId = scope?.resource?.id || scope?.resourceId;
 
-  eventDragStart: async (info) => {
-    await showDragAvailability(info.event);
-  },
-  eventDragStop: async () => {
-    await hideDragAvailability();
-  },
-  eventDrop: async (info) => {
-    await handleEventMoveResize(info, 'drop');
-  },
-  eventResize: async (info) => {
-    await handleEventMoveResize(info, 'resize');
-  },
+  const info = {
+    start,
+    end,
+    resource: resourceId ? { id: String(resourceId) } : undefined,
+  };
 
-  datesSet: (info) => {
-    handleDatesSet(info);
-  },
+  const allowed = await selectAllow(info);
+  if (!allowed) return;
+
+  handleSelect(info);
+};
+
+const onEventClick = (payload) => {
+  const event = payload?.event || payload;
+  if (!event || event.display === 'background') return;
+  handleEventClick({ event });
+};
+
+const calendarTitle = computed(() => {
+  if (!activeRange.value.start || !activeRange.value.end) return '';
+  const start = activeRange.value.start;
+  const end = addDays(activeRange.value.end, -1);
+  if (calendarView.value === 'day') return formatDateYMD(start);
+  if (calendarView.value === 'month') return start.toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+  return `${formatDateYMD(start)} — ${formatDateYMD(end)}`;
 });
 
-watch(calendarEventSources, (val) => {
-  calendarOptions.eventSources = val;
-}, { immediate: true });
+const goPrev = () => {
+  const base = selectedDate.value ? new Date(`${selectedDate.value}T00:00:00`) : new Date();
+  let next = base;
+  if (calendarView.value === 'day') next = addDays(base, -1);
+  else if (calendarView.value === 'month') next = addMonths(base, -1);
+  else next = addDays(base, -7);
+  selectedDate.value = formatDateYMD(next);
+};
 
-watch(calendarResources, (val) => {
-  calendarOptions.resources = val;
-}, { immediate: true });
+const goNext = () => {
+  const base = selectedDate.value ? new Date(`${selectedDate.value}T00:00:00`) : new Date();
+  let next = base;
+  if (calendarView.value === 'day') next = addDays(base, 1);
+  else if (calendarView.value === 'month') next = addMonths(base, 1);
+  else next = addDays(base, 7);
+  selectedDate.value = formatDateYMD(next);
+};
 
-watch(resourceViewType, (val) => {
-  calendarOptions.resourceAreaHeaderContent = val === 'room' ? 'Кабінети' : 'Лікарі';
-}, { immediate: true });
+const goToday = () => {
+  selectedDate.value = formatDateYMD(new Date());
+};
 
 const onBookingSubmit = (payload) => {
   createAppointment(payload);
 };
+
+watch([selectedDate, viewMode], () => {
+  updateRange();
+}, { immediate: true });
+
+onMounted(() => {
+  if (!selectedDate.value) {
+    selectedDate.value = formatDateYMD(new Date());
+  }
+});
 </script>
 
 <template>
@@ -219,15 +300,15 @@ const onBookingSubmit = (payload) => {
 
       <div class="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <label
-            v-if="showClinicSelector"
-            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]"
+          v-if="showClinicSelector"
+          class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]"
         >
           <span>Клініка</span>
           <select
-              v-model="selectedClinicId"
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Оберіть клініку"
-              :disabled="loading"
+            v-model="selectedClinicId"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Оберіть клініку"
+            :disabled="loading"
           >
             <option disabled value="">Оберіть клініку</option>
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -238,56 +319,43 @@ const onBookingSubmit = (payload) => {
 
         <fieldset class="flex flex-col gap-1 text-xs text-slate-400 min-w-[220px]">
           <legend class="text-xs text-slate-400">Спеціалізації</legend>
-          <div
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm max-h-28 overflow-y-auto space-y-1"
-              role="group"
-              aria-label="Фільтр спеціалізацій"
-              :aria-disabled="loading || !specializations.length"
-          >
+          <div class="flex flex-wrap gap-2">
             <label
-                v-for="spec in specializations"
-                :key="spec"
-                class="flex items-center gap-2 text-slate-200"
+              v-for="spec in specializations"
+              :key="spec"
+              class="flex items-center gap-2 text-xs text-slate-300"
             >
               <input
-                  v-model="selectedSpecializations"
-                  type="checkbox"
-                  :value="spec"
-                  class="accent-emerald-500"
-                  :disabled="loading || !specializations.length"
+                v-model="selectedSpecializations"
+                type="checkbox"
+                :value="spec"
+                class="accent-emerald-500"
               />
               <span>{{ spec }}</span>
             </label>
-            <p v-if="!specializations.length" class="text-xs text-slate-500">
-              Немає доступних спеціалізацій
-            </p>
           </div>
         </fieldset>
 
         <label class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]">
           <span>Лікар</span>
           <select
-              v-model="selectedDoctorId"
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Оберіть лікаря"
-              :disabled="loading"
+            v-model="selectedDoctorId"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Оберіть лікаря"
           >
-            <option disabled value="">Оберіть лікаря</option>
+            <option value="">Оберіть лікаря</option>
             <option v-for="doc in filteredDoctors" :key="doc.id" :value="doc.id">
               {{ doc.full_name || doc.name }}
             </option>
           </select>
         </label>
 
-        <label
-            v-if="isResourceView"
-            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]"
-        >
-          <span>Група ресурсів</span>
+        <label class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]">
+          <span>Multi view</span>
           <select
-              v-model="resourceViewType"
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Ресурсний режим"
+            v-model="resourceViewType"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Оберіть тип ресурсу"
           >
             <option value="doctor">Лікарі</option>
             <option value="room">Кабінети</option>
@@ -295,15 +363,15 @@ const onBookingSubmit = (payload) => {
         </label>
 
         <label
-            v-if="isResourceView && resourceViewType === 'doctor'"
-            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
+          v-if="isResourceView && resourceViewType === 'doctor'"
+          class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
         >
           <span>Лікарі у групі</span>
           <select
-              v-model="selectedDoctorIds"
-              multiple
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Оберіть лікарів"
+            v-model="selectedDoctorIds"
+            multiple
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Оберіть лікарів"
           >
             <option v-for="doc in filteredDoctors" :key="doc.id" :value="String(doc.id)">
               {{ doc.full_name || doc.name }}
@@ -312,15 +380,15 @@ const onBookingSubmit = (payload) => {
         </label>
 
         <label
-            v-if="isResourceView && resourceViewType === 'room'"
-            class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
+          v-if="isResourceView && resourceViewType === 'room'"
+          class="flex flex-col gap-1 text-xs text-slate-400 min-w-[200px]"
         >
           <span>Кабінети у групі</span>
           <select
-              v-model="selectedRoomIds"
-              multiple
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Оберіть кабінети"
+            v-model="selectedRoomIds"
+            multiple
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Оберіть кабінети"
           >
             <option v-for="room in rooms" :key="room.id" :value="String(room.id)">
               {{ room.name }}
@@ -331,9 +399,9 @@ const onBookingSubmit = (payload) => {
         <label class="flex flex-col gap-1 text-xs text-slate-400 min-w-[180px]">
           <span>Вид</span>
           <select
-              v-model="viewMode"
-              class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-              aria-label="Виберіть вид"
+            v-model="viewMode"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm"
+            aria-label="Виберіть вид"
           >
             <option value="timeGridDay">День</option>
             <option value="timeGridWeek">Тиждень</option>
@@ -345,10 +413,10 @@ const onBookingSubmit = (payload) => {
 
         <div class="flex flex-col justify-end min-w-[140px]">
           <button
-              class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white disabled:opacity-50"
-              :disabled="loading"
-              @click="refreshCalendar"
-              aria-label="Оновити календар"
+            class="px-3 py-2 rounded border border-slate-700 text-slate-200 hover:text-white disabled:opacity-50"
+            :disabled="loading"
+            @click="refreshCalendar"
+            aria-label="Оновити календар"
           >
             <span v-if="loading">Оновлення...</span>
             <span v-else>Оновити</span>
@@ -370,12 +438,56 @@ const onBookingSubmit = (payload) => {
           {{ error }}
         </div>
 
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <button
+              class="px-2 py-1 rounded border border-slate-700 text-slate-200 hover:text-white"
+              type="button"
+              @click="goPrev"
+            >
+              ◀
+            </button>
+            <button
+              class="px-2 py-1 rounded border border-slate-700 text-slate-200 hover:text-white"
+              type="button"
+              @click="goToday"
+            >
+              Сьогодні
+            </button>
+            <button
+              class="px-2 py-1 rounded border border-slate-700 text-slate-200 hover:text-white"
+              type="button"
+              @click="goNext"
+            >
+              ▶
+            </button>
+          </div>
+          <div class="text-sm text-slate-200">
+            {{ calendarTitle }}
+          </div>
+        </div>
+
         <div v-if="loadingSlots" class="absolute top-3 right-3 z-10 flex items-center gap-2">
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
           <span class="text-xs text-slate-400">Оновлення слотів...</span>
         </div>
 
-        <FullCalendar ref="calendarRef" :options="calendarOptions" />
+        <QCalendarScheduler
+          ref="qcalendarRef"
+          v-model="selectedDate"
+          :view="calendarView"
+          :resources="calendarResources"
+          :events="calendarEvents"
+          :interval-minutes="30"
+          :hour24-format="true"
+          :resource-key="'id'"
+          :resource-label="'title'"
+          animated
+          bordered
+          no-active-date
+          @click-interval="onIntervalClick"
+          @click-event="onEventClick"
+        />
       </div>
 
       <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
@@ -384,9 +496,9 @@ const onBookingSubmit = (payload) => {
         <label class="space-y-1 block">
           <span class="text-xs text-slate-400">Процедура</span>
           <select
-              v-model="selectedProcedureId"
-              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-              aria-label="Виберіть процедуру"
+            v-model="selectedProcedureId"
+            class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Виберіть процедуру"
           >
             <option value="">Без процедури</option>
             <option v-for="p in procedures" :key="p.id" :value="p.id">{{ p.name }}</option>
@@ -396,9 +508,9 @@ const onBookingSubmit = (payload) => {
         <label class="space-y-1 block">
           <span class="text-xs text-slate-400">Кабінет</span>
           <select
-              v-model="selectedRoomId"
-              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-              aria-label="Виберіть кабінет"
+            v-model="selectedRoomId"
+            class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Виберіть кабінет"
           >
             <option value="">Будь-який</option>
             <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -408,9 +520,9 @@ const onBookingSubmit = (payload) => {
         <label class="space-y-1 block">
           <span class="text-xs text-slate-400">Обладнання</span>
           <select
-              v-model="selectedEquipmentId"
-              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-              aria-label="Виберіть обладнання"
+            v-model="selectedEquipmentId"
+            class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Виберіть обладнання"
           >
             <option value="">Будь-яке</option>
             <option v-for="e in equipments" :key="e.id" :value="e.id">{{ e.name }}</option>
@@ -422,10 +534,10 @@ const onBookingSubmit = (payload) => {
             Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
           </span>
           <select
-              v-model="selectedAssistantId"
-              class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-              :disabled="assistants.length === 0"
-              aria-label="Виберіть асистента"
+            v-model="selectedAssistantId"
+            class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            :disabled="assistants.length === 0"
+            aria-label="Виберіть асистента"
           >
             <option value="">Без асистента</option>
             <option v-for="assistant in assistants" :key="assistant.id" :value="assistant.id">
@@ -461,12 +573,12 @@ const onBookingSubmit = (payload) => {
     </div>
 
     <BookingModal
-        :is-open="isBookingOpen"
-        :booking="booking"
-        :booking-loading="bookingLoading"
-        :booking-error="bookingError"
-        @close="closeBooking"
-        @submit="onBookingSubmit"
+      :is-open="isBookingOpen"
+      :booking="booking"
+      :booking-loading="bookingLoading"
+      :booking-error="bookingError"
+      @close="closeBooking"
+      @submit="onBookingSubmit"
     />
   </div>
 </template>
