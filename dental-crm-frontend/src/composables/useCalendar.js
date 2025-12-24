@@ -51,6 +51,7 @@ export function useCalendar() {
     // Calendar data
     const events = ref([]);
     const availabilityBgEvents = ref([]);
+    const calendarBlocks = ref([]);
     const calendarRef = ref(null);
 
     // Drag context
@@ -67,6 +68,7 @@ export function useCalendar() {
     // request guards (anti race / anti loop)
     let eventsReqId = 0;
     let slotsReqId = 0;
+    let blocksReqId = 0;
 
     // Slots cache with TTL
     const slotsCache = new Map();
@@ -175,6 +177,31 @@ export function useCalendar() {
         classNames: [`status-${appt.status || 'scheduled'}`],
     }));
 
+    const calendarBlockColors = {
+        vacation: 'rgba(248, 113, 113, 0.25)',
+        room_block: 'rgba(251, 146, 60, 0.25)',
+        equipment_booking: 'rgba(192, 132, 252, 0.25)',
+        personal_block: 'rgba(96, 165, 250, 0.25)',
+    };
+
+    const resolveCalendarBlockType = (block) =>
+        block?.type || block?.block_type || block?.kind || 'block';
+
+    const mapCalendarBlocksToEvents = (blocks) => blocks.map((block) => {
+        const type = resolveCalendarBlockType(block);
+        const start = normalizeDateTimeForCalendar(block.start_at || block.start || block.from);
+        const end = normalizeDateTimeForCalendar(block.end_at || block.end || block.to);
+        return {
+            id: `calendar-block-${block.id || `${type}-${start}`}`,
+            start,
+            end,
+            display: 'background',
+            backgroundColor: calendarBlockColors[type] || 'rgba(148, 163, 184, 0.22)',
+            classNames: ['calendar-block', `calendar-block-${type}`],
+            extendedProps: { block, type },
+        };
+    });
+
     // Data fetching
     const resolveDoctorClinicId = (doctor) =>
         doctor?.clinic_id ||
@@ -262,6 +289,11 @@ export function useCalendar() {
         return Array.isArray(data) ? data : (data?.data || []);
     };
 
+    const loadCalendarBlocksRange = async ({ doctorId, fromDate, toDate }) => {
+        const { data } = await calendarApi.getCalendarBlocks({ doctor_id: doctorId, from_date: fromDate, to_date: toDate });
+        return Array.isArray(data) ? data : (data?.data || []);
+    };
+
     const ensureRange = () => {
         // якщо datesSet ще не прийшов — беремо з view
         if (activeRange.value?.fromDate && activeRange.value?.toDate) return activeRange.value;
@@ -300,6 +332,27 @@ export function useCalendar() {
             toastError(message);
         } finally {
             if (reqId === eventsReqId) loading.value = false;
+        }
+    };
+
+    const loadCalendarBlocks = async (range = null) => {
+        if (!selectedDoctorId.value) return;
+
+        const reqId = ++blocksReqId;
+
+        try {
+            const r = range ? range : ensureRange();
+            const blocks = await loadCalendarBlocksRange({
+                doctorId: selectedDoctorId.value,
+                fromDate: r.fromDate,
+                toDate: r.toDate,
+            });
+
+            if (reqId !== blocksReqId) return;
+
+            calendarBlocks.value = mapCalendarBlocksToEvents(blocks);
+        } catch (e) {
+            console.warn('Помилка завантаження блоків календаря:', e);
         }
     };
 
@@ -627,12 +680,13 @@ export function useCalendar() {
         }
 
         await loadEvents(activeRange.value);
+        await loadCalendarBlocks(activeRange.value);
         await refreshAvailabilityBackground(activeRange.value);
     };
 
     const refreshCalendar = async () => {
         const r = ensureRange();
-        await Promise.all([loadEvents(r), refreshAvailabilityBackground(r)]);
+        await Promise.all([loadEvents(r), loadCalendarBlocks(r), refreshAvailabilityBackground(r)]);
     };
 
     const initialize = async () => {
@@ -702,6 +756,7 @@ export function useCalendar() {
         calendarRef,
         events,
         availabilityBgEvents,
+        calendarBlocks,
 
         viewMode,
         selectedDoctorId,
@@ -734,6 +789,7 @@ export function useCalendar() {
         initialize,
         refreshCalendar,
         loadEvents,
+        loadCalendarBlocks,
         refreshAvailabilityBackground,
 
         createAppointment,

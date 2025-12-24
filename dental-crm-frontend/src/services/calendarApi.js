@@ -50,6 +50,10 @@ const calendarApi = {
     return apiClient.get('/appointments', { params });
   },
 
+  getCalendarBlocks(params = {}) {
+    return apiClient.get('/calendar-blocks', { params });
+  },
+
   /**
    * Create appointment
    * Supports:
