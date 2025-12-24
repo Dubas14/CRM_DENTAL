@@ -19,14 +19,12 @@ class WaitlistEntryFactory extends Factory
 
     public function definition(): array
     {
-        $preferredDate = fake()->optional()->dateTimeBetween('now', '+1 month');
-
         return [
             'clinic_id' => Clinic::factory(),
             'patient_id' => Patient::factory(),
             'doctor_id' => Doctor::factory(),
             'procedure_id' => Procedure::factory(),
-            'preferred_date' => $preferredDate?->format('Y-m-d'),
+            'preferred_date' => fake()->optional()->dateTimeBetween('now', '+1 month')->format('Y-m-d'),
             'status' => Arr::random(['pending', 'proposed', 'booked', 'cancelled']),
             'notes' => fake()->optional()->sentence(),
         ];

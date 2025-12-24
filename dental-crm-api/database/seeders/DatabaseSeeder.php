@@ -52,7 +52,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Реставрація зуба', 'category' => 'Терапія', 'duration' => 60],
         ];
 
-        $clinics->each(function (Clinic $clinic, int $index) use ($procedureTemplates) {
+        $clinics->each(function (Clinic $clinic, int $index) {
             // Адмін конкретної клініки
             $clinicAdmin = User::factory()->create([
                 'name' => 'Clinic ' . ($index + 1) . ' Admin',
@@ -113,15 +113,12 @@ class DatabaseSeeder extends Seeder
             $procedureCount = fake()->numberBetween(6, 8);
             $procedureNames = collect($procedureTemplates)->shuffle()->take($procedureCount);
             foreach ($procedureNames as $procedureData) {
-                $procedureData = is_array($procedureData)
-                    ? $procedureData
-                    : ['name' => (string) $procedureData];
                 $requiresRoom = fake()->boolean(80);
                 $requiresAssistant = fake()->boolean(65);
                 $procedure = Procedure::factory()->for($clinic)->create([
-                    'name' => $procedureData['name'] ?? 'Процедура',
-                    'category' => $procedureData['category'] ?? 'Інше',
-                    'duration_minutes' => $procedureData['duration'] ?? 60,
+                    'name' => $procedureData['name'],
+                    'category' => $procedureData['category'],
+                    'duration_minutes' => $procedureData['duration'],
                     'requires_room' => $requiresRoom,
                     'requires_assistant' => $requiresAssistant,
                     'default_room_id' => $requiresRoom ? $rooms->random()->id : null,
@@ -136,7 +133,7 @@ class DatabaseSeeder extends Seeder
 
             foreach (range(1, 7) as $weekday) {
                 $isWorking = $weekday < 7;
-                ClinicWorkingHour::factory()->state(['clinic_id' => $clinic->id])->create([
+                ClinicWorkingHour::factory()->for($clinic)->create([
                     'weekday' => $weekday,
                     'is_working' => $isWorking,
                     'start_time' => $isWorking ? '09:00:00' : null,
@@ -157,18 +154,7 @@ class DatabaseSeeder extends Seeder
                     ])->create();
                 }
 
-                $exceptionDates = collect();
-                while ($exceptionDates->count() < 2) {
-                    $exceptionDates->push(fake()->dateTimeBetween('now', '+1 month')->format('Y-m-d'));
-                    $exceptionDates = $exceptionDates->unique();
-                }
-
-                foreach ($exceptionDates as $exceptionDate) {
-                    ScheduleException::factory()
-                        ->for($doctor)
-                        ->state(['date' => $exceptionDate])
-                        ->create();
-                }
+                ScheduleException::factory()->count(2)->for($doctor)->create();
             });
 
             $appointments = collect();
