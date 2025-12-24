@@ -346,6 +346,7 @@ export function useCalendar() {
     const loadCalendarBlocksRange = async ({ doctorId, fromDate, toDate }) => {
         const { data } = await calendarApi.getCalendarBlocks({
             doctor_id: doctorId,
+            clinic_id: clinicId.value,
             from_date: fromDate,
             from: fromDate,
             to: toDate,

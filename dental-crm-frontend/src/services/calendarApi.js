@@ -27,7 +27,16 @@ const calendarApi = {
 
   // Calendar blocks
   getCalendarBlocks(params = {}) {
-    return apiClient.get('/calendar-blocks', { params });
+    const normalized = { ...params };
+    if (normalized.from_date && !normalized.from) {
+      normalized.from = normalized.from_date;
+    }
+    if (normalized.to_date && !normalized.to) {
+      normalized.to = normalized.to_date;
+    }
+    delete normalized.from_date;
+    delete normalized.to_date;
+    return apiClient.get('/calendar-blocks', { params: normalized });
   },
   createCalendarBlock(payload) {
     return apiClient.post('/calendar-blocks', payload);
