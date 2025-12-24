@@ -50,7 +50,7 @@ Route::post('/login', function (Request $request) {
             : ($user->hasRole('doctor') ? 'doctor' : 'user'));
 
     $user->setAttribute('global_role', $globalRole);
-    $user->setAttribute('roles', $roleNames);
+    $user->setAttribute('global_role', $roleNames->first() ?? 'user');
 
     // 5. Відповідь
     return response()->json([
