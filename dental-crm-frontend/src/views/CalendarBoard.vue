@@ -7,6 +7,16 @@
       <p class="text-slate-400 text-sm">
         Управління розкладом лікарів, бронювання та перегляд записів
       </p>
+      <div class="fc mt-3 flex flex-wrap gap-4 text-xs text-slate-300">
+        <div class="flex items-center gap-2">
+          <span class="fc-event inline-block h-3 w-3 rounded-sm"></span>
+          <span>Запис</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="fc-bg-event free-slot inline-block h-3 w-3 rounded-sm"></span>
+          <span>Вільний слот</span>
+        </div>
+      </div>
     </div>
 
     <!-- Основний контент -->
