@@ -17,6 +17,7 @@ class AppointmentResource extends JsonResource
             'patient_id' => $this->patient_id,
 
             'procedure_id' => $this->procedure_id,
+            'procedure_step_id' => $this->procedure_step_id,
             'room_id' => $this->room_id,
             'equipment_id' => $this->equipment_id,
 
@@ -39,6 +40,7 @@ class AppointmentResource extends JsonResource
             'assistant' => $this->whenLoaded('assistant'),
             'patient' => $this->whenLoaded('patient'),
             'procedure' => $this->whenLoaded('procedure'),
+            'procedure_step' => $this->whenLoaded('procedureStep'),
             'room' => $this->whenLoaded('room'),
             'equipment' => $this->whenLoaded('equipment'),
         ];

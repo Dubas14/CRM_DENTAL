@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Procedure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProcedureController extends Controller
 {
@@ -13,6 +14,7 @@ class ProcedureController extends Controller
         $clinicId = $request->query('clinic_id');
 
         return Procedure::query()
+            ->with('steps')
             ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId))
             ->orderBy('name')
             ->get();
@@ -30,16 +32,32 @@ class ProcedureController extends Controller
             'default_room_id'    => ['nullable', 'exists:rooms,id'],
             'equipment_id'       => ['nullable', 'exists:equipments,id'],
             'metadata'           => ['nullable', 'array'],
+            'steps'              => ['nullable', 'array'],
+            'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
+            'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
+            'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
         ]);
 
-        $procedure = Procedure::create($data);
+        $procedure = DB::transaction(function () use ($data) {
+            $procedure = Procedure::create($data);
 
-        return response()->json($procedure, 201);
+            if (!empty($data['steps'])) {
+                $steps = collect($data['steps'])
+                    ->sortBy('order')
+                    ->values();
+
+                $procedure->steps()->createMany($steps->toArray());
+            }
+
+            return $procedure;
+        });
+
+        return response()->json($procedure->load('steps'), 201);
     }
 
     public function show(Procedure $procedure)
     {
-        return $procedure->load('defaultRoom');
+        return $procedure->load(['defaultRoom', 'steps']);
     }
 
     public function update(Request $request, Procedure $procedure)
@@ -53,11 +71,29 @@ class ProcedureController extends Controller
             'default_room_id'    => ['sometimes', 'nullable', 'exists:rooms,id'],
             'equipment_id'       => ['sometimes', 'nullable', 'exists:equipments,id'],
             'metadata'           => ['sometimes', 'nullable', 'array'],
+            'steps'              => ['sometimes', 'array'],
+            'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
+            'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
+            'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
         ]);
 
-        $procedure->update($data);
+        DB::transaction(function () use ($procedure, $data) {
+            $procedure->update($data);
 
-        return $procedure->load('defaultRoom');
+            if (array_key_exists('steps', $data)) {
+                $procedure->steps()->delete();
+
+                if (!empty($data['steps'])) {
+                    $steps = collect($data['steps'])
+                        ->sortBy('order')
+                        ->values();
+
+                    $procedure->steps()->createMany($steps->toArray());
+                }
+            }
+        });
+
+        return $procedure->load(['defaultRoom', 'steps']);
     }
 
     public function destroy(Procedure $procedure)

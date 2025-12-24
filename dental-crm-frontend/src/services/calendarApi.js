@@ -102,6 +102,24 @@ const calendarApi = {
     });
   },
 
+  createAppointmentSeries(payload) {
+    return apiClient.post('/appointments/series', {
+      ...pick(payload, [
+        'doctor_id',
+        'patient_id',
+        'procedure_id',
+        'room_id',
+        'equipment_id',
+        'assistant_id',
+        'is_follow_up',
+        'allow_soft_conflicts',
+        'comment',
+        'source',
+        'steps',
+      ]),
+    });
+  },
+
   /**
    * Update appointment
    * Supports:

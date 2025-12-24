@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Equipment;
 use App\Models\Procedure;
+use App\Models\ProcedureStep;
 use App\Models\Room;
 use App\Models\User;
 use App\Models\WaitlistEntry;
@@ -17,6 +18,7 @@ use App\Services\Calendar\ConflictChecker;
 use App\Services\Calendar\WaitlistService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AppointmentController extends Controller
 {
@@ -30,6 +32,7 @@ class AppointmentController extends Controller
             'time' => ['required', 'date_format:H:i'],
 
             'procedure_id' => ['nullable', 'exists:procedures,id'],
+            'procedure_step_id' => ['nullable', 'exists:procedure_steps,id'],
             'room_id' => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
             'assistant_id' => ['nullable', 'exists:users,id'],
@@ -53,9 +56,19 @@ class AppointmentController extends Controller
         $availability = new AvailabilityService();
 
         $procedure = isset($data['procedure_id']) ? Procedure::find($data['procedure_id']) : null;
+        $procedureStep = isset($data['procedure_step_id']) ? ProcedureStep::find($data['procedure_step_id']) : null;
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
         $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
         $assistantId = $data['assistant_id'] ?? null;
+
+        if ($procedureStep) {
+            if ($procedure && $procedureStep->procedure_id !== $procedure->id) {
+                return response()->json([
+                    'message' => 'Етап не належить вибраній процедурі',
+                ], 422);
+            }
+            $procedure = $procedure ?? $procedureStep->procedure;
+        }
 
         $date = Carbon::parse($data['date'])->startOfDay();
         $startAt = Carbon::parse($data['date'] . ' ' . $data['time']);
@@ -68,11 +81,13 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        $duration = $availability->resolveProcedureDuration(
-            $doctor,
-            $procedure,
-            $plan['slot_duration'] ?? 30
-        );
+        $duration = $procedureStep
+            ? $procedureStep->duration_minutes
+            : $availability->resolveProcedureDuration(
+                $doctor,
+                $procedure,
+                $plan['slot_duration'] ?? 30
+            );
         $endAt = $startAt->copy()->addMinutes($duration);
 
         if ($procedure && $procedure->requires_room) {
@@ -122,6 +137,7 @@ class AppointmentController extends Controller
             'doctor_id' => $doctor->id,
 
             'procedure_id' => $procedure?->id,
+            'procedure_step_id' => $procedureStep?->id,
             'room_id' => $room?->id,
             'equipment_id' => $equipment?->id,
 
@@ -135,7 +151,9 @@ class AppointmentController extends Controller
 
             'status' => 'planned',
             'source' => $data['source'] ?? 'crm',
-            'comment' => $data['comment'] ?? null,
+            'comment' => $procedureStep
+                ? trim(($data['comment'] ?? '') . ' [Етап: ' . $procedureStep->name . ']') ?: null
+                : ($data['comment'] ?? null),
         ]);
 
         if (!empty($data['waitlist_entry_id'])) {
@@ -148,11 +166,200 @@ class AppointmentController extends Controller
             'assistant:id,full_name',
             'patient:id,full_name,phone',
             'procedure:id,name,duration_minutes',
+            'procedureStep:id,procedure_id,name,duration_minutes,order',
             'room:id,name',
             'equipment:id,name',
         ]);
 
         return (new AppointmentResource($appointment))
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    public function storeSeries(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'doctor_id' => ['required', 'exists:doctors,id'],
+            'procedure_id' => ['required', 'exists:procedures,id'],
+            'steps' => ['required', 'array', 'min:1'],
+            'steps.*.procedure_step_id' => ['required', 'exists:procedure_steps,id'],
+            'steps.*.date' => ['required', 'date'],
+            'steps.*.time' => ['required', 'date_format:H:i'],
+
+            'room_id' => ['nullable', 'exists:rooms,id'],
+            'equipment_id' => ['nullable', 'exists:equipments,id'],
+            'assistant_id' => ['nullable', 'exists:users,id'],
+
+            'patient_id' => ['nullable', 'exists:patients,id'],
+            'is_follow_up' => ['sometimes', 'boolean'],
+
+            'source' => ['nullable', 'string', 'max:50'],
+            'comment' => ['nullable', 'string'],
+
+            'allow_soft_conflicts' => ['sometimes', 'boolean'],
+        ]);
+
+        $doctor = Doctor::findOrFail($data['doctor_id']);
+
+        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+            abort(403, 'У вас немає доступу до створення запису для цього лікаря');
+        }
+
+        $procedure = Procedure::findOrFail($data['procedure_id']);
+
+        $stepIds = collect($data['steps'])->pluck('procedure_step_id')->unique()->values();
+        $steps = ProcedureStep::query()
+            ->whereIn('id', $stepIds)
+            ->get()
+            ->keyBy('id');
+
+        if ($steps->count() !== $stepIds->count()) {
+            return response()->json([
+                'message' => 'Один або кілька етапів не знайдено',
+            ], 422);
+        }
+
+        if ($steps->firstWhere('procedure_id', '!=', $procedure->id)) {
+            return response()->json([
+                'message' => 'Етапи не належать вибраній процедурі',
+            ], 422);
+        }
+
+        $availability = new AvailabilityService();
+
+        $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
+        $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
+        $assistantId = $data['assistant_id'] ?? null;
+
+        $appointmentsPayload = [];
+        $conflictsSummary = [
+            'hard' => [],
+            'soft' => [],
+        ];
+
+        foreach ($data['steps'] as $stepItem) {
+            $step = $steps->get($stepItem['procedure_step_id']);
+            $date = Carbon::parse($stepItem['date'])->startOfDay();
+            $startAt = Carbon::parse($stepItem['date'] . ' ' . $stepItem['time']);
+
+            $plan = $availability->getDailyPlan($doctor, $date);
+            if (isset($plan['reason'])) {
+                return response()->json([
+                    'message' => 'Неможливо створити запис: лікар недоступний',
+                    'reason' => $plan['reason'],
+                    'procedure_step_id' => $step->id,
+                ], 422);
+            }
+
+            $duration = $step->duration_minutes;
+            $endAt = $startAt->copy()->addMinutes($duration);
+
+            $resolvedRoom = $room;
+            if ($procedure->requires_room) {
+                $resolvedRoom = $availability->resolveRoom(
+                    $resolvedRoom,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $doctor->clinic_id
+                );
+            }
+
+            $resolvedEquipment = $equipment;
+            if ($procedure->equipment_id) {
+                $resolvedEquipment = $availability->resolveEquipment(
+                    $resolvedEquipment ?? $procedure->equipment,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $doctor->clinic_id
+                );
+            }
+
+            $conflicts = (new ConflictChecker())->evaluate(
+                $doctor,
+                $date,
+                $startAt,
+                $endAt,
+                $procedure,
+                $resolvedRoom,
+                $resolvedEquipment,
+                $data['patient_id'] ?? null,
+                null,
+                $assistantId
+            );
+
+            if (!empty($conflicts['hard'])) {
+                $conflictsSummary['hard'][] = [
+                    'procedure_step_id' => $step->id,
+                    'conflicts' => $conflicts['hard'],
+                ];
+            }
+
+            if (!empty($conflicts['soft'])) {
+                $conflictsSummary['soft'][] = [
+                    'procedure_step_id' => $step->id,
+                    'conflicts' => $conflicts['soft'],
+                ];
+            }
+
+            $comment = $data['comment'] ?? '';
+            $comment = trim($comment . ' [Етап: ' . $step->name . ']') ?: null;
+
+            $appointmentsPayload[] = [
+                'clinic_id' => $doctor->clinic_id,
+                'doctor_id' => $doctor->id,
+                'procedure_id' => $procedure->id,
+                'procedure_step_id' => $step->id,
+                'room_id' => $resolvedRoom?->id,
+                'equipment_id' => $resolvedEquipment?->id,
+                'assistant_id' => $assistantId,
+                'patient_id' => $data['patient_id'] ?? null,
+                'is_follow_up' => (bool)($data['is_follow_up'] ?? false),
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+                'status' => 'planned',
+                'source' => $data['source'] ?? 'crm',
+                'comment' => $comment,
+            ];
+        }
+
+        if (!empty($conflictsSummary['hard'])) {
+            return response()->json([
+                'message' => 'Неможливо створити серію через конфлікти',
+                'hard_conflicts' => $conflictsSummary['hard'],
+            ], 422);
+        }
+
+        if (!empty($conflictsSummary['soft']) && !($data['allow_soft_conflicts'] ?? false)) {
+            return response()->json([
+                'message' => 'Виявлено можливі конфлікти',
+                'soft_conflicts' => $conflictsSummary['soft'],
+            ], 409);
+        }
+
+        $appointments = DB::transaction(function () use ($appointmentsPayload) {
+            return collect($appointmentsPayload)->map(function ($payload) {
+                return Appointment::create($payload);
+            });
+        });
+
+        $appointments = $appointments->map(fn ($appointment) => $appointment->load([
+            'clinic:id,name',
+            'doctor:id,full_name,clinic_id',
+            'assistant:id,full_name',
+            'patient:id,full_name,phone',
+            'procedure:id,name,duration_minutes',
+            'procedureStep:id,procedure_id,name,duration_minutes,order',
+            'room:id,name',
+            'equipment:id,name',
+        ]));
+
+        return AppointmentResource::collection($appointments)
             ->response()
             ->setStatusCode(201);
     }
@@ -175,6 +382,7 @@ class AppointmentController extends Controller
                 'assistant:id,full_name',
                 'patient:id,full_name,phone',
                 'procedure:id,name,duration_minutes',
+                'procedureStep:id,procedure_id,name,duration_minutes,order',
                 'room:id,name',
                 'equipment:id,name',
             ])
@@ -195,6 +403,7 @@ class AppointmentController extends Controller
             'time' => ['sometimes', 'date_format:H:i'],
 
             'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
+            'procedure_step_id' => ['sometimes', 'nullable', 'exists:procedure_steps,id'],
             'room_id' => ['sometimes', 'nullable', 'exists:rooms,id'],
             'equipment_id' => ['sometimes', 'nullable', 'exists:equipments,id'],
             'assistant_id' => ['sometimes', 'nullable', 'exists:users,id'],
@@ -220,6 +429,19 @@ class AppointmentController extends Controller
         $procedure = array_key_exists('procedure_id', $validated)
             ? Procedure::find($validated['procedure_id'])
             : $appointment->procedure;
+
+        $procedureStep = array_key_exists('procedure_step_id', $validated)
+            ? ProcedureStep::find($validated['procedure_step_id'])
+            : $appointment->procedureStep;
+
+        if ($procedureStep) {
+            if ($procedure && $procedureStep->procedure_id !== $procedure->id) {
+                return response()->json([
+                    'message' => 'Етап не належить вибраній процедурі',
+                ], 422);
+            }
+            $procedure = $procedure ?? $procedureStep->procedure;
+        }
 
         $room = array_key_exists('room_id', $validated)
             ? Room::find($validated['room_id'])
@@ -249,11 +471,13 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        $duration = $availability->resolveProcedureDuration(
-            $doctor,
-            $procedure,
-            $plan['slot_duration'] ?? 30
-        );
+        $duration = $procedureStep
+            ? $procedureStep->duration_minutes
+            : $availability->resolveProcedureDuration(
+                $doctor,
+                $procedure,
+                $plan['slot_duration'] ?? 30
+            );
         $endAt = $startAt->copy()->addMinutes($duration);
 
         if ($procedure && $procedure->requires_room) {
@@ -303,6 +527,7 @@ class AppointmentController extends Controller
             'doctor_id' => $doctor->id,
 
             'procedure_id' => $procedure?->id,
+            'procedure_step_id' => $procedureStep?->id,
             'room_id' => $room?->id,
             'equipment_id' => $equipment?->id,
 
@@ -315,7 +540,9 @@ class AppointmentController extends Controller
             'end_at' => $endAt,
 
             'status' => $validated['status'] ?? $appointment->status,
-            'comment' => $validated['comment'] ?? $appointment->comment,
+            'comment' => $procedureStep
+                ? trim(($validated['comment'] ?? $appointment->comment ?? '') . ' [Етап: ' . $procedureStep->name . ']') ?: null
+                : ($validated['comment'] ?? $appointment->comment),
         ]);
 
         $appointment = $appointment->fresh([
@@ -324,6 +551,7 @@ class AppointmentController extends Controller
             'assistant:id,full_name',
             'patient:id,full_name,phone',
             'procedure:id,name,duration_minutes',
+            'procedureStep:id,procedure_id,name,duration_minutes,order',
             'room:id,name',
             'equipment:id,name',
         ]);
@@ -346,7 +574,7 @@ class AppointmentController extends Controller
         ]);
 
         $query = Appointment::query()
-            ->with(['doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment', 'clinic'])
+            ->with(['doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment', 'clinic'])
             ->orderBy('start_at');
 
         // date OR range
@@ -422,7 +650,7 @@ class AppointmentController extends Controller
         return response()->json([
             'status' => 'cancelled',
             'appointment' => new AppointmentResource(
-                $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'room', 'equipment'])
+                $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment'])
             ),
             'waitlist_suggestions' => $waitlistSuggestions,
         ]);
