@@ -17,12 +17,7 @@ const handleSubmit = async () => {
   try {
     const loggedUser = await login(email.value, password.value);
 
-    const target =
-        (loggedUser.is_admin === true || loggedUser.is_admin === 1)
-            ? '/clinics'
-            : '/schedule';
-
-    await router.push(target);
+    await router.push({ name: 'dashboard' });
   } catch (e) {
     console.error(e);
     error.value =

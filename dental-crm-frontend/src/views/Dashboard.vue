@@ -107,6 +107,28 @@ const normalizeCollection = (payload) => {
 
 const formatTime = (date) => date?.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) || '—';
 const formatDayMonth = (date) => date?.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) || '';
+const formatDateParam = (date) => (date ? formatDateYMD(date) : '');
+
+const resolveDoctorLabel = (appt) => {
+  const doctor = appt.doctor;
+  if (doctor?.full_name) return doctor.full_name;
+  if (doctor?.name) return doctor.name;
+  if (doctor?.first_name || doctor?.last_name) {
+    return `${doctor.first_name || ''} ${doctor.last_name || ''}`.trim();
+  }
+  if (doctor?.user?.full_name) return doctor.user.full_name;
+  if (doctor?.user?.first_name || doctor?.user?.last_name) {
+    return `${doctor.user.first_name || ''} ${doctor.user.last_name || ''}`.trim();
+  }
+  return appt.doctor_name || '';
+};
+
+const resolveClinicLabel = (appt) =>
+    appt.clinic?.name || appt.clinic_name || appt.clinic?.title || '';
+
+const resolveRoomLabel = (appt) => appt.room?.name || appt.room_name || '';
+
+const resolveTaskLabel = (appt) => appt.procedure?.name || appt.procedure_name || appt.comment || '';
 
 // ДОДАНО: Перевірка валідності кешу
 const isCacheValid = (cacheKey) => {
@@ -220,8 +242,15 @@ const loadStatsEnhanced = async () => {
               startDate,
               patientLabel: appt.patient?.full_name || appt.patient_name || appt.patient?.name || '—',
               procedureName: appt.procedure?.name || '',
+              taskLabel: resolveTaskLabel(appt),
+              doctorLabel: resolveDoctorLabel(appt),
+              clinicLabel: resolveClinicLabel(appt),
+              roomLabel: resolveRoomLabel(appt),
+              doctorId: appt.doctor?.id || appt.doctor_id || null,
+              clinicId: appt.clinic?.id || appt.clinic_id || null,
               displayTime: formatTime(startDate) || (appt.time ? appt.time.slice(0, 5) : '—'),
               displayDate: formatDayMonth(startDate) || appt.date || '',
+              dateParam: formatDateParam(startDate) || appt.date || '',
             };
           })
           .filter((appt) => appt.startDate);
@@ -475,6 +504,12 @@ watch(() => user.value, (val) => {
                 {{ stats.nextAppointment.patientLabel || 'Без імені' }}
                 <span v-if="stats.nextAppointment.displayDate" class="text-slate-600">· {{ stats.nextAppointment.displayDate }}</span>
               </p>
+              <p v-if="stats.nextAppointment" class="text-xs text-slate-600 mt-1">
+                <span v-if="stats.nextAppointment.clinicLabel">Клініка: {{ stats.nextAppointment.clinicLabel }}</span>
+                <span v-if="stats.nextAppointment.clinicLabel && stats.nextAppointment.doctorLabel" class="mx-1">·</span>
+                <span v-if="stats.nextAppointment.doctorLabel">Лікар: {{ stats.nextAppointment.doctorLabel }}</span>
+                <span v-if="stats.nextAppointment.roomLabel" class="ml-1">· Кабінет: {{ stats.nextAppointment.roomLabel }}</span>
+              </p>
               <p v-else class="text-sm text-slate-500 mt-1">Записів немає</p>
             </div>
           </div>
@@ -511,16 +546,29 @@ watch(() => user.value, (val) => {
       </div>
 
       <ul v-else class="space-y-3">
-        <li v-for="appt in upcomingAppointments" :key="appt.id"
-            class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors">
-          <div class="min-w-0 flex-1">
-            <p class="text-white font-semibold truncate">
-              {{ appt.patientLabel }}
-              <span v-if="appt.procedureName" class="text-slate-400 text-xs font-normal">· {{ appt.procedureName }}</span>
-            </p>
-            <p class="text-slate-500 text-xs mt-1">{{ appt.displayDate }} · {{ appt.displayTime }}</p>
-          </div>
-          <span class="text-emerald-400 font-mono text-sm whitespace-nowrap ml-2">{{ appt.displayTime }}</span>
+        <li v-for="appt in upcomingAppointments" :key="appt.id">
+          <router-link
+              :to="{ name: 'schedule', query: { date: appt.dateParam, doctor: appt.doctorId || undefined, clinic: appt.clinicId || undefined } }"
+              class="flex items-start justify-between bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors group"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="text-white font-semibold truncate">
+                {{ appt.patientLabel }}
+                <span v-if="appt.taskLabel" class="text-slate-400 text-xs font-normal">· {{ appt.taskLabel }}</span>
+              </p>
+              <p class="text-slate-500 text-xs mt-1">{{ appt.displayDate }} · {{ appt.displayTime }}</p>
+              <p class="text-slate-500 text-xs mt-1">
+                <span v-if="appt.clinicLabel">Клініка: {{ appt.clinicLabel }}</span>
+                <span v-if="appt.clinicLabel && appt.doctorLabel" class="mx-1">·</span>
+                <span v-if="appt.doctorLabel">Лікар: {{ appt.doctorLabel }}</span>
+                <span v-if="appt.roomLabel" class="ml-1">· Кабінет: {{ appt.roomLabel }}</span>
+              </p>
+            </div>
+            <div class="ml-4 flex flex-col items-end gap-1">
+              <span class="text-emerald-400 font-mono text-sm whitespace-nowrap">{{ appt.displayTime }}</span>
+              <span class="text-[11px] text-slate-400 group-hover:text-emerald-300">Відкрити →</span>
+            </div>
+          </router-link>
         </li>
       </ul>
     </div>
