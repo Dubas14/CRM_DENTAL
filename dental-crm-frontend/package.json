@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@quasar/quasar-ui-qcalendar": "^4.0.0",
+    "@quasar/quasar-ui-qcalendar": "^4.1.2",
     "axios": "^1.13.2",
     "lodash-es": "^4.17.22",
     "lucide-vue-next": "^0.555.0",
