@@ -77,4 +77,63 @@ class AssistantController extends Controller
 
         return response()->json($assistant, 201);
     }
+
+    public function update(Request $request, User $assistant)
+    {
+        if (! $assistant->hasRole('assistant')) {
+            abort(404);
+        }
+
+        $authUser = $request->user();
+        $assistantClinicIds = $assistant->clinics()->pluck('clinics.id');
+
+        if (! $authUser->isSuperAdmin()) {
+            $hasAccess = $assistantClinicIds->contains(fn ($clinicId) => $authUser->hasClinicRole($clinicId, ['clinic_admin']));
+            if (! $hasAccess) {
+                abort(403, 'У вас немає права редагувати цього асистента');
+            }
+        }
+
+        $data = $request->validate([
+            'first_name' => ['sometimes', 'string', 'max:255'],
+            'last_name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$assistant->id],
+            'password' => ['nullable', 'string', 'min:6'],
+        ]);
+
+        if (array_key_exists('password', $data) && ($data['password'] === null || $data['password'] === '')) {
+            unset($data['password']);
+        }
+
+        if (array_key_exists('first_name', $data) || array_key_exists('last_name', $data)) {
+            $firstName = $data['first_name'] ?? $assistant->first_name;
+            $lastName = $data['last_name'] ?? $assistant->last_name;
+            $data['name'] = trim($firstName.' '.$lastName);
+        }
+
+        $assistant->update($data);
+
+        return $assistant->load(['roles', 'clinics:id,name']);
+    }
+
+    public function destroy(Request $request, User $assistant)
+    {
+        if (! $assistant->hasRole('assistant')) {
+            abort(404);
+        }
+
+        $authUser = $request->user();
+        $assistantClinicIds = $assistant->clinics()->pluck('clinics.id');
+
+        if (! $authUser->isSuperAdmin()) {
+            $hasAccess = $assistantClinicIds->contains(fn ($clinicId) => $authUser->hasClinicRole($clinicId, ['clinic_admin']));
+            if (! $hasAccess) {
+                abort(403, 'У вас немає права видаляти цього асистента');
+            }
+        }
+
+        $assistant->delete();
+
+        return response()->noContent();
+    }
 }

@@ -15,6 +15,15 @@ const error = ref(null);
 const showForm = ref(false);
 const creating = ref(false);
 const createError = ref(null);
+const editError = ref(null);
+const editingAssistantId = ref(null);
+const editForm = ref({
+  first_name: '',
+  last_name: '',
+  email: '',
+  password: '',
+});
+const savingEdit = ref(false);
 
 const form = ref({
   clinic_id: '',
@@ -89,6 +98,57 @@ const createAssistant = async () => {
     createError.value = err.response?.data?.message || 'Помилка створення асистента';
   } finally {
     creating.value = false;
+  }
+};
+
+const startEdit = (assistant) => {
+  editingAssistantId.value = assistant.id;
+  editError.value = null;
+  editForm.value = {
+    first_name: assistant.first_name || '',
+    last_name: assistant.last_name || '',
+    email: assistant.email || '',
+    password: '',
+  };
+};
+
+const cancelEdit = () => {
+  editingAssistantId.value = null;
+  editError.value = null;
+};
+
+const updateAssistant = async (assistant) => {
+  savingEdit.value = true;
+  editError.value = null;
+  try {
+    const payload = {
+      first_name: editForm.value.first_name,
+      last_name: editForm.value.last_name,
+      email: editForm.value.email,
+    };
+    if (editForm.value.password) {
+      payload.password = editForm.value.password;
+    }
+    await assistantApi.update(assistant.id, payload);
+    await fetchAssistants();
+    editingAssistantId.value = null;
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося оновити асистента';
+  } finally {
+    savingEdit.value = false;
+  }
+};
+
+const deleteAssistant = async (assistant) => {
+  if (!window.confirm(`Видалити асистента "${assistantName(assistant)}"?`)) return;
+  editError.value = null;
+  try {
+    await assistantApi.delete(assistant.id);
+    await fetchAssistants();
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося видалити асистента';
   }
 };
 
@@ -208,6 +268,7 @@ onMounted(async () => {
     <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
       <div v-if="loading" class="text-sm text-slate-400">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+      <div v-else-if="editError" class="text-sm text-red-400">{{ editError }}</div>
       <div v-else-if="!assistants.length" class="text-sm text-slate-400">Немає асистентів.</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -216,13 +277,62 @@ onMounted(async () => {
               <th class="text-left py-2 px-3">Ім'я</th>
               <th class="text-left py-2 px-3">Email</th>
               <th class="text-left py-2 px-3">Клініка</th>
+              <th class="text-right py-2 px-3">Дії</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="assistant in assistants" :key="assistant.id" class="border-t border-slate-800">
-              <td class="py-2 px-3 text-slate-200">{{ assistantName(assistant) }}</td>
-              <td class="py-2 px-3 text-slate-400">{{ assistant.email }}</td>
+              <td class="py-2 px-3">
+                <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
+                  <input
+                    v-model="editForm.first_name"
+                    type="text"
+                    placeholder="Ім'я"
+                    class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  />
+                  <input
+                    v-model="editForm.last_name"
+                    type="text"
+                    placeholder="Прізвище"
+                    class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  />
+                </div>
+                <span v-else class="text-slate-200">{{ assistantName(assistant) }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
+                  <input
+                    v-model="editForm.email"
+                    type="email"
+                    placeholder="Email"
+                    class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  />
+                  <input
+                    v-model="editForm.password"
+                    type="password"
+                    placeholder="Новий пароль (опційно)"
+                    class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  />
+                </div>
+                <span v-else class="text-slate-400">{{ assistant.email }}</span>
+              </td>
               <td class="py-2 px-3 text-slate-400">{{ assistantClinic(assistant) }}</td>
+              <td class="py-2 px-3 text-right text-xs">
+                <div v-if="editingAssistantId === assistant.id" class="flex justify-end gap-3">
+                  <button
+                    class="text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
+                    :disabled="savingEdit"
+                    @click="updateAssistant(assistant)"
+                  >
+                    {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
+                  </button>
+                  <button class="text-slate-400 hover:text-slate-200" @click="cancelEdit">Скасувати</button>
+                </div>
+                <div v-else class="flex justify-end gap-3">
+                  <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(assistant)">Редагувати</button>
+                  <button class="text-red-400 hover:text-red-300" @click="deleteAssistant(assistant)">Видалити</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
