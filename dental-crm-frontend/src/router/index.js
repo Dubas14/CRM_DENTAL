@@ -13,6 +13,7 @@ import EquipmentsList from '../views/EquipmentsList.vue';
 import ProceduresList from '../views/ProceduresList.vue';
 import AssistantsList from '../views/AssistantsList.vue';
 import RolesManager from '../views/RolesManager.vue';
+import ClinicSettings from '../views/ClinicSettings.vue';
 
 import { useAuth } from '../composables/useAuth';
 
@@ -63,6 +64,12 @@ const routes = [
         path: '/roles',
         name: 'roles',
         component: RolesManager,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
+    {
+        path: '/clinic-settings',
+        name: 'clinic-settings',
+        component: ClinicSettings,
         meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
     },
 

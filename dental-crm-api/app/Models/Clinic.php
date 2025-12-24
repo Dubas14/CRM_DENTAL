@@ -29,4 +29,9 @@ class Clinic extends Model
             ->withPivot('clinic_role')
             ->withTimestamps();
     }
+
+    public function workingHours()
+    {
+        return $this->hasMany(ClinicWorkingHour::class);
+    }
 }

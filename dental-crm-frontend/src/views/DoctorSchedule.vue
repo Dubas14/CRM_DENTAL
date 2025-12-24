@@ -11,6 +11,7 @@ import CalendarSlotPicker from '../components/CalendarSlotPicker.vue';
 import WaitlistCandidatesPanel from '../components/WaitlistCandidatesPanel.vue';
 import WaitlistRequestForm from '../components/WaitlistRequestForm.vue';
 import AppointmentCancellationCard from '../components/AppointmentCancellationCard.vue';
+import assistantApi from '../services/assistantApi';
 
 const route = useRoute();
 const router = useRouter();
@@ -25,12 +26,13 @@ const doctors = ref([]);
 const procedures = ref([]);
 const rooms = ref([]);
 const equipments = ref([]);
+const assistants = ref([]);
 
 const selectedDoctorId = ref('');
 const selectedProcedureId = ref('');
 const selectedRoomId = ref('');
 const selectedEquipmentId = ref('');
-const selectedAssistantId = ref(''); // поки ID (можна буде зробити dropdown коли буде endpoint)
+const selectedAssistantId = ref('');
 const isFollowUp = ref(false);
 const allowSoftConflicts = ref(false);
 
@@ -40,6 +42,7 @@ const loadingDoctors = ref(true);
 const loadingProcedures = ref(false);
 const loadingRooms = ref(false);
 const loadingEquipments = ref(false);
+const loadingAssistants = ref(false);
 
 const error = ref(null);
 
@@ -103,6 +106,23 @@ const linkedPatientId = computed(() => {
 const selectedDoctor = computed(() =>
     doctors.value.find((d) => d.id === Number(selectedDoctorId.value)),
 );
+const selectedProcedure = computed(() =>
+    procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
+);
+
+const requiresAssistant = computed(() => !!selectedProcedure.value?.requires_assistant);
+const requiresRoom = computed(() => !!selectedProcedure.value?.requires_room);
+const defaultRoomId = computed(() => selectedProcedure.value?.default_room_id || '');
+const defaultEquipmentId = computed(() => selectedProcedure.value?.equipment_id || '');
+
+const assistantLabel = (assistant) =>
+    assistant.full_name || assistant.name || `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() || `#${assistant.id}`;
+
+const selectedAssistantLabel = computed(() => {
+  if (!selectedAssistantId.value) return '';
+  const match = assistants.value.find((assistant) => Number(assistant.id) === Number(selectedAssistantId.value));
+  return match ? assistantLabel(match) : `#${selectedAssistantId.value}`;
+});
 
 // Фіксація лікаря для доктора
 const ensureOwnDoctorSelected = () => {
@@ -280,6 +300,20 @@ const loadEquipments = async () => {
   }
 };
 
+const loadAssistants = async () => {
+  assistants.value = [];
+  if (!clinicId.value) return;
+  loadingAssistants.value = true;
+  try {
+    const { data } = await assistantApi.list({ clinic_id: clinicId.value });
+    assistants.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.warn('Assistants endpoint недоступний або помилка', e);
+  } finally {
+    loadingAssistants.value = false;
+  }
+};
+
 const loadAppointments = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return;
 
@@ -387,7 +421,7 @@ const onAppointmentCancelled = () => {
 onMounted(async () => {
   await Promise.all([loadDoctors(), loadProcedures()]);
   await loadLinkedPatient();
-  await Promise.all([loadRooms(), loadEquipments()]);
+  await Promise.all([loadRooms(), loadEquipments(), loadAssistants()]);
   await refreshScheduleData();
 
   autoRefreshInterval = setInterval(() => {
@@ -404,6 +438,21 @@ watch(() => [selectedDoctorId.value, selectedDate.value], () => {
 watch(clinicId, () => {
   loadRooms();
   loadEquipments();
+  loadAssistants();
+});
+
+watch([selectedProcedureId, assistants], () => {
+  if (defaultRoomId.value && !selectedRoomId.value) {
+    selectedRoomId.value = defaultRoomId.value;
+  }
+  if (defaultEquipmentId.value && !selectedEquipmentId.value) {
+    selectedEquipmentId.value = defaultEquipmentId.value;
+  }
+  if (!requiresAssistant.value) {
+    selectedAssistantId.value = '';
+  } else if (!selectedAssistantId.value && assistants.value.length === 1) {
+    selectedAssistantId.value = assistants.value[0].id;
+  }
 });
 
 onUnmounted(() => {
@@ -465,18 +514,21 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[200px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Кабінет</span>
-        <select v-model="selectedRoomId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingRooms">
+        <span class="text-xs uppercase tracking-wide text-slate-400">
+          Кабінет<span v-if="requiresRoom" class="text-rose-400"> *</span>
+        </span>
+        <select v-model="selectedRoomId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingRooms || !rooms.length">
           <option value="">Будь-який</option>
           <option v-for="room in rooms" :key="room.id" :value="room.id">
             {{ room.name }}
           </option>
         </select>
+        <span v-if="requiresRoom && !rooms.length" class="text-[10px] text-rose-400">Немає кабінетів для вибору.</span>
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
         <span class="text-xs uppercase tracking-wide text-slate-400">Обладнання</span>
-        <select v-model="selectedEquipmentId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingEquipments">
+        <select v-model="selectedEquipmentId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingEquipments || !equipments.length">
           <option value="">Будь-яке</option>
           <option v-for="eq in equipments" :key="eq.id" :value="eq.id">
             {{ eq.name }}
@@ -484,14 +536,23 @@ onUnmounted(() => {
         </select>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Асистент ID</span>
-        <input
+      <div class="flex flex-col gap-1 min-w-[220px]">
+        <span class="text-xs uppercase tracking-wide text-slate-400">
+          Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
+        </span>
+        <select
             v-model="selectedAssistantId"
-            type="number"
-            placeholder="ID"
-            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm w-28"
-        />
+            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+            :disabled="loadingAssistants || !assistants.length"
+        >
+          <option value="">Без асистента</option>
+          <option v-for="assistant in assistants" :key="assistant.id" :value="assistant.id">
+            {{ assistantLabel(assistant) }}
+          </option>
+        </select>
+        <span v-if="requiresAssistant && !assistants.length" class="text-[10px] text-rose-400">
+          Додайте асистента в налаштуваннях клініки.
+        </span>
       </div>
 
       <div class="flex flex-col gap-2">
@@ -521,6 +582,7 @@ onUnmounted(() => {
             :room-id="selectedRoomId"
             :equipment-id="selectedEquipmentId"
             :assistant-id="selectedAssistantId"
+            :assistants="assistants"
             :date="selectedDate"
             :refresh-token="slotsRefreshToken"
             @select-slot="selectSlot"
@@ -554,7 +616,7 @@ onUnmounted(() => {
                 Обладн.: {{ equipments.find(e => e.id === Number(selectedEquipmentId))?.name || selectedEquipmentId }}
               </span>
               <span v-if="selectedAssistantId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
-                Асистент ID: {{ selectedAssistantId }}
+                Асистент: {{ selectedAssistantLabel }}
               </span>
               <span v-if="isFollowUp" class="text-xs bg-emerald-900/60 px-2 py-1 rounded text-emerald-300">
                 Повторний

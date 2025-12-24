@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { debounce } from 'lodash-es';
 import roleApi from '../services/roleApi';
 
 const roles = ref([]);
@@ -8,6 +9,11 @@ const editableRoles = ref({});
 const loading = ref(false);
 const error = ref(null);
 const saving = ref({});
+const searchQuery = ref('');
+const currentPage = ref(1);
+const perPage = 15;
+const totalPages = ref(1);
+const totalItems = ref(0);
 
 const fetchRoles = async () => {
   const { data } = await roleApi.listRoles();
@@ -18,12 +24,20 @@ const fetchUsers = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const { data } = await roleApi.listUsers();
+    const { data } = await roleApi.listUsers({
+      page: currentPage.value,
+      per_page: perPage,
+      search: searchQuery.value || undefined,
+    });
     users.value = data.data ?? data;
     editableRoles.value = users.value.reduce((acc, user) => {
       acc[user.id] = (user.roles || []).map((role) => role.name);
       return acc;
     }, {});
+    const meta = data.meta ?? {};
+    totalPages.value = meta.last_page ?? 1;
+    totalItems.value = meta.total ?? users.value.length;
+    currentPage.value = meta.current_page ?? currentPage.value;
   } catch (err) {
     console.error(err);
     error.value = 'Не вдалося завантажити користувачів';
@@ -56,6 +70,21 @@ onMounted(async () => {
   await fetchRoles();
   await fetchUsers();
 });
+
+const debouncedSearch = debounce(() => {
+  currentPage.value = 1;
+  fetchUsers();
+}, 300);
+
+const onSearchInput = () => {
+  debouncedSearch();
+};
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return;
+  currentPage.value = page;
+  fetchUsers();
+};
 </script>
 
 <template>
@@ -67,7 +96,22 @@ onMounted(async () => {
       </p>
     </header>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-[220px]">
+          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">Пошук користувача</label>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Імʼя, прізвище або email"
+            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200"
+            @input="onSearchInput"
+          />
+        </div>
+        <div class="text-xs text-slate-500">
+          Показано {{ users.length }} із {{ totalItems }} користувачів
+        </div>
+      </div>
       <div v-if="loading" class="text-sm text-slate-400">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
       <div v-else-if="!users.length" class="text-sm text-slate-400">Немає користувачів.</div>
@@ -114,6 +158,25 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="totalPages > 1" class="flex items-center justify-between gap-3">
+        <button
+          class="px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="currentPage === 1"
+          @click="goToPage(currentPage - 1)"
+        >
+          Попередня
+        </button>
+        <div class="text-xs text-slate-500">
+          Сторінка {{ currentPage }} з {{ totalPages }}
+        </div>
+        <button
+          class="px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="currentPage === totalPages"
+          @click="goToPage(currentPage + 1)"
+        >
+          Наступна
+        </button>
       </div>
     </section>
   </div>

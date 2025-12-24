@@ -30,6 +30,7 @@ const {
   procedures,
   rooms,
   equipments,
+  assistants,
 
   loading,
   loadingSlots,
@@ -58,6 +59,21 @@ const mergedEvents = computed(() => [
   ...availabilityBgEvents.value,
   ...events.value,
 ]);
+
+const selectedProcedure = computed(() =>
+  procedures.value.find((p) => p.id === Number(selectedProcedureId.value)),
+);
+
+const requiresAssistant = computed(() => !!selectedProcedure.value?.requires_assistant);
+
+const assistantLabel = (assistant) =>
+  assistant.full_name || assistant.name || `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() || `#${assistant.id}`;
+
+watch([requiresAssistant, assistants], () => {
+  if (requiresAssistant.value && assistants.value.length === 1 && !selectedAssistantId.value) {
+    selectedAssistantId.value = assistants.value[0].id;
+  }
+});
 
 // ✅ Стабільний options-об'єкт (не пересоздається на кожен рух)
 const calendarOptions = reactive({
@@ -241,14 +257,23 @@ const onBookingSubmit = (payload) => {
         </label>
 
         <label class="space-y-1 block">
-          <span class="text-xs text-slate-400">Асистент ID</span>
-          <input
+          <span class="text-xs text-slate-400">
+            Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
+          </span>
+          <select
               v-model="selectedAssistantId"
-              type="number"
               class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-              placeholder="Напр. 123"
-              aria-label="ID асистента"
-          />
+              :disabled="assistants.length === 0"
+              aria-label="Виберіть асистента"
+          >
+            <option value="">Без асистента</option>
+            <option v-for="assistant in assistants" :key="assistant.id" :value="assistant.id">
+              {{ assistantLabel(assistant) }}
+            </option>
+          </select>
+          <p v-if="requiresAssistant && !assistants.length" class="text-[10px] text-rose-400">
+            Додайте асистента в налаштуваннях клініки.
+          </p>
         </label>
 
         <div class="space-y-2 text-sm text-slate-300">

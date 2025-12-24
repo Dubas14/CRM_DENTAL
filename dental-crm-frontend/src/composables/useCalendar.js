@@ -4,6 +4,7 @@ import { debounce } from 'lodash-es';
 import apiClient from '../services/apiClient';
 import calendarApi from '../services/calendarApi';
 import equipmentApi from '../services/equipmentApi';
+import assistantApi from '../services/assistantApi';
 import { useAuth } from './useAuth';
 import { useToast } from './useToast';
 
@@ -26,6 +27,7 @@ export function useCalendar() {
     const procedures = ref([]);
     const rooms = ref([]);
     const equipments = ref([]);
+    const assistants = ref([]);
 
     const loading = ref(false);
     const loadingSlots = ref(false);
@@ -104,12 +106,13 @@ export function useCalendar() {
     };
 
     // Cache management
-    const buildSlotsKey = ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => [
+    const buildSlotsKey = ({ doctorId, date, procedureId, roomId, equipmentId, assistantId, durationMinutes }) => [
         doctorId || '',
         date || '',
         procedureId || '',
         roomId || '',
         equipmentId || '',
+        assistantId || '',
         durationMinutes || '',
     ].join('|');
 
@@ -120,10 +123,10 @@ export function useCalendar() {
         }
     };
 
-    const fetchDoctorSlots = async ({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes }) => {
+    const fetchDoctorSlots = async ({ doctorId, date, procedureId, roomId, equipmentId, assistantId, durationMinutes }) => {
         clearExpiredCache();
 
-        const key = buildSlotsKey({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
+        const key = buildSlotsKey({ doctorId, date, procedureId, roomId, equipmentId, assistantId, durationMinutes });
         const cached = slotsCache.get(key);
         if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) return cached.data;
 
@@ -131,6 +134,7 @@ export function useCalendar() {
         if (procedureId) params.procedure_id = procedureId;
         if (roomId) params.room_id = roomId;
         if (equipmentId) params.equipment_id = equipmentId;
+        if (assistantId) params.assistant_id = assistantId;
 
         const { data } = await calendarApi.getDoctorSlots(doctorId, params);
         const slots = Array.isArray(data?.slots) ? data.slots : [];
@@ -180,6 +184,12 @@ export function useCalendar() {
         if (!clinicId.value) return;
         const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
         equipments.value = Array.isArray(data) ? data : (data?.data || []);
+    };
+
+    const fetchAssistants = async () => {
+        if (!clinicId.value) return;
+        const { data } = await assistantApi.list({ clinic_id: clinicId.value });
+        assistants.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
     const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
@@ -250,7 +260,7 @@ export function useCalendar() {
         return 30;
     };
 
-    const buildAvailabilityBgForRange = async ({ doctorId, startDate, endDateExclusive, procedureId, roomId, equipmentId, durationMinutes }) => {
+    const buildAvailabilityBgForRange = async ({ doctorId, startDate, endDateExclusive, procedureId, roomId, equipmentId, assistantId, durationMinutes }) => {
         const api = calendarRef.value?.getApi?.();
         const view = api?.view;
         if (view?.type === 'dayGridMonth') return [];
@@ -261,7 +271,7 @@ export function useCalendar() {
         while (cursor < endDateExclusive) {
             const date = formatDateYMD(cursor);
             try {
-                const { slots } = await fetchDoctorSlots({ doctorId, date, procedureId, roomId, equipmentId, durationMinutes });
+                const { slots } = await fetchDoctorSlots({ doctorId, date, procedureId, roomId, equipmentId, assistantId, durationMinutes });
                 const intervals = mergeSlotsToIntervals(slots);
 
                 for (const it of intervals) {
@@ -313,6 +323,7 @@ export function useCalendar() {
                 procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
                 roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
                 equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
                 durationMinutes: duration,
             });
 
@@ -418,6 +429,7 @@ export function useCalendar() {
                 procedureId,
                 roomId,
                 equipmentId,
+                assistantId: appt?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
                 durationMinutes: duration,
             });
         } catch (err) {
@@ -457,6 +469,7 @@ export function useCalendar() {
                 procedureId,
                 roomId,
                 equipmentId,
+                assistantId: appt?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
                 durationMinutes: duration,
             });
 
@@ -510,6 +523,7 @@ export function useCalendar() {
                 procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
                 roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
                 equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
                 durationMinutes: duration,
             });
 
@@ -560,7 +574,7 @@ export function useCalendar() {
         try {
             loading.value = true;
             await Promise.all([fetchDoctors(), fetchProcedures()]);
-            await Promise.all([fetchRooms(), fetchEquipments()]);
+            await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
             await refreshCalendar();
         } catch (initError) {
             console.error('Помилка ініціалізації:', initError);
@@ -578,7 +592,7 @@ export function useCalendar() {
     };
 
     // Watchers
-    watch([selectedProcedureId, selectedRoomId, selectedEquipmentId], () => {
+    watch([selectedProcedureId, selectedRoomId, selectedEquipmentId, selectedAssistantId], () => {
         debouncedRefreshSlots();
     });
 
@@ -594,13 +608,15 @@ export function useCalendar() {
     });
 
     watch(clinicId, async () => {
-        await Promise.all([fetchRooms(), fetchEquipments()]);
+        await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
         await refreshAvailabilityBackground();
     });
 
     watch(selectedProcedureId, () => {
         const p = procedures.value.find((x) => x.id === Number(selectedProcedureId.value));
         if (p?.equipment_id) selectedEquipmentId.value = p.equipment_id;
+        if (p?.default_room_id) selectedRoomId.value = p.default_room_id;
+        if (!p?.requires_assistant) selectedAssistantId.value = '';
     });
 
     onUnmounted(() => cleanup());
@@ -627,6 +643,7 @@ export function useCalendar() {
         procedures,
         rooms,
         equipments,
+        assistants,
 
         loading,
         loadingSlots,
