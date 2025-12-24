@@ -11,13 +11,17 @@ import {
   Users,
   Stethoscope,
   Building2,
+  Package,
+  ClipboardList,
+  UserCheck,
+  Shield,
   LogOut,
   Menu,
   X
 } from 'lucide-vue-next';
 
 const { user, logout } = useAuth();
-const { isSuperAdmin, isDoctor } = usePermissions();
+const { isSuperAdmin, isDoctor, canManageCatalog, canManageRoles } = usePermissions();
 const router = useRouter();
 const route = useRoute();
 
@@ -120,6 +124,46 @@ const isLoginPage = computed(() => route.name === 'login');
           >
             <Stethoscope size="20" />
             <span class="font-medium">Лікарі</span>
+          </router-link>
+        </div>
+
+        <div v-if="canManageCatalog" class="mt-6">
+          <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Каталог</p>
+
+          <router-link
+            :to="{name: 'equipments'}"
+            :class="[route.name === 'equipments' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
+            <Package size="20" />
+            <span class="font-medium">Обладнання</span>
+          </router-link>
+
+          <router-link
+            :to="{name: 'procedures'}"
+            :class="[route.name === 'procedures' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
+            <ClipboardList size="20" />
+            <span class="font-medium">Процедури</span>
+          </router-link>
+
+          <router-link
+            :to="{name: 'assistants'}"
+            :class="[route.name === 'assistants' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
+            <UserCheck size="20" />
+            <span class="font-medium">Асистенти</span>
+          </router-link>
+        </div>
+
+        <div v-if="canManageRoles" class="mt-6">
+          <p class="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Доступи</p>
+
+          <router-link
+            :to="{name: 'roles'}"
+            :class="[route.name === 'roles' ? activeClass : inactiveClass, 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200']"
+          >
+            <Shield size="20" />
+            <span class="font-medium">Ролі</span>
           </router-link>
         </div>
       </nav>

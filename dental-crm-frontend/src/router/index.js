@@ -9,6 +9,10 @@ import PatientDetails from '../views/PatientDetails.vue';
 import Login from '../views/Login.vue';
 import DoctorWeeklySchedule from '../views/DoctorWeeklySchedule.vue';
 import Dashboard from '../views/Dashboard.vue';
+import EquipmentsList from '../views/EquipmentsList.vue';
+import ProceduresList from '../views/ProceduresList.vue';
+import AssistantsList from '../views/AssistantsList.vue';
+import RolesManager from '../views/RolesManager.vue';
 
 import { useAuth } from '../composables/useAuth';
 
@@ -36,6 +40,30 @@ const routes = [
         name: 'calendar-board',
         component: () => import('../views/CalendarBoard.vue'),
         meta: { requiresAuth: true },
+    },
+    {
+        path: '/equipments',
+        name: 'equipments',
+        component: EquipmentsList,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
+    {
+        path: '/procedures',
+        name: 'procedures',
+        component: ProceduresList,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
+    {
+        path: '/assistants',
+        name: 'assistants',
+        component: AssistantsList,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
+    },
+    {
+        path: '/roles',
+        name: 'roles',
+        component: RolesManager,
+        meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] },
     },
 
     {

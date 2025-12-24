@@ -27,6 +27,14 @@ export function usePermissions() {
         isSuperAdmin.value || isClinicAdmin.value || isDoctor.value || isRegistrar.value
     );
 
+    const canManageRoles = computed(() =>
+        isSuperAdmin.value || isClinicAdmin.value
+    );
+
+    const canManageCatalog = computed(() =>
+        isSuperAdmin.value || isClinicAdmin.value
+    );
+
     return {
         role,
         isSuperAdmin,
@@ -37,5 +45,7 @@ export function usePermissions() {
         canSeeDoctors,
         canSeeSchedule,
         canSeePatients,
+        canManageRoles,
+        canManageCatalog,
     };
 }
