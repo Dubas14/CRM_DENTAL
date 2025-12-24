@@ -33,4 +33,10 @@ class Doctor extends Model
     {
         return $this->hasMany(\App\Models\Schedule::class);
     }
+
+    public function procedures()
+    {
+        return $this->belongsToMany(Procedure::class)
+            ->withPivot('custom_duration_minutes');
+    }
 }

@@ -18,6 +18,12 @@ const savedMessage = ref('');
 
 const doctor = ref(null);
 
+const procedures = ref([]);
+const proceduresLoading = ref(false);
+const proceduresSaving = ref(false);
+const proceduresError = ref('');
+const proceduresSavedMessage = ref('');
+
 const form = ref({
   full_name: '',
   specialization: '',
@@ -71,6 +77,55 @@ const resetForm = () => {
   savedMessage.value = '';
 };
 
+const loadDoctorProcedures = async () => {
+  proceduresLoading.value = true;
+  proceduresError.value = '';
+
+  try {
+    const { data } = await apiClient.get(`/doctors/${doctorId.value}/procedures`);
+    procedures.value = Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error(e);
+    proceduresError.value = e.response?.data?.message || 'Не вдалося завантажити процедури';
+  } finally {
+    proceduresLoading.value = false;
+  }
+};
+
+const saveDoctorProcedures = async () => {
+  if (!canEdit.value) return;
+
+  proceduresSaving.value = true;
+  proceduresError.value = '';
+  proceduresSavedMessage.value = '';
+
+  try {
+    const payload = {
+      procedures: procedures.value.map((proc) => ({
+        procedure_id: proc.id,
+        is_assigned: !!proc.is_assigned,
+        custom_duration_minutes: proc.custom_duration_minutes !== '' && proc.custom_duration_minutes !== null
+          ? Number(proc.custom_duration_minutes)
+          : null,
+      })),
+    };
+
+    await apiClient.put(`/doctors/${doctorId.value}/procedures`, payload);
+    proceduresSavedMessage.value = 'Процедури оновлено';
+    await loadDoctorProcedures();
+  } catch (e) {
+    console.error(e);
+    if (e.response?.data?.errors) {
+      const firstKey = Object.keys(e.response.data.errors)[0];
+      proceduresError.value = e.response.data.errors[firstKey][0];
+    } else {
+      proceduresError.value = e.response?.data?.message || 'Помилка збереження процедур';
+    }
+  } finally {
+    proceduresSaving.value = false;
+  }
+};
+
 const saveDoctor = async () => {
   if (!canEdit.value) return;
 
@@ -109,6 +164,7 @@ const goToSchedule = () => {
 };
 
 onMounted(loadDoctor);
+onMounted(loadDoctorProcedures);
 </script>
 
 <template>
@@ -280,5 +336,78 @@ onMounted(loadDoctor);
         </div>
       </section>
     </div>
+
+    <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-200">Процедури лікаря</h2>
+          <p class="text-xs text-slate-400">
+            Оберіть доступні процедури та задайте персональну тривалість (за потреби).
+          </p>
+        </div>
+        <button
+            type="button"
+            :disabled="proceduresSaving || !canEdit"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+            @click="saveDoctorProcedures"
+        >
+          {{ proceduresSaving ? 'Збереження...' : 'Зберегти процедури' }}
+        </button>
+      </div>
+
+      <div v-if="proceduresError" class="text-sm text-red-400">❌ {{ proceduresError }}</div>
+      <div v-if="proceduresSavedMessage" class="text-sm text-emerald-400">✅ {{ proceduresSavedMessage }}</div>
+
+      <div v-if="proceduresLoading" class="text-sm text-slate-400">
+        Завантаження процедур...
+      </div>
+
+      <div v-else-if="!procedures.length" class="text-sm text-slate-400">
+        Процедури для цієї клініки відсутні.
+      </div>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs uppercase text-slate-500 border-b border-slate-800">
+              <th class="py-2 pr-2">Активна</th>
+              <th class="py-2 pr-2">Процедура</th>
+              <th class="py-2 pr-2">Категорія</th>
+              <th class="py-2 pr-2">Базова тривалість</th>
+              <th class="py-2 pr-2">Персональна тривалість</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="procedure in procedures" :key="procedure.id" class="border-b border-slate-800">
+              <td class="py-2 pr-2">
+                <input
+                    v-model="procedure.is_assigned"
+                    :disabled="!canEdit"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-slate-600 bg-slate-900"
+                />
+              </td>
+              <td class="py-2 pr-2 text-slate-100">{{ procedure.name }}</td>
+              <td class="py-2 pr-2 text-slate-400">{{ procedure.category || '—' }}</td>
+              <td class="py-2 pr-2 text-slate-300">{{ procedure.duration_minutes }} хв</td>
+              <td class="py-2 pr-2">
+                <div class="flex items-center gap-2">
+                  <input
+                      v-model="procedure.custom_duration_minutes"
+                      :disabled="!canEdit || !procedure.is_assigned"
+                      type="number"
+                      min="5"
+                      max="480"
+                      placeholder="За замовчуванням"
+                      class="w-32 rounded-lg bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-slate-100 disabled:opacity-60"
+                  />
+                  <span class="text-xs text-slate-500">хв</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </template>

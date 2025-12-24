@@ -62,6 +62,19 @@ class AvailabilityService
         ];
     }
 
+    public function resolveProcedureDuration(Doctor $doctor, ?Procedure $procedure, int $fallbackDuration): int
+    {
+        if (!$procedure) {
+            return $fallbackDuration;
+        }
+
+        $customDuration = $doctor->procedures()
+            ->where('procedure_id', $procedure->id)
+            ->value('doctor_procedure.custom_duration_minutes');
+
+        return $customDuration ?? $procedure->duration_minutes ?? $fallbackDuration;
+    }
+
     public function getSlots(
         Doctor $doctor,
         Carbon $date,

@@ -145,7 +145,11 @@ class DoctorScheduleController extends Controller
             ]);
         }
 
-        $duration = $procedure?->duration_minutes ?? $plan['slot_duration'];
+        $duration = $availability->resolveProcedureDuration(
+            $doctor,
+            $procedure,
+            $plan['slot_duration'] ?? 30
+        );
 
         $resolvedEquipment = $equipment ?? $procedure?->equipment;
 
@@ -196,7 +200,11 @@ class DoctorScheduleController extends Controller
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $fromDate);
 
-        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $duration = $availability->resolveProcedureDuration(
+            $doctor,
+            $procedure,
+            $plan['slot_duration'] ?? 30
+        );
         $resolvedEquipment = $equipment ?? $procedure?->equipment;
 
         $slots = $availability->suggestSlots(

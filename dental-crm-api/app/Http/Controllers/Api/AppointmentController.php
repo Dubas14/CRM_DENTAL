@@ -68,7 +68,11 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $duration = $availability->resolveProcedureDuration(
+            $doctor,
+            $procedure,
+            $plan['slot_duration'] ?? 30
+        );
         $endAt = $startAt->copy()->addMinutes($duration);
 
         if ($procedure && $procedure->requires_room) {
@@ -245,7 +249,11 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        $duration = $procedure?->duration_minutes ?? ($plan['slot_duration'] ?? 30);
+        $duration = $availability->resolveProcedureDuration(
+            $doctor,
+            $procedure,
+            $plan['slot_duration'] ?? 30
+        );
         $endAt = $startAt->copy()->addMinutes($duration);
 
         if ($procedure && $procedure->requires_room) {

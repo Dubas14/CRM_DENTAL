@@ -22,8 +22,17 @@ class RescheduleService
 
         foreach ($appointments as $appointment) {
             $procedure = $appointment->procedure;
-            $duration = $procedure?->duration_minutes
-                ?? ($appointment->end_at ? $appointment->start_at->diffInMinutes($appointment->end_at) : 0);
+            $duration = $appointment->end_at
+                ? $appointment->start_at->diffInMinutes($appointment->end_at)
+                : 0;
+
+            if ($duration <= 0) {
+                $duration = $availabilityService->resolveProcedureDuration(
+                    $doctor,
+                    $procedure,
+                    0
+                );
+            }
 
             if ($duration <= 0) {
                 continue;

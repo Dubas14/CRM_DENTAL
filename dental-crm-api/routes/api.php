@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\CalendarBlockController;
 use App\Http\Controllers\Api\ClinicWorkingHoursController;
+use App\Http\Controllers\Api\DoctorProcedureController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -128,6 +129,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'show']);
     Route::put('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'update']);
     Route::get('doctors/{doctor}/appointments', [AppointmentController::class, 'doctorAppointments']);
+    Route::get('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'index']);
+    Route::put('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'update']);
 
     Route::apiResource('calendar-blocks', CalendarBlockController::class);
 
