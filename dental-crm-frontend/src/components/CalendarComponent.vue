@@ -23,6 +23,7 @@ const {
   selectedEquipmentId,
   selectedRoomId,
   selectedAssistantId,
+  selectedClinicId,
   isFollowUp,
   allowSoftConflicts,
 
@@ -31,6 +32,8 @@ const {
   rooms,
   equipments,
   assistants,
+  clinics,
+  showClinicSelector,
 
   loading,
   loadingSlots,
@@ -161,6 +164,19 @@ const onBookingSubmit = (payload) => {
       </div>
 
       <div class="flex gap-2 flex-wrap items-center">
+        <select
+            v-if="showClinicSelector"
+            v-model="selectedClinicId"
+            class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+            aria-label="Оберіть клініку"
+            :disabled="loading"
+        >
+          <option disabled value="">Оберіть клініку</option>
+          <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+            {{ clinic.name }}
+          </option>
+        </select>
+
         <select
             v-model="selectedDoctorId"
             class="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"

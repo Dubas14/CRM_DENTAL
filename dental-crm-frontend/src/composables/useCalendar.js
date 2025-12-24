@@ -4,6 +4,7 @@ import { debounce } from 'lodash-es';
 import apiClient from '../services/apiClient';
 import calendarApi from '../services/calendarApi';
 import equipmentApi from '../services/equipmentApi';
+import clinicApi from '../services/clinicApi';
 import assistantApi from '../services/assistantApi';
 import { useAuth } from './useAuth';
 import { useToast } from './useToast';
@@ -28,6 +29,8 @@ export function useCalendar() {
     const rooms = ref([]);
     const equipments = ref([]);
     const assistants = ref([]);
+    const clinics = ref([]);
+    const selectedClinicId = ref('');
 
     const loading = ref(false);
     const loadingSlots = ref(false);
@@ -73,12 +76,22 @@ export function useCalendar() {
         await refreshAvailabilityBackground();
     }, 300);
 
-    const clinicId = computed(() =>
+    const defaultClinicId = computed(() =>
         user.value?.clinic_id ||
         user.value?.doctor?.clinic_id ||
         user.value?.doctor?.clinic?.id ||
         user.value?.clinics?.[0]?.clinic_id ||
+        '',
+    );
+
+    const clinicId = computed(() =>
+        selectedClinicId.value ||
+        defaultClinicId.value ||
         null,
+    );
+
+    const showClinicSelector = computed(() =>
+        clinics.value.length > 1 || user.value?.global_role === 'super_admin',
     );
 
     // Utility functions
@@ -174,20 +187,46 @@ export function useCalendar() {
         procedures.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
+    const fetchClinics = async () => {
+        if (user.value?.global_role === 'super_admin') {
+            const { data } = await clinicApi.list();
+            clinics.value = data.data ?? data;
+        } else {
+            const { data } = await clinicApi.listMine();
+            clinics.value = (data.clinics ?? []).map((clinic) => ({
+                id: clinic.clinic_id,
+                name: clinic.clinic_name,
+            }));
+        }
+
+        if (!selectedClinicId.value) {
+            selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
+        }
+    };
+
     const fetchRooms = async () => {
-        if (!clinicId.value) return;
+        if (!clinicId.value) {
+            rooms.value = [];
+            return;
+        }
         const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
         rooms.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
     const fetchEquipments = async () => {
-        if (!clinicId.value) return;
+        if (!clinicId.value) {
+            equipments.value = [];
+            return;
+        }
         const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
         equipments.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
     const fetchAssistants = async () => {
-        if (!clinicId.value) return;
+        if (!clinicId.value) {
+            assistants.value = [];
+            return;
+        }
         const { data } = await assistantApi.list({ clinic_id: clinicId.value });
         assistants.value = Array.isArray(data) ? data : (data?.data || []);
     };
@@ -573,7 +612,7 @@ export function useCalendar() {
     const initialize = async () => {
         try {
             loading.value = true;
-            await Promise.all([fetchDoctors(), fetchProcedures()]);
+            await Promise.all([fetchDoctors(), fetchProcedures(), fetchClinics()]);
             await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
             await refreshCalendar();
         } catch (initError) {
@@ -594,6 +633,12 @@ export function useCalendar() {
     // Watchers
     watch([selectedProcedureId, selectedRoomId, selectedEquipmentId, selectedAssistantId], () => {
         debouncedRefreshSlots();
+    });
+
+    watch(selectedClinicId, () => {
+        selectedRoomId.value = '';
+        selectedEquipmentId.value = '';
+        selectedAssistantId.value = '';
     });
 
     // ✅ РОЗДІЛЕНО:
@@ -644,6 +689,9 @@ export function useCalendar() {
         rooms,
         equipments,
         assistants,
+        clinics,
+        selectedClinicId,
+        showClinicSelector,
 
         loading,
         loadingSlots,
