@@ -137,6 +137,32 @@ const selectedAssistantLabel = computed(() => {
   return match ? assistantLabel(match) : `#${selectedAssistantId.value}`;
 });
 
+const parseQueryNumber = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+const queryDoctorId = computed(() => parseQueryNumber(route.query.doctor || route.query.doctor_id));
+const queryClinicId = computed(() => parseQueryNumber(route.query.clinic || route.query.clinic_id));
+const queryDate = computed(() => (typeof route.query.date === 'string' ? route.query.date : null));
+
+const applyQuerySelections = () => {
+  if (queryDate.value) {
+    selectedDate.value = queryDate.value;
+  }
+
+  if (queryClinicId.value && clinics.value.some((clinic) => Number(clinic.id) === Number(queryClinicId.value))) {
+    selectedClinicId.value = String(queryClinicId.value);
+  }
+
+  if (!isDoctor.value && queryDoctorId.value) {
+    const doctorExists = doctors.value.some((doctor) => Number(doctor.id) === Number(queryDoctorId.value));
+    if (doctorExists) {
+      selectedDoctorId.value = String(queryDoctorId.value);
+    }
+  }
+};
+
 // Фіксація лікаря для доктора
 const ensureOwnDoctorSelected = () => {
   if (isDoctor.value && doctorProfile.value?.id) {
@@ -265,6 +291,7 @@ const loadDoctors = async () => {
     } else if (!selectedDoctorId.value && doctors.value.length > 0) {
       selectedDoctorId.value = String(doctors.value[0].id);
     }
+    applyQuerySelections();
   } catch (e) {
     error.value = 'Помилка завантаження лікарів';
   } finally {
@@ -299,6 +326,8 @@ const loadClinics = async () => {
   if (!selectedClinicId.value) {
     selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
   }
+
+  applyQuerySelections();
 };
 
 const loadRooms = async () => {
@@ -460,6 +489,10 @@ onMounted(async () => {
     }
   }, 15000);
 });
+
+watch(() => route.query, () => {
+  applyQuerySelections();
+}, { deep: true });
 
 watch(() => [selectedDoctorId.value, selectedDate.value], () => {
   refreshScheduleData();
