@@ -128,6 +128,7 @@ const toggleRoomActive = async (room) => {
 };
 
 const deleteRoom = async (room) => {
+  if (!window.confirm(`Видалити кабінет "${room.name}"?`)) return;
   try {
     await apiClient.delete(`/rooms/${room.id}`);
     await loadRooms();

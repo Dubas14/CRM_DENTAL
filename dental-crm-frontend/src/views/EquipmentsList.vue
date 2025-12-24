@@ -15,6 +15,14 @@ const error = ref(null);
 const showForm = ref(false);
 const creating = ref(false);
 const createError = ref(null);
+const editError = ref(null);
+const editingEquipmentId = ref(null);
+const editForm = ref({
+  name: '',
+  description: '',
+  is_active: true,
+});
+const savingEdit = ref(false);
 
 const form = ref({
   clinic_id: '',
@@ -87,6 +95,52 @@ const createEquipment = async () => {
     createError.value = err.response?.data?.message || 'Помилка створення обладнання';
   } finally {
     creating.value = false;
+  }
+};
+
+const startEdit = (equipment) => {
+  editingEquipmentId.value = equipment.id;
+  editError.value = null;
+  editForm.value = {
+    name: equipment.name || '',
+    description: equipment.description || '',
+    is_active: !!equipment.is_active,
+  };
+};
+
+const cancelEdit = () => {
+  editingEquipmentId.value = null;
+  editError.value = null;
+};
+
+const updateEquipment = async (equipment) => {
+  savingEdit.value = true;
+  editError.value = null;
+  try {
+    await equipmentApi.update(equipment.id, {
+      name: editForm.value.name,
+      description: editForm.value.description || null,
+      is_active: editForm.value.is_active,
+    });
+    await fetchEquipments();
+    editingEquipmentId.value = null;
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося оновити обладнання';
+  } finally {
+    savingEdit.value = false;
+  }
+};
+
+const deleteEquipment = async (equipment) => {
+  if (!window.confirm(`Видалити обладнання "${equipment.name}"?`)) return;
+  editError.value = null;
+  try {
+    await equipmentApi.delete(equipment.id);
+    await fetchEquipments();
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося видалити обладнання';
   }
 };
 
@@ -185,6 +239,7 @@ onMounted(async () => {
     <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
       <div v-if="loading" class="text-sm text-slate-400">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+      <div v-else-if="editError" class="text-sm text-red-400">{{ editError }}</div>
       <div v-else-if="!equipments.length" class="text-sm text-slate-400">Немає обладнання.</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -193,19 +248,57 @@ onMounted(async () => {
               <th class="text-left py-2 px-3">Назва</th>
               <th class="text-left py-2 px-3">Опис</th>
               <th class="text-left py-2 px-3">Статус</th>
+              <th class="text-right py-2 px-3">Дії</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="equipment in equipments" :key="equipment.id" class="border-t border-slate-800">
-              <td class="py-2 px-3 text-slate-200">{{ equipment.name }}</td>
-              <td class="py-2 px-3 text-slate-400">{{ equipment.description || '—' }}</td>
               <td class="py-2 px-3">
+                <input
+                  v-if="editingEquipmentId === equipment.id"
+                  v-model="editForm.name"
+                  type="text"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                />
+                <span v-else class="text-slate-200">{{ equipment.name }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <input
+                  v-if="editingEquipmentId === equipment.id"
+                  v-model="editForm.description"
+                  type="text"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                />
+                <span v-else class="text-slate-400">{{ equipment.description || '—' }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <label v-if="editingEquipmentId === equipment.id" class="inline-flex items-center gap-2 text-xs text-slate-300">
+                  <input v-model="editForm.is_active" type="checkbox" class="accent-emerald-500" />
+                  {{ editForm.is_active ? 'Активне' : 'Неактивне' }}
+                </label>
                 <span
+                  v-else
                   class="px-2 py-1 rounded-full text-xs"
                   :class="equipment.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'"
                 >
                   {{ equipment.is_active ? 'Активне' : 'Неактивне' }}
                 </span>
+              </td>
+              <td class="py-2 px-3 text-right text-xs">
+                <div v-if="editingEquipmentId === equipment.id" class="flex justify-end gap-3">
+                  <button
+                    class="text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
+                    :disabled="savingEdit"
+                    @click="updateEquipment(equipment)"
+                  >
+                    {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
+                  </button>
+                  <button class="text-slate-400 hover:text-slate-200" @click="cancelEdit">Скасувати</button>
+                </div>
+                <div v-else class="flex justify-end gap-3">
+                  <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(equipment)">Редагувати</button>
+                  <button class="text-red-400 hover:text-red-300" @click="deleteEquipment(equipment)">Видалити</button>
+                </div>
               </td>
             </tr>
           </tbody>

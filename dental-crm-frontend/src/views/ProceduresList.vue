@@ -17,6 +17,17 @@ const error = ref(null);
 const showForm = ref(false);
 const creating = ref(false);
 const createError = ref(null);
+const editError = ref(null);
+const editingProcedureId = ref(null);
+const editForm = ref({
+  name: '',
+  category: '',
+  duration_minutes: 30,
+  requires_room: false,
+  requires_assistant: false,
+  equipment_id: '',
+});
+const savingEdit = ref(false);
 
 const form = ref({
   clinic_id: '',
@@ -102,6 +113,58 @@ const createProcedure = async () => {
     createError.value = err.response?.data?.message || 'Помилка створення процедури';
   } finally {
     creating.value = false;
+  }
+};
+
+const startEdit = (procedure) => {
+  editingProcedureId.value = procedure.id;
+  editError.value = null;
+  editForm.value = {
+    name: procedure.name || '',
+    category: procedure.category || '',
+    duration_minutes: procedure.duration_minutes ?? 30,
+    requires_room: !!procedure.requires_room,
+    requires_assistant: !!procedure.requires_assistant,
+    equipment_id: procedure.equipment_id || '',
+  };
+};
+
+const cancelEdit = () => {
+  editingProcedureId.value = null;
+  editError.value = null;
+};
+
+const updateProcedure = async (procedure) => {
+  savingEdit.value = true;
+  editError.value = null;
+  try {
+    await procedureApi.update(procedure.id, {
+      name: editForm.value.name,
+      category: editForm.value.category || null,
+      duration_minutes: editForm.value.duration_minutes,
+      requires_room: editForm.value.requires_room,
+      requires_assistant: editForm.value.requires_assistant,
+      equipment_id: editForm.value.equipment_id || null,
+    });
+    await fetchProcedures();
+    editingProcedureId.value = null;
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося оновити процедуру';
+  } finally {
+    savingEdit.value = false;
+  }
+};
+
+const deleteProcedure = async (procedure) => {
+  if (!window.confirm(`Видалити процедуру "${procedure.name}"?`)) return;
+  editError.value = null;
+  try {
+    await procedureApi.delete(procedure.id);
+    await fetchProcedures();
+  } catch (err) {
+    console.error(err);
+    editError.value = err.response?.data?.message || 'Не вдалося видалити процедуру';
   }
 };
 
@@ -229,6 +292,7 @@ onMounted(async () => {
     <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
       <div v-if="loading" class="text-sm text-slate-400">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
+      <div v-else-if="editError" class="text-sm text-red-400">{{ editError }}</div>
       <div v-else-if="!procedures.length" class="text-sm text-slate-400">Немає процедур.</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
@@ -239,21 +303,87 @@ onMounted(async () => {
               <th class="text-left py-2 px-3">Тривалість</th>
               <th class="text-left py-2 px-3">Обладнання</th>
               <th class="text-left py-2 px-3">Вимоги</th>
+              <th class="text-right py-2 px-3">Дії</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="procedure in procedures" :key="procedure.id" class="border-t border-slate-800">
-              <td class="py-2 px-3 text-slate-200">{{ procedure.name }}</td>
-              <td class="py-2 px-3 text-slate-400">{{ procedure.category || '—' }}</td>
-              <td class="py-2 px-3 text-slate-400">{{ procedure.duration_minutes }} хв</td>
-              <td class="py-2 px-3 text-slate-400">
-                {{ equipments.find((e) => e.id === procedure.equipment_id)?.name || '—' }}
+              <td class="py-2 px-3">
+                <input
+                  v-if="editingProcedureId === procedure.id"
+                  v-model="editForm.name"
+                  type="text"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                />
+                <span v-else class="text-slate-200">{{ procedure.name }}</span>
               </td>
-              <td class="py-2 px-3 text-slate-400">
-                <span v-if="procedure.requires_room">Кімната</span>
-                <span v-if="procedure.requires_room && procedure.requires_assistant"> · </span>
-                <span v-if="procedure.requires_assistant">Асистент</span>
-                <span v-if="!procedure.requires_room && !procedure.requires_assistant">—</span>
+              <td class="py-2 px-3">
+                <input
+                  v-if="editingProcedureId === procedure.id"
+                  v-model="editForm.category"
+                  type="text"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                />
+                <span v-else class="text-slate-400">{{ procedure.category || '—' }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <input
+                  v-if="editingProcedureId === procedure.id"
+                  v-model.number="editForm.duration_minutes"
+                  type="number"
+                  min="5"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                />
+                <span v-else class="text-slate-400">{{ procedure.duration_minutes }} хв</span>
+              </td>
+              <td class="py-2 px-3">
+                <select
+                  v-if="editingProcedureId === procedure.id"
+                  v-model="editForm.equipment_id"
+                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                >
+                  <option value="">Без обладнання</option>
+                  <option v-for="equipment in equipments" :key="equipment.id" :value="equipment.id">
+                    {{ equipment.name }}
+                  </option>
+                </select>
+                <span v-else class="text-slate-400">
+                  {{ equipments.find((e) => e.id === procedure.equipment_id)?.name || '—' }}
+                </span>
+              </td>
+              <td class="py-2 px-3">
+                <div v-if="editingProcedureId === procedure.id" class="flex flex-col gap-1 text-xs text-slate-300">
+                  <label class="inline-flex items-center gap-2">
+                    <input v-model="editForm.requires_room" type="checkbox" class="accent-emerald-500" />
+                    Кімната
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input v-model="editForm.requires_assistant" type="checkbox" class="accent-emerald-500" />
+                    Асистент
+                  </label>
+                </div>
+                <span v-else class="text-slate-400">
+                  <span v-if="procedure.requires_room">Кімната</span>
+                  <span v-if="procedure.requires_room && procedure.requires_assistant"> · </span>
+                  <span v-if="procedure.requires_assistant">Асистент</span>
+                  <span v-if="!procedure.requires_room && !procedure.requires_assistant">—</span>
+                </span>
+              </td>
+              <td class="py-2 px-3 text-right text-xs">
+                <div v-if="editingProcedureId === procedure.id" class="flex justify-end gap-3">
+                  <button
+                    class="text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
+                    :disabled="savingEdit"
+                    @click="updateProcedure(procedure)"
+                  >
+                    {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
+                  </button>
+                  <button class="text-slate-400 hover:text-slate-200" @click="cancelEdit">Скасувати</button>
+                </div>
+                <div v-else class="flex justify-end gap-3">
+                  <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(procedure)">Редагувати</button>
+                  <button class="text-red-400 hover:text-red-300" @click="deleteProcedure(procedure)">Видалити</button>
+                </div>
               </td>
             </tr>
           </tbody>

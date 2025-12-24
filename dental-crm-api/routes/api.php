@@ -104,7 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'update']);
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
-    Route::apiResource('assistants', AssistantController::class)->only(['index', 'store']);
+    Route::apiResource('assistants', AssistantController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::apiResource('rooms', RoomController::class);
     Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
