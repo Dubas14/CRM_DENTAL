@@ -32,3 +32,5 @@ class WaitlistEntryFactory extends Factory
         ];
     }
 }
+
+
