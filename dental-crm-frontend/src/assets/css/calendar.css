@@ -1,136 +1,79 @@
-.fc {
-    color: rgba(226, 232, 240, 0.95);
+/* =======================================================
+   Toast UI Calendar — CRM Dental (MIT)
+   Dark / Light theme integration
+   ======================================================= */
+
+/* ---------- ROOT LAYOUT (override inline styles) ---------- */
+.dark .toastui-calendar-layout {
+    background-color: #020617 !important; /* slate-950 */
 }
 
-.fc-theme-standard .fc-scrollgrid,
-.fc-theme-standard td,
-.fc-theme-standard th {
-    border-color: rgba(148, 163, 184, 0.18);
+.light .toastui-calendar-layout,
+html:not(.dark) .toastui-calendar-layout {
+    background-color: #ffffff !important;
 }
 
-.fc .fc-scrollgrid-section-header > *,
-.fc .fc-col-header-cell {
-    background: rgba(2, 6, 23, 0.9) !important;
+/* ---------- PANELS ---------- */
+.toastui-calendar-panel {
+    border-radius: 8px;
 }
 
-.fc .fc-timegrid-slot-label,
-.fc .fc-timegrid-axis-cushion,
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number,
-.fc .fc-toolbar-title {
-    color: rgba(226, 232, 240, 0.92) !important;
+.dark .toastui-calendar-panel {
+    background-color: #020617 !important;
+    color: #e5e7eb;
 }
 
-.fc .fc-col-header-cell-cushion {
-    font-weight: 700;
-    letter-spacing: 0.2px;
+.light .toastui-calendar-panel {
+    background-color: #ffffff;
+    color: #0f172a;
 }
 
-.fc .fc-toolbar-title {
-    font-size: 1.1rem;
-    font-weight: 800;
+/* ---------- HEADER (days row) ---------- */
+.dark .toastui-calendar-week-view-day-names {
+    background-color: #020617;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.fc .fc-button {
-    border-radius: 0.5rem;
-    border-color: rgba(148, 163, 184, 0.25);
-    background: rgba(2, 6, 23, 0.6);
-    color: rgba(226, 232, 240, 0.95);
+.light .toastui-calendar-week-view-day-names {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.fc .fc-button:hover {
-    background: rgba(15, 23, 42, 0.9);
+/* ---------- GRID ---------- */
+.dark .toastui-calendar-timegrid-cell {
+    border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-    background: rgba(16, 185, 129, 0.25);
-    border-color: rgba(16, 185, 129, 0.5);
+.light .toastui-calendar-timegrid-cell {
+    border-color: #e5e7eb;
 }
 
-.fc .fc-day-today {
-    background: rgba(16, 185, 129, 0.08) !important;
-}
-
-.fc .fc-timegrid-body,
-.fc .fc-timegrid-col-frame {
-    background: rgba(2, 6, 23, 0.35);
-}
-
-.fc .fc-bg-event.free-slot {
-    background-color: rgba(16, 185, 129, 0.28) !important;
-}
-
-.fc .fc-event {
-    border-color: rgba(56, 189, 248, 0.35);
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2) inset;
-}
-
-.block-vacation,
-.block-work,
-.block-room,
-.block-equipment,
-.block-personal {
-    border-radius: 0.375rem;
-    border-left: 3px solid transparent;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
-}
-
-.block-vacation {
-    background: rgba(255, 190, 144, 0.32);
-    border-left-color: rgba(251, 146, 60, 0.7);
-}
-
-.block-work {
-    background: rgba(186, 230, 253, 0.32);
-    border-left-color: rgba(56, 189, 248, 0.7);
-}
-
-.block-room {
-    background: rgba(196, 255, 216, 0.3);
-    border-left-color: rgba(34, 197, 94, 0.7);
-}
-
-.block-equipment {
-    background: rgba(221, 214, 254, 0.32);
-    border-left-color: rgba(139, 92, 246, 0.7);
-}
-
-.block-personal {
-    background: rgba(254, 215, 170, 0.32);
-    border-left-color: rgba(249, 115, 22, 0.7);
-}
-
-.block-vacation:hover,
-.block-work:hover,
-.block-room:hover,
-.block-equipment:hover,
-.block-personal:hover {
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
-    filter: brightness(1.03);
-    transform: translateY(-1px);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .fc .fc-toolbar {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .fc .fc-toolbar-title {
-        font-size: 1rem;
-    }
-
-    .fc .fc-button {
-        font-size: 0.875rem;
-        padding: 0.375rem 0.75rem;
-    }
-}
-
-.toastui-calendar-time-event {
-    border-radius: 6px;
-    font-size: 12px;
+/* ---------- TIME LABELS ---------- */
+.toastui-calendar-timegrid-hour-label {
+    font-size: 11px;
     font-weight: 500;
+}
+
+.dark .toastui-calendar-timegrid-hour-label {
+    color: #94a3b8;
+}
+
+.light .toastui-calendar-timegrid-hour-label {
+    color: #475569;
+}
+
+/* ---------- TODAY COLUMN ---------- */
+.dark .toastui-calendar-day-today {
+    background-color: rgba(16, 185, 129, 0.06);
+}
+
+.light .toastui-calendar-day-today {
+    background-color: rgba(16, 185, 129, 0.08);
+}
+
+/* ---------- EVENTS (appointments) ---------- */
+.toastui-calendar-time-event {
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
 }
 
 .toastui-calendar-time-event-content {
@@ -139,4 +82,48 @@
 
 .toastui-calendar-time-event-title {
     color: #ffffff !important;
+}
+
+/* Main appointment */
+.dark .toastui-calendar-time-event {
+    background-color: #2563eb;
+    border-color: #60a5fa;
+    color: #ffffff;
+}
+
+.light .toastui-calendar-time-event {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+/* ---------- FREE SLOT (availability) ---------- */
+.toastui-calendar-time-event.is-readonly {
+    background-color: rgba(16, 185, 129, 0.25);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #064e3b;
+}
+
+.dark .toastui-calendar-time-event.is-readonly {
+    color: #ecfdf5;
+}
+
+/* ---------- HOVER & INTERACTION ---------- */
+.toastui-calendar-time-event:hover {
+    filter: brightness(1.08);
+    cursor: pointer;
+}
+
+/* ---------- SCROLLBAR (optional, aesthetic) ---------- */
+.toastui-calendar-week-view::-webkit-scrollbar {
+    width: 8px;
+}
+
+.toastui-calendar-week-view::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+}
+
+.dark .toastui-calendar-week-view::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.25);
 }
