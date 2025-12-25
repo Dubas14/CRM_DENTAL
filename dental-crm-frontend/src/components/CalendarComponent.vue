@@ -211,6 +211,12 @@
         >
           {{ doctorSelectionMessage }}
         </div>
+        <div
+            v-if="roomViewMessage"
+            class="text-sm text-sky-300 bg-sky-900/20 border border-sky-700/40 rounded-lg p-3 mb-3"
+        >
+          {{ roomViewMessage }}
+        </div>
 
         <!-- Навігація календаря -->
         <div class="flex items-center justify-between mb-3">
@@ -416,6 +422,8 @@ const {
   clinics,
   specializations,
   diagnosticsSnapshot,
+  missingRoomAppointmentsCount,
+  NO_ROOM_RESOURCE_ID,
 
   // Computed properties (ВАЖЛИВО!)
   baseView, // ← ТЕПЕР ДОСТУПНО
@@ -628,11 +636,27 @@ const displayResources = computed(() => {
     }));
   }
 
-  return selectedRoomResources.value.map(room => ({
+  const roomResources = selectedRoomResources.value.map(room => ({
     id: String(room.id),
     title: room.name || `#${room.id}`,
     subtitle: room.type || 'Кабінет',
   }));
+
+  if (missingRoomAppointmentsCount.value > 0) {
+    roomResources.push({
+      id: NO_ROOM_RESOURCE_ID,
+      title: 'Без кабінету',
+      subtitle: 'Записи без room_id',
+    });
+  }
+
+  return roomResources;
+});
+
+const roomViewMessage = computed(() => {
+  if (!isResourceView.value || resourceViewType.value !== 'room') return '';
+  if (!missingRoomAppointmentsCount.value) return '';
+  return `Записи без кабінету (${missingRoomAppointmentsCount.value}) відображені у ресурсі "Без кабінету".`;
 });
 
 const calendarEvents = computed(() => {

@@ -24,6 +24,7 @@ export function useCalendar() {
     const selectedAssistantId = ref('');
     const selectedSpecializations = ref([]);
     const resourceViewType = ref('doctor');
+    const NO_ROOM_RESOURCE_ID = 'no-room';
     const isFollowUp = ref(false);
     const allowSoftConflicts = ref(false);
     const diagnosticsEnabled = ref(true);
@@ -41,6 +42,7 @@ export function useCalendar() {
     const loading = ref(false);
     const loadingSlots = ref(false);
     const error = ref(null);
+    const missingRoomAppointmentsCount = ref(0);
 
     // Booking modal
     const isBookingOpen = ref(false);
@@ -185,14 +187,15 @@ export function useCalendar() {
         return proc ? `${patient} • ${proc}` : patient;
     };
 
-    const mapAppointmentsToEvents = (appts, { resourceType } = {}) => {
+    const mapAppointmentsToEvents = (appts, { resourceType, noRoomResourceId } = {}) => {
         return appts
             .filter(appt => appt?.start_at && appt?.end_at)
             .map((appt) => {
+                const roomId = appt?.room_id;
                 const resourceId = resourceType === 'doctor'
                     ? appt?.doctor_id
                     : resourceType === 'room'
-                        ? appt?.room_id
+                        ? (roomId != null ? roomId : (noRoomResourceId || null))
                         : null;
 
                 return {
@@ -631,13 +634,23 @@ export function useCalendar() {
 
             if (reqId !== eventsReqId) return;
 
+            if (isResourceView.value && resourceViewType.value === 'room') {
+                missingRoomAppointmentsCount.value = appts.filter(
+                    (appt) => appt?.start_at && appt?.end_at && appt?.room_id == null
+                ).length;
+            } else {
+                missingRoomAppointmentsCount.value = 0;
+            }
+
             let mapped = mapAppointmentsToEvents(appts, {
                 resourceType: isResourceView.value ? resourceViewType.value : null,
+                noRoomResourceId: NO_ROOM_RESOURCE_ID,
             });
 
             if (isResourceView.value && resourceViewType.value === 'room' && selectedRoomIds.value.length) {
                 const allowed = new Set(selectedRoomIds.value.map((id) => String(id)));
-                mapped = mapped.filter((event) => event.resourceId && allowed.has(String(event.resourceId)));
+                mapped = mapped.filter((event) => event.resourceId === NO_ROOM_RESOURCE_ID
+                    || (event.resourceId && allowed.has(String(event.resourceId))));
             }
 
             events.value = mapped;
@@ -1124,6 +1137,8 @@ export function useCalendar() {
         allowSoftConflicts,
         diagnosticsEnabled,
         doctorSelectionMessage,
+        missingRoomAppointmentsCount,
+        NO_ROOM_RESOURCE_ID,
 
         // Data collections
         doctors,
