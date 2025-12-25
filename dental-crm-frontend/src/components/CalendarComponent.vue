@@ -186,6 +186,14 @@
           <span>selectedDoctorIds: {{ diagnosticsSnapshot.selectedDoctorIds.join(', ') || '—' }}</span>
           <span>filteredDoctors: {{ diagnosticsSnapshot.filteredDoctorsCount }}</span>
           <span>doctors: {{ diagnosticsSnapshot.doctorsCount }}</span>
+          <span>eventResourceIds: {{ eventResourceIds.join(', ') || '—' }}</span>
+          <span>displayResourceIds: {{ displayResourceIds.join(', ') || '—' }}</span>
+          <span>
+            missingInDisplay: {{ diagnosticsResourceMismatch.missingInDisplay.join(', ') || '—' }}
+          </span>
+          <span>
+            extraInDisplay: {{ diagnosticsResourceMismatch.extraInDisplay.join(', ') || '—' }}
+          </span>
         </div>
       </div>
     </div>
@@ -618,7 +626,7 @@ watch([requiresAssistant, assistants], () => {
   }
 });
 
-const displayResources = computed(() => {
+const displayResourcesRaw = computed(() => {
   if (!isResourceView.value) {
     const doctor = doctors.value.find(doc => String(doc.id) === String(selectedDoctorId.value));
     return [{
@@ -657,6 +665,46 @@ const roomViewMessage = computed(() => {
   if (!isResourceView.value || resourceViewType.value !== 'room') return '';
   if (!missingRoomAppointmentsCount.value) return '';
   return `Записи без кабінету (${missingRoomAppointmentsCount.value}) відображені у ресурсі "Без кабінету".`;
+});
+
+const displayResources = computed(() => {
+  if (displayResourcesRaw.value.length) return displayResourcesRaw.value;
+  return [{
+    id: 'fallback',
+    title: 'Ресурс не знайдено',
+    subtitle: 'Оберіть лікаря або кабінет',
+  }];
+});
+
+const eventResourceIds = computed(() =>
+  uniqStr(events.value.map((event) => event?.resourceId)),
+);
+
+const displayResourceIds = computed(() =>
+  uniqStr(displayResourcesRaw.value.map((resource) => resource?.id)),
+);
+
+const diagnosticsResourceMismatch = computed(() => {
+  const missingInDisplay = eventResourceIds.value.filter(
+    (id) => !displayResourceIds.value.includes(id),
+  );
+  const extraInDisplay = displayResourceIds.value.filter(
+    (id) => !eventResourceIds.value.includes(id),
+  );
+  return {
+    missingInDisplay,
+    extraInDisplay,
+  };
+});
+
+const resourceWarningMessage = computed(() => {
+  if (displayResourcesRaw.value.length) return '';
+  if (isResourceView.value) {
+    return resourceViewType.value === 'doctor'
+      ? 'Не вибрано лікарів для відображення.'
+      : 'Не вибрано кабінетів для відображення.';
+  }
+  return 'Не вибрано лікаря для відображення.';
 });
 
 const calendarEvents = computed(() => {

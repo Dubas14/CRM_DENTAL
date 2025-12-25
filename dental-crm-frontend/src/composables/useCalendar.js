@@ -189,7 +189,7 @@ export function useCalendar() {
 
     const mapAppointmentsToEvents = (appts, { resourceType, noRoomResourceId } = {}) => {
         return appts
-            .filter(appt => appt?.start_at && appt?.end_at)
+            .filter((appt) => (appt?.start_at || appt?.start) && (appt?.end_at || appt?.end))
             .map((appt) => {
                 const roomId = appt?.room_id;
                 const resourceId = resourceType === 'doctor'
@@ -201,8 +201,8 @@ export function useCalendar() {
                 return {
                     id: String(appt.id),
                     title: buildEventTitle(appt),
-                    start: toQCalendarDateTime(appt.start_at),
-                    end: toQCalendarDateTime(appt.end_at),
+                    start: toQCalendarDateTime(startAt),
+                    end: toQCalendarDateTime(endAt),
                     resourceId: resourceId ? String(resourceId) : undefined,
                     extendedProps: {
                         appointment: appt,
@@ -382,13 +382,25 @@ export function useCalendar() {
         return Array.from(list).sort((a, b) => a.localeCompare(b));
     });
 
+    const eventResourceIds = computed(() => {
+        const ids = new Set();
+        events.value.forEach((event) => {
+            if (event?.resourceId) ids.add(String(event.resourceId));
+        });
+        return Array.from(ids);
+    });
+
     const selectedDoctorResources = computed(() => {
-        const ids = new Set(selectedDoctorIds.value.map(id => String(id)));
+        const ids = eventResourceIds.value.length
+            ? new Set(eventResourceIds.value)
+            : new Set(selectedDoctorIds.value.map(id => String(id)));
         return doctors.value.filter((doctor) => ids.has(String(doctor.id)));
     });
 
     const selectedRoomResources = computed(() => {
-        const ids = new Set(selectedRoomIds.value.map(id => String(id)));
+        const ids = eventResourceIds.value.length
+            ? new Set(eventResourceIds.value)
+            : new Set(selectedRoomIds.value.map(id => String(id)));
         return rooms.value.filter((room) => ids.has(String(room.id)));
     });
 
