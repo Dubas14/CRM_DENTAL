@@ -14,9 +14,20 @@
   color-scheme: dark;
 }
 
-body {
+html,
+body,
+#app {
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-text));
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+#app {
+  min-height: 100%;
 }
 
 .theme-toggle-button {

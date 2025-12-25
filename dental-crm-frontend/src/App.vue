@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from './composables/useAuth';
 import { usePermissions } from './composables/usePermissions';
@@ -34,7 +34,16 @@ const isMobileMenuOpen = ref(false); // Для мобілок
 const defaultTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
 const theme = ref(defaultTheme || 'dark');
 const isDarkTheme = computed(() => theme.value === 'dark');
-const themeClass = computed(() => (isDarkTheme.value ? 'dark' : ''));
+
+const applyThemeClass = (value) => {
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('dark', value === 'dark');
+  }
+};
+
+watch(theme, (value) => {
+  applyThemeClass(value);
+}, { immediate: true });
 
 // Активний клас для меню
 const activeClass = "bg-emerald-600 text-text shadow-lg shadow-emerald-500/30";
@@ -57,7 +66,7 @@ const isLoginPage = computed(() => route.name === 'login');
 </script>
 
 <template>
-  <div :class="['min-h-screen font-sans selection:bg-emerald-500/30 bg-bg text-text', themeClass]">
+  <div class="min-h-screen font-sans selection:bg-emerald-500/30 bg-bg text-text">
     <!-- Якщо це сторінка логіна - просто рендеримо її на весь екран -->
     <div v-if="isLoginPage" class="min-h-screen">
       <router-view />
