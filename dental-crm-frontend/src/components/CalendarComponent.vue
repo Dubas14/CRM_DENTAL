@@ -379,19 +379,6 @@ const runtimeResources = computed(() => {
 const calendarEvents = computed(() => {
   const sources = [...availabilityBgEvents.value, ...calendarBlocks.value, ...events.value];
 
-  // 1. ТЕСТОВА ПОДІЯ (без resourceId, щоб вона точно була видна)
-  const testDate = selectedDate.value;
-  const testEvent = {
-    id: 'test-force-1',
-    title: '🟥 ТЕСТ',
-    date: testDate,
-    time: '09:00',
-    duration: 60,
-    bgcolor: '#ef4444',
-    // ВАЖЛИВО: не ставимо resourceId, щоб вона була "загальною" для дня
-    resourceId: undefined
-  };
-
   const mapped = sources.map((event) => {
     let datePart = '';
     let timePart = '';
@@ -421,6 +408,8 @@ const calendarEvents = computed(() => {
     return {
       id: String(event.id),
       title: event.title || '(Без назви)',
+      start: startStr,
+      end: endStr,
       date: datePart,
       time: timePart,
       duration: duration,
@@ -431,7 +420,7 @@ const calendarEvents = computed(() => {
     };
   });
 
-  return [...mapped, testEvent];
+  return mapped;
 });
 
 const onIntervalClick = async (payload) => {
