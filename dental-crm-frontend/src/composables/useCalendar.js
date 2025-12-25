@@ -197,6 +197,8 @@ export function useCalendar() {
                     : resourceType === 'room'
                         ? (roomId != null ? roomId : (noRoomResourceId || null))
                         : null;
+                const startAt = appt?.start_at || appt?.start;
+                const endAt = appt?.end_at || appt?.end;
 
                 return {
                     id: String(appt.id),
@@ -648,7 +650,9 @@ export function useCalendar() {
 
             if (isResourceView.value && resourceViewType.value === 'room') {
                 missingRoomAppointmentsCount.value = appts.filter(
-                    (appt) => appt?.start_at && appt?.end_at && appt?.room_id == null
+                    (appt) => (appt?.start_at || appt?.start)
+                        && (appt?.end_at || appt?.end)
+                        && appt?.room_id == null
                 ).length;
             } else {
                 missingRoomAppointmentsCount.value = 0;
@@ -979,6 +983,54 @@ export function useCalendar() {
         toastInfo(message, { timeout: 5000 });
     };
 
+    const handleEventDragStart = (payload) => {
+        const event = payload?.event || payload;
+        if (!event?.extendedProps?.appointment) {
+            toastInfo('Перетягувати можна лише записи.');
+        }
+    };
+
+    const handleEventDrop = async (payload) => {
+        const event = payload?.event || payload;
+        const appt = event?.extendedProps?.appointment;
+        if (!appt) return;
+
+        const nextStart = payload?.start || event?.start;
+        const nextEnd = payload?.end || event?.end;
+        if (!nextStart || !nextEnd) return;
+
+        const startDate = fromQCalendarDateTime(nextStart);
+        const endDate = fromQCalendarDateTime(nextEnd);
+        if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+
+        const resourceId = payload?.resource?.id || payload?.resourceId || event?.resourceId;
+        const updatePayload = {
+            start_at: startDate?.toISOString?.() || startDate,
+            end_at: endDate?.toISOString?.() || endDate,
+        };
+
+        if (isResourceView.value && resourceViewType.value === 'doctor' && resourceId) {
+            updatePayload.doctor_id = Number(resourceId);
+        }
+
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            if (resourceId === NO_ROOM_RESOURCE_ID) {
+                updatePayload.room_id = null;
+            } else if (resourceId) {
+                updatePayload.room_id = Number(resourceId);
+            }
+        }
+
+        try {
+            await calendarApi.updateAppointment(appt.id, updatePayload);
+            toastSuccess('Запис успішно перенесено');
+            await refreshCalendar();
+        } catch (error) {
+            const message = error?.response?.data?.message || error?.message || 'Помилка перенесення запису';
+            toastError(message);
+        }
+    };
+
     // Адаптований handleDatesSet для QCalendar
     const handleDatesSet = async (info) => {
         if (datesSetInFlight) return;
@@ -1065,6 +1117,11 @@ export function useCalendar() {
         logDiagnostics('selectedSpecializations');
     });
 
+    watch(filteredDoctors, () => {
+        syncSelectedDoctorWithClinic();
+        logDiagnostics('filteredDoctors');
+    });
+
     watch(selectedDoctorId, async () => {
         if (selectedDoctorId.value && !selectedDoctorIds.value.includes(String(selectedDoctorId.value))) {
             selectedDoctorIds.value = [...new Set([...selectedDoctorIds.value, String(selectedDoctorId.value)])];
@@ -1087,6 +1144,10 @@ export function useCalendar() {
         if (isResourceView.value && resourceViewType.value === 'room') {
             await refreshCalendar();
         }
+    });
+
+    watch(rooms, () => {
+        syncSelectedRooms();
     });
 
     watch(resourceViewType, async () => {
@@ -1194,6 +1255,8 @@ export function useCalendar() {
         handleSelect,
         handleEventClick,
         selectAllow,
+        handleEventDragStart,
+        handleEventDrop,
 
         handleDatesSet,
         cleanup,

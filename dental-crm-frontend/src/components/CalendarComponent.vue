@@ -289,6 +289,8 @@
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
             @change="onCalendarChange"
+            @event-drag-start="handleEventDragStart"
+            @event-drop="handleEventDrop"
         />
       </div>
 
@@ -462,6 +464,8 @@ const {
   selectAllow,
 
   handleDatesSet,
+  handleEventDragStart,
+  handleEventDrop,
 
   // Utility functions
   formatDateYMD,
@@ -759,12 +763,15 @@ const onEventClick = (payload) => {
 };
 
 const onCalendarChange = (event) => {
-  // Обробка змін в календарі (навігація)
-  if (event?.view?.start && event?.view?.end) {
+  const view = event?.view || event?.new?.view || event?.old?.view;
+  const start = event?.start || event?.view?.start || event?.range?.start;
+  const end = event?.end || event?.view?.end || event?.range?.end;
+
+  if (start && end) {
     handleDatesSet({
-      start: event.view.start,
-      end: event.view.end,
-      view: event.view,
+      start,
+      end,
+      view,
     });
   }
 };
