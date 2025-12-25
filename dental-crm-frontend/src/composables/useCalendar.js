@@ -1053,9 +1053,9 @@ export function useCalendar() {
                 const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
 
                 activeRange.value = { start, end, fromDate, toDate };
-            if (diagnosticsEnabled.value) {
-                console.info('[Calendar activeRange]', toRaw(activeRange.value));
-            }
+                if (diagnosticsEnabled.value) {
+                    console.info('[Calendar activeRange]', toRaw(activeRange.value));
+                }
             } else {
                 ensureRange();
             }
