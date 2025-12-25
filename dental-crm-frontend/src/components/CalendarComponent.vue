@@ -173,6 +173,21 @@
           </button>
         </div>
       </div>
+
+      <div
+          v-if="diagnosticsEnabled"
+          class="w-full text-[11px] text-slate-400 bg-slate-950/70 border border-slate-800 rounded-lg p-2"
+      >
+        <p class="text-slate-300 mb-1">Діагностика (тимчасово)</p>
+        <div class="grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
+          <span>selectedClinicId: {{ diagnosticsSnapshot.selectedClinicId || '—' }}</span>
+          <span>clinicId: {{ diagnosticsSnapshot.clinicId || '—' }}</span>
+          <span>selectedDoctorId: {{ diagnosticsSnapshot.selectedDoctorId || '—' }}</span>
+          <span>selectedDoctorIds: {{ diagnosticsSnapshot.selectedDoctorIds.join(', ') || '—' }}</span>
+          <span>filteredDoctors: {{ diagnosticsSnapshot.filteredDoctorsCount }}</span>
+          <span>doctors: {{ diagnosticsSnapshot.doctorsCount }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Завантаження -->
@@ -189,6 +204,12 @@
       <div class="lg:col-span-3 bg-slate-900/60 border border-slate-800 rounded-xl p-3 relative h-[75vh] overflow-hidden flex flex-col">
         <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3 mb-3">
           {{ error }}
+        </div>
+        <div
+            v-if="doctorSelectionMessage"
+            class="text-sm text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded-lg p-3 mb-3"
+        >
+          {{ doctorSelectionMessage }}
         </div>
 
         <!-- Навігація календаря -->
@@ -382,6 +403,8 @@ const {
   resourceViewType,
   isFollowUp,
   allowSoftConflicts,
+  diagnosticsEnabled,
+  doctorSelectionMessage,
 
   // Data collections
   doctors,
@@ -392,6 +415,7 @@ const {
   assistants,
   clinics,
   specializations,
+  diagnosticsSnapshot,
 
   // Computed properties (ВАЖЛИВО!)
   baseView, // ← ТЕПЕР ДОСТУПНО
