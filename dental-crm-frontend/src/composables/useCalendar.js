@@ -191,6 +191,8 @@ export function useCalendar() {
         return appts
             .filter((appt) => (appt?.start_at || appt?.start) && (appt?.end_at || appt?.end))
             .map((appt) => {
+                const startAt = appt?.start_at || appt?.start;
+                const endAt = appt?.end_at || appt?.end;
                 const roomId = appt?.room_id;
                 const resourceId = resourceType === 'doctor'
                     ? appt?.doctor_id
@@ -980,6 +982,157 @@ export function useCalendar() {
         toastInfo(message, { timeout: 5000 });
     };
 
+    const padTime = (value) => String(value).padStart(2, '0');
+
+    const resolveDropStart = (payload, fallbackEvent) => {
+        const scope = payload?.scope || payload?.target?.scope || payload?.target || payload;
+        const timestamp = payload?.timestamp || scope?.timestamp || scope?.interval || scope;
+        const date = timestamp?.date || scope?.date || payload?.date;
+        let time = timestamp?.time || scope?.time || payload?.time;
+
+        if (!time && typeof timestamp?.hour === 'number' && typeof timestamp?.minute === 'number') {
+            time = `${padTime(timestamp.hour)}:${padTime(timestamp.minute)}`;
+        }
+
+        if (date && time) {
+            return new Date(`${date}T${time}:00`);
+        }
+
+        const startValue = payload?.start || payload?.event?.start || fallbackEvent?.start;
+        return startValue ? fromQCalendarDateTime(startValue) : null;
+    };
+
+    const resolveDropResourceId = (payload) => {
+        const scope = payload?.scope || payload?.target?.scope || payload?.target || payload;
+        const resource = payload?.resource || scope?.resource || payload?.resourceId || scope?.resourceId;
+        return resource?.id ?? resource ?? null;
+    };
+
+    const checkAppointmentSlotAvailability = async ({ appointment, start, end, resourceId }) => {
+        try {
+            if (viewMode.value === 'dayGridMonth') return true;
+
+            const startDate = formatDateYMD(start);
+            const startTime = formatTimeHM(start);
+            const duration = minutesDiff(start, end) || 30;
+
+            let doctorId = appointment?.doctor_id || selectedDoctorId.value;
+            let roomId = appointment?.room_id ?? null;
+
+            if (isResourceView.value && resourceId) {
+                if (resourceViewType.value === 'doctor') {
+                    doctorId = resourceId;
+                } else if (resourceViewType.value === 'room') {
+                    roomId = resourceId === NO_ROOM_RESOURCE_ID ? null : resourceId;
+                }
+            }
+
+            if (!doctorId) return false;
+
+            const slotRes = await fetchDoctorSlots({
+                doctorId,
+                date: startDate,
+                procedureId: appointment?.procedure_id ?? (selectedProcedureId.value ? Number(selectedProcedureId.value) : null),
+                roomId: roomId != null ? Number(roomId) : null,
+                equipmentId: appointment?.equipment_id ?? (selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null),
+                assistantId: appointment?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
+                durationMinutes: duration,
+            });
+
+            return slotRes.set.has(startTime);
+        } catch {
+            return true;
+        }
+    };
+
+    const handleEventDragStart = async (payload) => {
+        const event = payload?.event || payload;
+        const appt = event?.extendedProps?.appointment;
+        if (!appt) return;
+
+        if (isResourceView.value && resourceViewType.value === 'doctor' && appt?.doctor_id) {
+            selectedDoctorId.value = String(appt.doctor_id);
+        }
+
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            selectedRoomId.value = appt?.room_id ? String(appt.room_id) : '';
+        }
+
+        await refreshAvailabilityBackground();
+    };
+
+    const handleEventDrop = async (payload) => {
+        const event = payload?.event || payload;
+        const appt = event?.extendedProps?.appointment;
+        if (!appt) return;
+
+        const originalStart = fromQCalendarDateTime(event?.start);
+        const originalEnd = fromQCalendarDateTime(event?.end);
+        const duration = minutesDiff(originalStart, originalEnd) || 30;
+
+        const newStart = resolveDropStart(payload, event);
+        if (!newStart || Number.isNaN(newStart.getTime())) {
+            toastError('Не вдалося визначити новий час для запису.');
+            await refreshCalendar();
+            return;
+        }
+
+        const newEnd = payload?.end
+            ? fromQCalendarDateTime(payload.end)
+            : new Date(newStart.getTime() + duration * 60000);
+
+        const resourceId = resolveDropResourceId(payload);
+        const canMove = await checkAppointmentSlotAvailability({
+            appointment: appt,
+            start: newStart,
+            end: newEnd,
+            resourceId,
+        });
+
+        if (!canMove) {
+            toastError('Цей час недоступний для перенесення.');
+            await refreshCalendar();
+            return;
+        }
+
+        const updatePayload = {
+            start_at: newStart.toISOString(),
+            end_at: newEnd.toISOString(),
+        };
+
+        if (isResourceView.value && resourceId) {
+            if (resourceViewType.value === 'doctor') {
+                updatePayload.doctor_id = Number(resourceId);
+            } else if (resourceViewType.value === 'room') {
+                updatePayload.room_id = resourceId === NO_ROOM_RESOURCE_ID ? null : Number(resourceId);
+            }
+        }
+
+        const updateNeeded = updatePayload.doctor_id
+            ? Number(updatePayload.doctor_id) !== Number(appt?.doctor_id)
+            : updatePayload.room_id !== undefined
+                ? Number(updatePayload.room_id) !== Number(appt?.room_id)
+                : false;
+
+        const timeChanged = formatDateYMD(originalStart) !== formatDateYMD(newStart)
+            || formatTimeHM(originalStart) !== formatTimeHM(newStart);
+
+        if (!timeChanged && !updateNeeded) {
+            await refreshCalendar();
+            return;
+        }
+
+        try {
+            await calendarApi.updateAppointment(appt.id, updatePayload);
+            toastSuccess('Запис перенесено');
+            await refreshCalendar();
+        } catch (err) {
+            const message = err.response?.data?.message || err.message || 'Не вдалося перенести запис';
+            toastError(message);
+            await refreshCalendar();
+        }
+    };
+
     // Адаптований handleDatesSet для QCalendar
     const handleDatesSet = async (info) => {
         if (datesSetInFlight) return;
@@ -1198,6 +1351,8 @@ export function useCalendar() {
 
         handleSelect,
         handleEventClick,
+        handleEventDragStart,
+        handleEventDrop,
         selectAllow,
 
         handleDatesSet,

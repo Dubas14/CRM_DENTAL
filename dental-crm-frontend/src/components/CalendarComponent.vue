@@ -288,6 +288,8 @@
             class="flex-1 min-h-0 w-full q-calendar-custom"
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
+            @event-drag-start="onEventDragStart"
+            @event-drop="onEventDrop"
             @change="onCalendarChange"
         />
       </div>
@@ -460,6 +462,8 @@ const {
 
   handleSelect,
   handleEventClick,
+  handleEventDragStart,
+  handleEventDrop,
   selectAllow,
 
   handleDatesSet,
@@ -751,13 +755,12 @@ const onEventClick = (payload) => {
   handleEventClick({ event });
 };
 
-const resolveCalendarRange = (event) => {
-  const detail = event?.detail || event?.payload || {};
-  const view = event?.view || detail?.view || detail;
-  const start = view?.start || view?.from || view?.fromDate || event?.start || detail?.start || detail?.from;
-  const end = view?.end || view?.to || view?.toDate || event?.end || detail?.end || detail?.to;
+const onEventDragStart = (payload) => {
+  handleEventDragStart(payload);
+};
 
-  return { start, end, view };
+const onEventDrop = (payload) => {
+  handleEventDrop(payload);
 };
 
 const onCalendarChange = (event) => {
