@@ -56,24 +56,22 @@ export function useCalendar() {
     const events = ref([]);
     const availabilityBgEvents = ref([]);
     const calendarBlocks = ref([]);
-    const calendarRef = ref(null);
 
-    // Drag context
-    const dragContextActive = ref(false);
+    // Для QCalendarScheduler
+    const qcalendarView = ref(null);
 
-    // Active visible range (from datesSet)
+    // Active visible range
     const activeRange = ref({
-        start: null, // Date
-        end: null,   // Date (exclusive)
-        fromDate: null, // 'YYYY-MM-DD'
-        toDate: null,   // 'YYYY-MM-DD'
+        start: null,
+        end: null,
+        fromDate: null,
+        toDate: null,
     });
 
-    // request guards (anti race / anti loop)
+    // Request guards
     let eventsReqId = 0;
     let slotsReqId = 0;
     let blocksReqId = 0;
-    let datesSetKey = '';
     let datesSetInFlight = false;
 
     // Slots cache with TTL
@@ -84,46 +82,57 @@ export function useCalendar() {
         await refreshAvailabilityBackground();
     }, 300);
 
-    const defaultClinicId = computed(() =>
-        user.value?.clinic_id ||
-        user.value?.doctor?.clinic_id ||
-        user.value?.doctor?.clinic?.id ||
-        user.value?.clinics?.[0]?.clinic_id ||
-        '',
-    );
-
-    const clinicId = computed(() =>
-        selectedClinicId.value ||
-        defaultClinicId.value ||
-        null,
-    );
-
-    const showClinicSelector = computed(() =>
-        clinics.value.length > 1 || user.value?.global_role === 'super_admin',
-    );
-
     // Utility functions
     const formatDateYMD = (date) => {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const d_ = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d_}`;
     };
 
     const formatTimeHM = (date) => {
-        const h = String(date.getHours()).padStart(2, '0');
-        const m = String(date.getMinutes()).padStart(2, '0');
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '00:00';
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
         return `${h}:${m}`;
     };
 
     const minutesDiff = (a, b) => Math.max(0, Math.round((b.getTime() - a.getTime()) / 60000));
 
-    const normalizeDateTimeForCalendar = (value) => {
+    // Для QCalendar формат: "YYYY-MM-DD HH:mm"
+    const toQCalendarDateTime = (value) => {
         if (!value) return value;
-        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(value)) {
-            return value.replace(' ', 'T');
+
+        try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+                const dateStr = formatDateYMD(date);
+                const timeStr = date.toTimeString().slice(0, 5);
+                return `${dateStr} ${timeStr}`;
+            }
+
+            if (typeof value === 'string') {
+                if (value.includes('T')) {
+                    return value.replace('T', ' ').replace('Z', '').slice(0, 16);
+                }
+                return value;
+            }
+        } catch (e) {
+            console.warn('Помилка конвертації дати:', value, e);
         }
+
         return value;
+    };
+
+    const fromQCalendarDateTime = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string' && value.includes(' ')) {
+            return new Date(value.replace(' ', 'T') + ':00');
+        }
+        return new Date(value);
     };
 
     // Cache management
@@ -174,53 +183,146 @@ export function useCalendar() {
         return proc ? `${patient} • ${proc}` : patient;
     };
 
-    const mapAppointmentsToEvents = (appts, { resourceType } = {}) => appts
-        .map((appt) => {
-            const resourceId = resourceType === 'doctor'
-                ? appt?.doctor_id
-                : resourceType === 'room'
-                    ? appt?.room_id
-                    : null;
-            return {
-                id: String(appt.id),
-                title: buildEventTitle(appt),
-                start: normalizeDateTimeForCalendar(appt.start_at),
-                end: normalizeDateTimeForCalendar(appt.end_at),
-                resourceId: resourceId ? String(resourceId) : undefined,
-                extendedProps: { appointment: appt, status: appt.status },
-                classNames: [`status-${appt.status || 'scheduled'}`],
-            };
-        })
-        .filter((event) => event);
+    const mapAppointmentsToEvents = (appts, { resourceType } = {}) => {
+        return appts
+            .filter(appt => appt?.start_at && appt?.end_at)
+            .map((appt) => {
+                const resourceId = resourceType === 'doctor'
+                    ? appt?.doctor_id
+                    : resourceType === 'room'
+                        ? appt?.room_id
+                        : null;
+
+                return {
+                    id: String(appt.id),
+                    title: buildEventTitle(appt),
+                    start: toQCalendarDateTime(appt.start_at),
+                    end: toQCalendarDateTime(appt.end_at),
+                    resourceId: resourceId ? String(resourceId) : undefined,
+                    extendedProps: {
+                        appointment: appt,
+                        status: appt.status || 'scheduled'
+                    },
+                    classNames: [`status-${appt.status || 'scheduled'}`],
+                    backgroundColor: getEventColorByStatus(appt.status),
+                };
+            });
+    };
+
+    const getEventColorByStatus = (status) => {
+        const colors = {
+            scheduled: '#3B82F6',
+            confirmed: '#10B981',
+            cancelled: '#EF4444',
+            completed: '#6B7280',
+            no_show: '#F59E0B',
+        };
+        return colors[status] || '#3B82F6';
+    };
 
     const calendarBlockColors = {
         vacation: 'rgba(248, 113, 113, 0.25)',
         room_block: 'rgba(251, 146, 60, 0.25)',
         equipment_booking: 'rgba(192, 132, 252, 0.25)',
         personal_block: 'rgba(96, 165, 250, 0.25)',
+        break: 'rgba(148, 163, 184, 0.25)',
     };
 
     const resolveCalendarBlockType = (block) =>
         block?.type || block?.block_type || block?.kind || 'block';
 
-    const mapCalendarBlocksToEvents = (blocks, { resourceType } = {}) => blocks.map((block) => {
-        const type = resolveCalendarBlockType(block);
-        const start = normalizeDateTimeForCalendar(block.start_at || block.start || block.from);
-        const end = normalizeDateTimeForCalendar(block.end_at || block.end || block.to);
-        const resourceId = resourceType === 'doctor' ? block?.doctor_id : null;
-        return {
-            id: `calendar-block-${block.id || `${type}-${start}`}`,
-            start,
-            end,
-            display: 'background',
-            backgroundColor: calendarBlockColors[type] || 'rgba(148, 163, 184, 0.22)',
-            classNames: ['calendar-block', `calendar-block-${type}`],
-            resourceId: resourceId ? String(resourceId) : undefined,
-            extendedProps: { block, type },
-        };
+    const mapCalendarBlocksToEvents = (blocks, { resourceType } = {}) => {
+        return blocks
+            .filter(block => block?.start_at || block?.start)
+            .map((block) => {
+                const type = resolveCalendarBlockType(block);
+                const start = toQCalendarDateTime(block.start_at || block.start);
+                const end = toQCalendarDateTime(block.end_at || block.end);
+                const resourceId = resourceType === 'doctor' ? block?.doctor_id : null;
+
+                return {
+                    id: `calendar-block-${block.id || `${type}-${start}`}`,
+                    title: block.title || block.reason || type,
+                    start,
+                    end,
+                    display: 'background',
+                    backgroundColor: calendarBlockColors[type] || 'rgba(148, 163, 184, 0.22)',
+                    classNames: ['calendar-block', `calendar-block-${type}`],
+                    resourceId: resourceId ? String(resourceId) : undefined,
+                    extendedProps: { block, type },
+                };
+            });
+    };
+
+    // ========== ВАЖЛИВО: Додаємо computed для baseView та uiMode ==========
+    const baseView = computed({
+        get() {
+            if (viewMode.value === 'dayGridMonth') return 'month';
+            if (String(viewMode.value).includes('Day')) return 'day';
+            return 'week';
+        },
+        set(v) {
+            const multi = isResourceView.value;
+
+            if (v === 'month' && multi) {
+                viewMode.value = 'timeGridWeek';
+                return;
+            }
+
+            if (v === 'day') {
+                viewMode.value = multi ? 'resourceTimeGridDay' : 'timeGridDay';
+            } else if (v === 'month') {
+                viewMode.value = 'dayGridMonth';
+            } else {
+                viewMode.value = multi ? 'resourceTimeGridWeek' : 'timeGridWeek';
+            }
+        },
     });
 
-    // Data fetching
+    const uiMode = computed({
+        get() {
+            return isResourceView.value ? 'multi' : 'single';
+        },
+        set(v) {
+            const multi = v === 'multi';
+            const currentBase = baseView.value;
+
+            if (currentBase === 'month' && multi) {
+                baseView.value = 'week';
+                return;
+            }
+
+            if (currentBase === 'day') {
+                viewMode.value = multi ? 'resourceTimeGridDay' : 'timeGridDay';
+            } else if (currentBase === 'month') {
+                viewMode.value = 'dayGridMonth';
+            } else {
+                viewMode.value = multi ? 'resourceTimeGridWeek' : 'timeGridWeek';
+            }
+        },
+    });
+
+    // Computed properties
+    const defaultClinicId = computed(() =>
+        user.value?.clinic_id ||
+        user.value?.doctor?.clinic_id ||
+        user.value?.doctor?.clinic?.id ||
+        user.value?.clinics?.[0]?.clinic_id ||
+        ''
+    );
+
+    const clinicId = computed(() =>
+        selectedClinicId.value ||
+        defaultClinicId.value ||
+        null
+    );
+
+    const showClinicSelector = computed(() =>
+        clinics.value.length > 1 || user.value?.global_role === 'super_admin'
+    );
+
+    const isResourceView = computed(() => viewMode.value.startsWith('resourceTimeGrid'));
+
     const resolveDoctorClinicId = (doctor) =>
         doctor?.clinic_id ||
         doctor?.clinic?.id ||
@@ -230,7 +332,10 @@ export function useCalendar() {
 
     const filteredDoctors = computed(() => {
         const base = clinicId.value
-            ? doctors.value.filter((doctor) => Number(resolveDoctorClinicId(doctor)) === Number(clinicId.value))
+            ? doctors.value.filter((doctor) => {
+                const doctorClinicId = resolveDoctorClinicId(doctor);
+                return doctorClinicId && Number(doctorClinicId) === Number(clinicId.value);
+            })
             : doctors.value;
 
         if (!selectedSpecializations.value.length) return base;
@@ -245,8 +350,17 @@ export function useCalendar() {
         return Array.from(list).sort((a, b) => a.localeCompare(b));
     });
 
-    const isResourceView = computed(() => viewMode.value.startsWith('resourceTimeGrid'));
+    const selectedDoctorResources = computed(() => {
+        const ids = new Set(selectedDoctorIds.value.map(id => String(id)));
+        return doctors.value.filter((doctor) => ids.has(String(doctor.id)));
+    });
 
+    const selectedRoomResources = computed(() => {
+        const ids = new Set(selectedRoomIds.value.map(id => String(id)));
+        return rooms.value.filter((room) => ids.has(String(room.id)));
+    });
+
+    // Data fetching functions
     const syncSelectedDoctorWithClinic = () => {
         const list = filteredDoctors.value;
         if (!list.length) {
@@ -264,138 +378,179 @@ export function useCalendar() {
 
         const validIds = new Set(list.map((doctor) => String(doctor.id)));
         const synced = selectedDoctorIds.value.filter((id) => validIds.has(String(id)));
-        if (!synced.length) {
-            selectedDoctorIds.value = list.map((doctor) => String(doctor.id));
+        if (!synced.length && list.length) {
+            selectedDoctorIds.value = [String(list[0].id)];
         } else {
             selectedDoctorIds.value = synced;
         }
     };
 
     const syncSelectedRooms = () => {
+        if (!rooms.value.length) {
+            selectedRoomIds.value = [];
+            return;
+        }
+
         const validIds = new Set(rooms.value.map((room) => String(room.id)));
         const synced = selectedRoomIds.value.filter((id) => validIds.has(String(id)));
-        selectedRoomIds.value = synced.length ? synced : rooms.value.map((room) => String(room.id));
+        if (!synced.length && rooms.value.length) {
+            selectedRoomIds.value = [String(rooms.value[0].id)];
+        } else {
+            selectedRoomIds.value = synced;
+        }
     };
 
     const fetchDoctors = async () => {
-        const { data } = await apiClient.get('/doctors');
-        doctors.value = Array.isArray(data) ? data : (data?.data || []);
-    };
-
-    const dedupeByKey = (items, keyFn) => {
-        const map = new Map();
-        items.forEach((item) => {
-            if (!item) return;
-            const key = keyFn(item);
-            if (key === undefined || key === null || key === '') {
-                map.set(Symbol('procedure'), item);
-                return;
-            }
-            if (!map.has(key)) map.set(key, item);
-        });
-        return Array.from(map.values());
-    };
-
-    const normalizeProcedureName = (proc) => (proc?.name || '').trim().toLowerCase();
-
-    const dedupeProcedures = (items) => {
-        const byId = dedupeByKey(items, (proc) => proc.id ?? proc.procedure_id ?? proc.name);
-        const seenNames = new Set();
-        return byId.filter((proc) => {
-            const nameKey = normalizeProcedureName(proc);
-            if (!nameKey) return true;
-            if (seenNames.has(nameKey)) return false;
-            seenNames.add(nameKey);
-            return true;
-        });
+        try {
+            const { data } = await apiClient.get('/doctors');
+            doctors.value = Array.isArray(data) ? data : (data?.data || []);
+        } catch (error) {
+            console.error('Помилка завантаження лікарів:', error);
+            doctors.value = [];
+        }
     };
 
     const fetchProcedures = async () => {
-        const params = clinicId.value ? { clinic_id: clinicId.value } : undefined;
-        const { data } = await apiClient.get('/procedures', { params });
-        const list = Array.isArray(data) ? data : (data?.data || []);
-        procedures.value = dedupeProcedures(list);
+        try {
+            const params = clinicId.value ? { clinic_id: clinicId.value } : undefined;
+            const { data } = await apiClient.get('/procedures', { params });
+            const list = Array.isArray(data) ? data : (data?.data || []);
+
+            const uniqueProcedures = [];
+            const seenIds = new Set();
+            const seenNames = new Set();
+
+            list.forEach(proc => {
+                if (proc.id && !seenIds.has(proc.id)) {
+                    seenIds.add(proc.id);
+                    uniqueProcedures.push(proc);
+                } else if (proc.name && !seenNames.has(proc.name.toLowerCase())) {
+                    seenNames.add(proc.name.toLowerCase());
+                    uniqueProcedures.push(proc);
+                }
+            });
+
+            procedures.value = uniqueProcedures;
+        } catch (error) {
+            console.error('Помилка завантаження процедур:', error);
+            procedures.value = [];
+        }
     };
 
     const fetchClinics = async () => {
-        if (user.value?.global_role === 'super_admin') {
-            const { data } = await clinicApi.list();
-            clinics.value = data.data ?? data;
-        } else {
-            const { data } = await clinicApi.listMine();
-            clinics.value = (data.clinics ?? []).map((clinic) => ({
-                id: clinic.clinic_id,
-                name: clinic.clinic_name,
-            }));
-        }
+        try {
+            if (user.value?.global_role === 'super_admin') {
+                const { data } = await clinicApi.list();
+                clinics.value = data.data ?? data;
+            } else {
+                const { data } = await clinicApi.listMine();
+                clinics.value = (data.clinics ?? []).map((clinic) => ({
+                    id: clinic.clinic_id,
+                    name: clinic.clinic_name,
+                }));
+            }
 
-        if (!selectedClinicId.value) {
-            selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
+            if (!selectedClinicId.value && clinics.value.length) {
+                selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
+            }
+        } catch (error) {
+            console.error('Помилка завантаження клінік:', error);
+            clinics.value = [];
         }
     };
 
     const fetchRooms = async () => {
-        if (!clinicId.value) {
+        try {
+            if (!clinicId.value) {
+                rooms.value = [];
+                return;
+            }
+            const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
+            rooms.value = Array.isArray(data) ? data : (data?.data || []);
+            syncSelectedRooms();
+        } catch (error) {
+            console.error('Помилка завантаження кабінетів:', error);
             rooms.value = [];
-            return;
         }
-        const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } });
-        rooms.value = Array.isArray(data) ? data : (data?.data || []);
-        syncSelectedRooms();
     };
 
     const fetchEquipments = async () => {
-        if (!clinicId.value) {
+        try {
+            if (!clinicId.value) {
+                equipments.value = [];
+                return;
+            }
+            const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
+            equipments.value = Array.isArray(data) ? data : (data?.data || []);
+        } catch (error) {
+            console.error('Помилка завантаження обладнання:', error);
             equipments.value = [];
-            return;
         }
-        const { data } = await equipmentApi.list({ clinic_id: clinicId.value });
-        equipments.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
     const fetchAssistants = async () => {
-        if (!clinicId.value) {
+        try {
+            if (!clinicId.value) {
+                assistants.value = [];
+                return;
+            }
+            const { data } = await assistantApi.list({ clinic_id: clinicId.value });
+            assistants.value = Array.isArray(data) ? data : (data?.data || []);
+        } catch (error) {
+            console.error('Помилка завантаження асистентів:', error);
             assistants.value = [];
-            return;
         }
-        const { data } = await assistantApi.list({ clinic_id: clinicId.value });
-        assistants.value = Array.isArray(data) ? data : (data?.data || []);
     };
 
     const loadAppointmentsRange = async (doctorId, fromDate, toDate) => {
-        const { data } = await calendarApi.getAppointments({
-            doctor_id: doctorId,
-            from_date: fromDate,
-            to_date: toDate,
-            clinic_id: clinicId.value, // ✅
-        });
+        try {
+            const { data } = await calendarApi.getAppointments({
+                doctor_id: doctorId,
+                from_date: fromDate,
+                to_date: toDate,
+                clinic_id: clinicId.value,
+            });
 
-        return Array.isArray(data) ? data : (data?.data || []);
+            return Array.isArray(data) ? data : (data?.data || []);
+        } catch (error) {
+            console.error(`Помилка завантаження записів для лікаря ${doctorId}:`, error);
+            return [];
+        }
     };
 
     const loadCalendarBlocksRange = async ({ doctorId, fromDate, toDate }) => {
-        if (!clinicId.value) {
+        try {
+            if (!clinicId.value) {
+                return [];
+            }
+            const { data } = await calendarApi.getCalendarBlocks({
+                doctor_id: doctorId,
+                clinic_id: clinicId.value,
+                from_date: fromDate,
+                to_date: toDate,
+            });
+
+            return Array.isArray(data) ? data : (data?.data || []);
+        } catch (error) {
+            console.error(`Помилка завантаження блоків для лікаря ${doctorId}:`, error);
             return [];
         }
-        const { data } = await calendarApi.getCalendarBlocks({
-            doctor_id: doctorId,
-            clinic_id: clinicId.value,
-            from_date: fromDate,
-            from: fromDate,
-            to: toDate,
-        });
-
-        return Array.isArray(data) ? data : (data?.data || []);
     };
+
     const ensureRange = () => {
-        // якщо datesSet ще не прийшов — беремо з view
-        if (activeRange.value?.fromDate && activeRange.value?.toDate) return activeRange.value;
+        if (activeRange.value?.start && activeRange.value?.end) {
+            return activeRange.value;
+        }
 
-        const api = calendarRef.value?.getApi?.();
-        const view = api?.view;
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
 
-        const start = view?.activeStart ? new Date(view.activeStart) : new Date();
-        const end = view?.activeEnd ? new Date(view.activeEnd) : new Date(Date.now() + 7 * 86400000);
+        const day = start.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        start.setDate(start.getDate() + diff);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
 
         const fromDate = formatDateYMD(start);
         const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
@@ -418,7 +573,10 @@ export function useCalendar() {
 
     const loadEvents = async (range = null) => {
         const doctorIds = resolveDoctorIdsForEvents();
-        if (!doctorIds.length) return;
+        if (!doctorIds.length) {
+            events.value = [];
+            return;
+        }
 
         const reqId = ++eventsReqId;
         loading.value = true;
@@ -427,11 +585,10 @@ export function useCalendar() {
         try {
             const r = range ? range : ensureRange();
             const apptBatches = await Promise.all(
-                doctorIds.map((doctorId) => loadAppointmentsRange(doctorId, r.fromDate, r.toDate)),
+                doctorIds.map((doctorId) => loadAppointmentsRange(doctorId, r.fromDate, r.toDate))
             );
             const appts = apptBatches.flat();
 
-            // якщо під час запиту прийшов новіший — не застосовуємо
             if (reqId !== eventsReqId) return;
 
             let mapped = mapAppointmentsToEvents(appts, {
@@ -460,7 +617,11 @@ export function useCalendar() {
         }
 
         const doctorIds = resolveDoctorIdsForEvents();
-        if (!doctorIds.length) return;
+        if (!doctorIds.length) {
+            calendarBlocks.value = [];
+            return;
+        }
+
         if (!clinicId.value) {
             calendarBlocks.value = [];
             return;
@@ -475,7 +636,7 @@ export function useCalendar() {
                     doctorId,
                     fromDate: r.fromDate,
                     toDate: r.toDate,
-                })),
+                }))
             );
             const blocks = blocksBatches.flat();
 
@@ -486,20 +647,29 @@ export function useCalendar() {
             });
         } catch (e) {
             console.warn('Помилка завантаження блоків календаря:', e);
+            calendarBlocks.value = [];
         }
     };
 
     // Availability slots
     const mergeSlotsToIntervals = (slots) => {
-        if (!slots.length) return [];
+        if (!slots?.length) return [];
         const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
         const merged = [];
+
         for (const s of sorted) {
             const last = merged[merged.length - 1];
-            if (!last) { merged.push({ start: s.start, end: s.end }); continue; }
-            if (last.end === s.start) last.end = s.end;
-            else merged.push({ start: s.start, end: s.end });
+            if (!last) {
+                merged.push({ start: s.start, end: s.end });
+                continue;
+            }
+            if (last.end === s.start) {
+                last.end = s.end;
+            } else {
+                merged.push({ start: s.start, end: s.end });
+            }
         }
+
         return merged;
     };
 
@@ -512,36 +682,41 @@ export function useCalendar() {
     };
 
     const buildAvailabilityBgForRange = async ({
-        doctorId,
-        startDate,
-        endDateExclusive,
-        procedureId,
-        roomId,
-        equipmentId,
-        assistantId,
-        durationMinutes,
-        resourceId,
-    }) => {
-        const api = calendarRef.value?.getApi?.();
-        const view = api?.view;
-        if (view?.type === 'dayGridMonth') return [];
-
+                                                   doctorId,
+                                                   startDate,
+                                                   endDateExclusive,
+                                                   procedureId,
+                                                   roomId,
+                                                   equipmentId,
+                                                   assistantId,
+                                                   durationMinutes,
+                                                   resourceId,
+                                               }) => {
         const cursor = new Date(startDate);
         const bg = [];
 
         while (cursor < endDateExclusive) {
             const date = formatDateYMD(cursor);
             try {
-                const { slots } = await fetchDoctorSlots({ doctorId, date, procedureId, roomId, equipmentId, assistantId, durationMinutes });
+                const { slots } = await fetchDoctorSlots({
+                    doctorId,
+                    date,
+                    procedureId,
+                    roomId,
+                    equipmentId,
+                    assistantId,
+                    durationMinutes,
+                });
+
                 const intervals = mergeSlotsToIntervals(slots);
 
                 for (const it of intervals) {
                     bg.push({
                         id: `free-${doctorId}-${date}-${it.start}`,
-                        start: `${date}T${it.start}:00`,
-                        end: `${date}T${it.end}:00`,
+                        title: 'Вільний слот',
+                        start: toQCalendarDateTime(`${date}T${it.start}:00`),
+                        end: toQCalendarDateTime(`${date}T${it.end}:00`),
                         display: 'background',
-                        overlap: true,
                         backgroundColor: 'rgba(16, 185, 129, 0.22)',
                         classNames: ['free-slot'],
                         resourceId: resourceId ? String(resourceId) : undefined,
@@ -557,19 +732,15 @@ export function useCalendar() {
     };
 
     const refreshAvailabilityBackground = async (range = null) => {
-        if (!calendarRef.value) return;
-
-        const api = calendarRef.value.getApi();
-        const view = api.view;
-        if (!view) return;
-
-        if (view.type === 'dayGridMonth') {
+        if (viewMode.value === 'dayGridMonth') {
             availabilityBgEvents.value = [];
             return;
         }
 
-        if (!resolveDoctorIdsForEvents().length) return;
-        if (dragContextActive.value) return;
+        if (!resolveDoctorIdsForEvents().length) {
+            availabilityBgEvents.value = [];
+            return;
+        }
 
         const reqId = ++slotsReqId;
         loadingSlots.value = true;
@@ -585,32 +756,42 @@ export function useCalendar() {
 
             const doctorIds = resolveDoctorIdsForEvents();
             const bgBatches = await Promise.all(
-                doctorIds.map((doctorId) => buildAvailabilityBgForRange({
-                    doctorId,
-                    startDate: r.start,
-                    endDateExclusive: r.end,
-                    procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
-                    roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
-                    equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
-                    assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
-                    durationMinutes: duration,
-                    resourceId: isResourceView.value ? doctorId : null,
-                })),
+                doctorIds.map((doctorId) =>
+                    buildAvailabilityBgForRange({
+                        doctorId,
+                        startDate: r.start,
+                        endDateExclusive: r.end,
+                        procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+                        roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+                        equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+                        assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+                        durationMinutes: duration,
+                        resourceId: isResourceView.value ? doctorId : null,
+                    })
+                )
             );
+
             const bg = bgBatches.flat();
 
             if (reqId !== slotsReqId) return;
             availabilityBgEvents.value = bg;
         } catch (err) {
             console.error('Помилка оновлення фонових слотів:', err);
+            availabilityBgEvents.value = [];
         } finally {
             if (reqId === slotsReqId) loadingSlots.value = false;
         }
     };
 
-    // Booking
+    // Booking functions
     const resetBooking = () => {
-        booking.value = { start: null, end: null, patient_id: '', comment: '', waitlist_entry_id: '' };
+        booking.value = {
+            start: null,
+            end: null,
+            patient_id: '',
+            comment: '',
+            waitlist_entry_id: '',
+        };
     };
 
     const openBooking = (info) => {
@@ -671,221 +852,93 @@ export function useCalendar() {
         }
     };
 
-    // Drag & drop
-    const showDragAvailability = async (event) => {
-        const appt = event?.extendedProps?.appointment;
-        if (!appt) return;
-
-        const api = calendarRef.value?.getApi?.();
-        const view = api?.view;
-        if (!view) return;
-        if (viewMode.value === 'dayGridMonth') return;
-
-        dragContextActive.value = true;
-        loadingSlots.value = true;
-
-        try {
-            const r = ensureRange();
-            const procedureId = appt?.procedure_id ?? null;
-            const roomId = appt?.room_id ?? null;
-            const equipmentId = appt?.equipment_id ?? null;
-
-            const startOld = appt?.start_at ? new Date(normalizeDateTimeForCalendar(appt.start_at)) : null;
-            const endOld = appt?.end_at ? new Date(normalizeDateTimeForCalendar(appt.end_at)) : null;
-            const duration = (startOld && endOld) ? minutesDiff(startOld, endOld) : 30;
-
-            availabilityBgEvents.value = await buildAvailabilityBgForRange({
-                doctorId: appt?.doctor_id || selectedDoctorId.value,
-                startDate: r.start,
-                endDateExclusive: r.end,
-                procedureId,
-                roomId,
-                equipmentId,
-                assistantId: appt?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
-                durationMinutes: duration,
-            });
-        } catch (err) {
-            console.error('Помилка завантаження drag availability:', err);
-        } finally {
-            loadingSlots.value = false;
-        }
-    };
-
-    const hideDragAvailability = async () => {
-        dragContextActive.value = false;
-        await refreshAvailabilityBackground();
-    };
-
-    const handleEventMoveResize = async (info, kind) => {
-        const id = info.event.id;
-        const appt = info.event.extendedProps?.appointment;
-
-        try {
-            const start = info.event.start;
-            if (!start) throw new Error('Не вдалося визначити час початку');
-
-            const date = formatDateYMD(start);
-            const time = formatTimeHM(start);
-
-            const procedureId = appt?.procedure_id ?? null;
-            const roomId = appt?.room_id ?? null;
-            const equipmentId = appt?.equipment_id ?? null;
-
-            const startOld = appt?.start_at ? new Date(normalizeDateTimeForCalendar(appt.start_at)) : null;
-            const endOld = appt?.end_at ? new Date(normalizeDateTimeForCalendar(appt.end_at)) : null;
-            const duration = (startOld && endOld) ? minutesDiff(startOld, endOld) : 30;
-
-            const slotRes = await fetchDoctorSlots({
-                doctorId: appt?.doctor_id || selectedDoctorId.value,
-                date,
-                procedureId,
-                roomId,
-                equipmentId,
-                assistantId: appt?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
-                durationMinutes: duration,
-            });
-
-            if (!slotRes.set.has(time)) {
-                info.revert();
-                toastInfo('Цей час недоступний. Переносьте запис тільки на підсвічений час.');
-                return;
-            }
-
-            const payload = {
-                doctor_id: appt?.doctor_id || selectedDoctorId.value,
-                date,
-                time,
-                patient_id: appt?.patient_id ?? null,
-                procedure_id: appt?.procedure_id ?? null,
-                room_id: appt?.room_id ?? null,
-                equipment_id: appt?.equipment_id ?? null,
-                assistant_id: appt?.assistant_id ?? null,
-                is_follow_up: !!appt?.is_follow_up,
-                allow_soft_conflicts: !!allowSoftConflicts.value,
-            };
-
-            await calendarApi.updateAppointment(id, payload);
-            toastSuccess(kind === 'resize' ? 'Запис змінено' : 'Запис перенесено');
-
-            await refreshCalendar();
-        } catch (e) {
-            info.revert();
-            const msg = e.response?.data?.message || e.message || `Помилка при ${kind}`;
-            toastError(msg);
-        } finally {
-            await hideDragAvailability();
-        }
-    };
-
-    const selectAllow = async (selectInfo) => {
+    // Для QCalendarScheduler
+    const selectAllow = async (info) => {
         try {
             if (!selectedDoctorId.value) return false;
 
-            const api = calendarRef.value?.getApi?.();
-            const view = api?.view;
-            if (view?.type === 'dayGridMonth') return true;
+            if (viewMode.value === 'dayGridMonth') return true;
 
-            const date = formatDateYMD(selectInfo.start);
-            const time = formatTimeHM(selectInfo.start);
-            const duration = minutesDiff(selectInfo.start, selectInfo.end) || 30;
-            const resourceId = selectInfo?.resource?.id;
-            const doctorId = resourceViewType.value === 'doctor' && resourceId
-                ? resourceId
-                : selectedDoctorId.value;
-            const roomId = resourceViewType.value === 'room' && resourceId
-                ? resourceId
-                : selectedRoomId.value;
+            const startDate = formatDateYMD(info.start);
+            const startTime = formatTimeHM(info.start);
+            const duration = minutesDiff(info.start, info.end) || 30;
+
+            let doctorId = selectedDoctorId.value;
+            if (isResourceView.value && resourceViewType.value === 'doctor' && info.resource?.id) {
+                doctorId = info.resource.id;
+            }
 
             const slotRes = await fetchDoctorSlots({
                 doctorId,
-                date,
+                date: startDate,
                 procedureId: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
-                roomId: roomId ? Number(roomId) : null,
+                roomId: selectedRoomId.value ? Number(selectedRoomId.value) : null,
                 equipmentId: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
                 assistantId: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
                 durationMinutes: duration,
             });
 
-            return slotRes.set.has(time);
+            return slotRes.set.has(startTime);
         } catch {
             return true;
         }
     };
 
     const handleSelect = (info) => {
-        const resourceId = info?.resource?.id;
-        if (resourceViewType.value === 'doctor' && resourceId) {
-            selectedDoctorId.value = String(resourceId);
+        if (isResourceView.value && info.resource?.id) {
+            if (resourceViewType.value === 'doctor') {
+                selectedDoctorId.value = String(info.resource.id);
+            } else if (resourceViewType.value === 'room') {
+                selectedRoomId.value = String(info.resource.id);
+            }
         }
-        if (resourceViewType.value === 'room' && resourceId) {
-            selectedRoomId.value = String(resourceId);
-        }
+
         openBooking(info);
     };
 
     const handleEventClick = (info) => {
         const appt = info.event.extendedProps?.appointment;
+        if (!appt) {
+            toastInfo('Це фонова подія або блок');
+            return;
+        }
+
         const patient = appt?.patient?.full_name || 'Пацієнт';
         const proc = appt?.procedure?.name || 'без процедури';
         const room = appt?.room?.name ? `, кабінет: ${appt.room.name}` : '';
         const eq = appt?.equipment?.name ? `, обладнання: ${appt.equipment.name}` : '';
         const asst = appt?.assistant?.full_name ? `, асистент: ${appt.assistant.full_name}` : '';
-        // eslint-disable-next-line no-alert
-        alert(`${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || info.event.extendedProps?.status}`);
+
+        const message = `${patient}\n${proc}${room}${eq}${asst}\nСтатус: ${appt?.status || 'заплановано'}`;
+
+        toastInfo(message, { timeout: 5000 });
     };
 
-    // ✅ ВАЖЛИВО: отримує info з календаря (QCalendar)
+    // Адаптований handleDatesSet для QCalendar
     const handleDatesSet = async (info) => {
-        // 1) оновлюємо activeRange
-        if (info?.start && info?.end) {
-            const start = new Date(info.start);
-            const end = new Date(info.end);
-
-            const fromDate = formatDateYMD(start);
-            const toDate = formatDateYMD(new Date(end.getTime() - 86400000)); // end exclusive → мінус 1 день
-
-            activeRange.value = { start, end, fromDate, toDate };
-        } else {
-            ensureRange();
-        }
-
-        // 2) будуємо ключ діапазону + контекст (щоб не фетчити одне й те саме без кінця)
-        const viewType = info?.view?.type || viewMode.value;
-        const r = activeRange.value;
-
-        const key = [
-            viewType,
-            r?.fromDate,
-            r?.toDate,
-            clinicId.value,
-            resourceViewType.value,
-            selectedDoctorId.value,
-            (selectedDoctorIds.value || []).join(','),
-            (selectedRoomIds.value || []).join(','),
-            selectedProcedureId.value,
-            selectedRoomId.value,
-            selectedEquipmentId.value,
-            selectedAssistantId.value,
-        ].join('|');
-
-        // 3) анти-петля: якщо це той самий ключ — нічого не робимо
-        if (key === datesSetKey) return;
         if (datesSetInFlight) return;
-
-        datesSetKey = key;
         datesSetInFlight = true;
 
         try {
-            // якщо нема клініки або нема лікарів для показу — не запускаємо фетч
-            const doctorIds = resolveDoctorIdsForEvents();
-            if (!clinicId.value || !doctorIds.length) return;
+            if (info?.start && info?.end) {
+                const start = new Date(info.start);
+                const end = new Date(info.end);
 
-            // 4) грузимо все разом (менше шансів на “дьорг” календаря)
-            await Promise.all([
-                loadEvents(r),
-                loadCalendarBlocks(r),
-                refreshAvailabilityBackground(r),
-            ]);
+                const fromDate = formatDateYMD(start);
+                const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
+
+                activeRange.value = { start, end, fromDate, toDate };
+            } else {
+                ensureRange();
+            }
+
+            if (info?.view) {
+                qcalendarView.value = info.view;
+            }
+
+            await refreshCalendar();
+        } catch (error) {
+            console.error('Помилка в handleDatesSet:', error);
         } finally {
             datesSetInFlight = false;
         }
@@ -893,17 +946,26 @@ export function useCalendar() {
 
     const refreshCalendar = async () => {
         const r = ensureRange();
-        await Promise.all([loadEvents(r), loadCalendarBlocks(r), refreshAvailabilityBackground(r)]);
+        await Promise.all([
+            loadEvents(r),
+            loadCalendarBlocks(r),
+            refreshAvailabilityBackground(r),
+        ]);
     };
 
     const initialize = async () => {
         try {
             loading.value = true;
+            error.value = null;
+
             await initAuth();
             await Promise.all([fetchDoctors(), fetchProcedures(), fetchClinics()]);
+
             syncSelectedDoctorWithClinic();
+
             await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
             await refreshCalendar();
+
         } catch (initError) {
             console.error('Помилка ініціалізації:', initError);
             const message = initError?.response?.data?.message || initError?.message || 'Помилка ініціалізації';
@@ -928,17 +990,11 @@ export function useCalendar() {
         selectedRoomId.value = '';
         selectedEquipmentId.value = '';
         selectedAssistantId.value = '';
+        syncSelectedDoctorWithClinic();
     });
 
     watch(selectedSpecializations, () => {
         syncSelectedDoctorWithClinic();
-    });
-
-    // ✅ РОЗДІЛЕНО:
-    watch(viewMode, async () => {
-        const api = calendarRef.value?.getApi?.();
-        if (api) api.changeView(viewMode.value);
-        // datesSet прийде автоматом після changeView і сам підтягне дані
     });
 
     watch(selectedDoctorId, async () => {
@@ -975,7 +1031,7 @@ export function useCalendar() {
     watch(clinicId, async () => {
         syncSelectedDoctorWithClinic();
         await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants(), fetchProcedures()]);
-        await refreshAvailabilityBackground();
+        await refreshCalendar();
     });
 
     watch(selectedProcedureId, () => {
@@ -991,12 +1047,16 @@ export function useCalendar() {
         await initialize();
     });
 
+    // ========== ЕКСПОРТУЄМО ВСІ НЕОБХІДНІ ЗМІННІ ==========
     return {
-        calendarRef,
+        // Calendar data
         events,
         availabilityBgEvents,
         calendarBlocks,
+        qcalendarView,
+        activeRange,
 
+        // UI state
         viewMode,
         selectedDoctorId,
         selectedDoctorIds,
@@ -1005,13 +1065,13 @@ export function useCalendar() {
         selectedRoomId,
         selectedRoomIds,
         selectedAssistantId,
+        selectedClinicId,
         selectedSpecializations,
         resourceViewType,
-        specializations,
-        isResourceView,
         isFollowUp,
         allowSoftConflicts,
 
+        // Data collections
         doctors,
         filteredDoctors,
         procedures,
@@ -1019,18 +1079,26 @@ export function useCalendar() {
         equipments,
         assistants,
         clinics,
-        selectedClinicId,
+        specializations,
+
+        // Computed properties (ЕКСПОРТУЄМО!)
+        baseView, // ← ДОДАНО
+        uiMode,   // ← ДОДАНО
+        isResourceView,
         showClinicSelector,
 
+        // Loading states
         loading,
         loadingSlots,
         error,
 
+        // Booking
         booking,
         isBookingOpen,
         bookingLoading,
         bookingError,
 
+        // Functions
         initialize,
         refreshCalendar,
         loadEvents,
@@ -1043,12 +1111,21 @@ export function useCalendar() {
 
         handleSelect,
         handleEventClick,
-        handleEventMoveResize,
-        showDragAvailability,
-        hideDragAvailability,
         selectAllow,
 
         handleDatesSet,
         cleanup,
+
+        // Utility functions
+        formatDateYMD,
+        formatTimeHM,
+        toQCalendarDateTime,
+        fromQCalendarDateTime,
+
+        // Додаткові утилітні функції
+        syncSelectedDoctorWithClinic,
+        syncSelectedRooms,
+        selectedDoctorResources,
+        selectedRoomResources,
     };
 }
