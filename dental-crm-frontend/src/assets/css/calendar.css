@@ -126,3 +126,17 @@
         padding: 0.375rem 0.75rem;
     }
 }
+
+.toastui-calendar-time-event {
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.toastui-calendar-time-event-content {
+    padding: 2px 6px;
+}
+
+.toastui-calendar-time-event-title {
+    color: #ffffff !important;
+}
