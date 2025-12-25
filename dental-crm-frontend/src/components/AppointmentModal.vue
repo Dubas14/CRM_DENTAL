@@ -85,40 +85,40 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-text/20 dark:bg-bg/50 backdrop-blur-sm p-4">
+    <div class="bg-card border border-border/80 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
       <!-- Заголовок -->
-      <div class="bg-slate-950 p-4 flex justify-between items-center border-b border-slate-800">
+      <div class="bg-bg p-4 flex justify-between items-center border-b border-border">
         <div>
-          <h2 class="text-lg font-bold text-white">Прийом пацієнта</h2>
-          <p class="text-sm text-slate-400">
+          <h2 class="text-lg font-bold text-text">Прийом пацієнта</h2>
+          <p class="text-sm text-text/70">
             {{ patientName }}
             <span v-if="!patientId" class="text-red-400 text-xs ml-2">(Гість)</span>
           </p>
         </div>
-        <button @click="$emit('close')" class="text-slate-400 hover:text-white text-2xl leading-none transition-colors">×</button>
+        <button @click="$emit('close')" class="text-text/70 hover:text-text text-2xl leading-none transition-colors">×</button>
       </div>
 
       <!-- Тіло форми -->
       <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
 
-        <div class="grid grid-cols-2 gap-4 text-sm text-slate-300">
-          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
-            <p class="text-xs uppercase tracking-wide text-slate-400">Процедура</p>
-            <p class="font-semibold text-white">{{ appointmentDetails.procedure || '—' }}</p>
+        <div class="grid grid-cols-2 gap-4 text-sm text-text/80">
+          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-text/70">Процедура</p>
+            <p class="font-semibold text-text">{{ appointmentDetails.procedure || '—' }}</p>
           </div>
-          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
-            <p class="text-xs uppercase tracking-wide text-slate-400">Кабінет</p>
-            <p class="font-semibold text-white">{{ appointmentDetails.room || '—' }}</p>
+          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-text/70">Кабінет</p>
+            <p class="font-semibold text-text">{{ appointmentDetails.room || '—' }}</p>
           </div>
-          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
-            <p class="text-xs uppercase tracking-wide text-slate-400">Обладнання</p>
-            <p class="font-semibold text-white">{{ appointmentDetails.equipment || '—' }}</p>
+          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-text/70">Обладнання</p>
+            <p class="font-semibold text-text">{{ appointmentDetails.equipment || '—' }}</p>
           </div>
-          <div class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
-            <p class="text-xs uppercase tracking-wide text-slate-400">Асистент</p>
-            <p class="font-semibold text-white">{{ appointmentDetails.assistant || '—' }}</p>
+          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+            <p class="text-xs uppercase tracking-wide text-text/70">Асистент</p>
+            <p class="font-semibold text-text">{{ appointmentDetails.assistant || '—' }}</p>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ const saveRecord = async () => {
           </div>
           <button
               @click="$emit('create-patient', patientName)"
-              class="whitespace-nowrap px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-bold shadow-lg transition-colors"
+              class="whitespace-nowrap px-4 py-2 bg-amber-600 hover:bg-amber-500 text-text rounded-lg text-sm font-bold shadow-lg transition-colors"
           >
             + Створити анкету
           </button>
@@ -150,42 +150,42 @@ const saveRecord = async () => {
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1">Зуб №</label>
-              <input v-model="form.tooth_number" type="number" placeholder="Напр. 46" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500 transition-colors">
+              <label class="block text-sm font-medium text-text/70 mb-1">Зуб №</label>
+              <input v-model="form.tooth_number" type="number" placeholder="Напр. 46" class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors">
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1">Статус</label>
-              <select v-model="form.update_tooth_status" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500 transition-colors">
+              <label class="block text-sm font-medium text-text/70 mb-1">Статус</label>
+              <select v-model="form.update_tooth_status" class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors">
                 <option value="">-- Не змінювати --</option>
                 <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.label }}</option>
               </select>
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-400 mb-1">Діагноз *</label>
-            <input v-model="form.diagnosis" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500 transition-colors">
+            <label class="block text-sm font-medium text-text/70 mb-1">Діагноз *</label>
+            <input v-model="form.diagnosis" type="text" class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-400 mb-1">Скарги</label>
-            <textarea v-model="form.complaints" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500 transition-colors"></textarea>
+            <label class="block text-sm font-medium text-text/70 mb-1">Скарги</label>
+            <textarea v-model="form.complaints" rows="2" class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-400 mb-1">Лікування *</label>
-            <textarea v-model="form.treatment" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-emerald-500 transition-colors"></textarea>
+            <label class="block text-sm font-medium text-text/70 mb-1">Лікування *</label>
+            <textarea v-model="form.treatment" rows="3" class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"></textarea>
           </div>
         </div>
 
       </div>
 
       <!-- Футер -->
-      <div class="p-4 border-t border-slate-800 bg-slate-950 flex justify-end gap-3">
-        <button @click="$emit('close')" class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">Закрити</button>
+      <div class="p-4 border-t border-border bg-bg flex justify-end gap-3">
+        <button @click="$emit('close')" class="px-4 py-2 text-text/70 hover:text-text hover:bg-card/80 rounded-lg transition-colors">Закрити</button>
 
         <button
             v-if="status !== 'done' && patientId"
             @click="saveRecord"
             :disabled="loading"
-            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-50 font-medium shadow-lg shadow-emerald-500/20 transition-all"
+            class="px-6 py-2 bg-emerald-600 text-text rounded-lg hover:bg-emerald-500 disabled:opacity-50 font-medium shadow-lg shadow-emerald-500/20 transition-all"
         >
           {{ loading ? 'Збереження...' : 'Завершити прийом' }}
         </button>

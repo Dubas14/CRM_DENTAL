@@ -29,13 +29,13 @@ const normalizedData = computed(() => {
 </script>
 
 <template>
-  <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 h-full">
+  <div class="bg-card border border-border rounded-xl p-6 space-y-4 h-full">
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 text-white">
+      <div class="flex items-center gap-2 text-text">
         <Activity size="20" class="text-emerald-400" />
         <h3 class="text-lg font-bold">{{ title }}</h3>
       </div>
-      <p class="text-sm text-slate-500" v-if="maxValue">Максимум: {{ maxValue }}</p>
+      <p class="text-sm text-text/60" v-if="maxValue">Максимум: {{ maxValue }}</p>
     </div>
 
     <div v-if="normalizedData.length" class="grid gap-4">
@@ -45,20 +45,20 @@ const normalizedData = computed(() => {
             :key="item.day"
             class="flex-1 flex flex-col items-center gap-2"
         >
-          <span class="text-sm font-semibold text-white">{{ item.value }}</span>
-          <div class="w-full h-36 bg-slate-800/60 rounded-lg overflow-hidden flex items-end border border-slate-800/60">
+          <span class="text-sm font-semibold text-text">{{ item.value }}</span>
+          <div class="w-full h-36 bg-card/60 rounded-lg overflow-hidden flex items-end border border-border/60">
             <div
                 class="w-full bg-gradient-to-t from-emerald-600 via-emerald-400 to-emerald-200 rounded-lg transition-all duration-300 shadow-lg shadow-emerald-900/30"
                 :style="{ height: item.height + '%' }"
                 :title="`${item.day}: ${item.value}`"
             ></div>
           </div>
-          <span class="text-xs uppercase tracking-wide text-slate-400">{{ item.day }}</span>
+          <span class="text-xs uppercase tracking-wide text-text/70">{{ item.day }}</span>
         </div>
       </div>
     </div>
 
-    <div v-else class="text-center text-slate-500 text-sm py-8">
+    <div v-else class="text-center text-text/60 text-sm py-8">
       Немає даних для відображення активності.
     </div>
   </div>

@@ -118,13 +118,13 @@ onMounted(async () => {
     <header class="flex items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold">Лікарі</h1>
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-text/70">
           Керування лікарями клінік.
         </p>
       </div>
       <button
           v-if="canCreateDoctor"
-          class="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 text-sm font-semibold hover:bg-emerald-400"
+          class="px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400"
           @click="toggleForm"
       >
         {{ showForm ? 'Приховати форму' : 'Новий лікар' }}
@@ -134,20 +134,20 @@ onMounted(async () => {
     <!-- Форма створення лікаря (тільки для супер адміна) -->
     <section
         v-if="canCreateDoctor && showForm"
-        class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4"
+        class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
     >
-      <h2 class="text-sm font-semibold text-slate-200">
+      <h2 class="text-sm font-semibold text-text/90">
         Створення нового лікаря
       </h2>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             Клініка
           </label>
           <select
               v-model="form.clinic_id"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option
                 v-for="clinic in clinics"
@@ -160,69 +160,69 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             ПІБ лікаря
           </label>
           <input
               v-model="form.full_name"
               type="text"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             Спеціалізація
           </label>
           <input
               v-model="form.specialization"
               type="text"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             Email (логін)
           </label>
           <input
               v-model="form.email"
               type="email"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             Пароль
           </label>
           <input
               v-model="form.password"
               type="password"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">
+          <label class="block text-xs uppercase text-text/70 mb-1">
             Колір картки
           </label>
           <input
               v-model="form.color"
               type="color"
-              class="h-10 w-20 rounded-lg bg-slate-950 border border-slate-700 px-2 py-1"
+              class="h-10 w-20 rounded-lg bg-bg border border-border/80 px-2 py-1"
           />
         </div>
       </div>
 
       <div>
-        <label class="block text-xs uppercase text-slate-400 mb-1">
+        <label class="block text-xs uppercase text-text/70 mb-1">
           Коротке біо
         </label>
         <textarea
             v-model="form.bio"
             rows="2"
-            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
         />
       </div>
 
@@ -233,7 +233,7 @@ onMounted(async () => {
         <div class="flex gap-2 ml-auto">
           <button
               type="button"
-              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
               @click="cancelCreate"
           >
             Скасувати
@@ -241,7 +241,7 @@ onMounted(async () => {
           <button
               type="button"
               :disabled="creating"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
+              class="px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
               @click="createDoctor"
           >
             {{ creating ? 'Створюємо...' : 'Створити лікаря' }}
@@ -251,19 +251,19 @@ onMounted(async () => {
     </section>
 
     <!-- Таблиця лікарів -->
-    <section class="rounded-xl border border-slate-800 bg-slate-900/60">
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-slate-200">Список лікарів</h2>
+    <section class="rounded-xl border border-border bg-card/60">
+      <div class="p-4 border-b border-border flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-text/90">Список лікарів</h2>
         <button
             type="button"
-            class="text-xs text-slate-400 hover:text-slate-200"
+            class="text-xs text-text/70 hover:text-text/90"
             @click="fetchDoctors"
         >
           Оновити
         </button>
       </div>
 
-      <div v-if="loading" class="p-4 text-sm text-slate-400">
+      <div v-if="loading" class="p-4 text-sm text-text/70">
         Завантаження...
       </div>
       <div v-else-if="error" class="p-4 text-sm text-red-400">
@@ -271,8 +271,8 @@ onMounted(async () => {
       </div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead class="bg-slate-900/80 border-b border-slate-800">
-          <tr class="text-left text-slate-400">
+          <thead class="bg-card/80 border-b border-border">
+          <tr class="text-left text-text/70">
             <th class="px-4 py-2">ID</th>
             <th class="px-4 py-2">ПІБ</th>
             <th class="px-4 py-2">Клініка</th>
@@ -285,22 +285,22 @@ onMounted(async () => {
           <tr
               v-for="doctor in doctors"
               :key="doctor.id"
-              class="border-t border-slate-800/60 hover:bg-slate-900/80"
+              class="border-t border-border/60 hover:bg-card/80"
           >
-            <td class="px-4 py-2 text-slate-400">#{{ doctor.id }}</td>
+            <td class="px-4 py-2 text-text/70">#{{ doctor.id }}</td>
             <td class="px-4 py-2 font-medium">
               {{ doctor.full_name }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ doctor.clinic?.name ?? '—' }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ doctor.specialization || '—' }}
             </td>
             <td class="px-4 py-2">
                 <span
                     class="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
-                    :class="doctor.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'"
+                    :class="doctor.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-card/70 text-text/80'"
                 >
                   {{ doctor.is_active ? 'Активний' : 'Не активний' }}
                 </span>
@@ -308,14 +308,14 @@ onMounted(async () => {
             <td class="px-4 py-2 text-right">
               <RouterLink
                   :to="{ name: 'doctor-details', params: { id: doctor.id } }"
-                  class="inline-flex items-center px-3 py-1 rounded-lg border border-slate-700 text-xs text-slate-200 hover:bg-slate-800"
+                  class="inline-flex items-center px-3 py-1 rounded-lg border border-border/80 text-xs text-text/90 hover:bg-card/80"
               >
                 Керувати
               </RouterLink>
             </td>
           </tr>
           <tr v-if="!doctors.length">
-            <td colspan="5" class="px-4 py-4 text-sm text-slate-400">
+            <td colspan="5" class="px-4 py-4 text-sm text-text/70">
               Лікарів поки немає.
             </td>
           </tr>

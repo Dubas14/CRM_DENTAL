@@ -116,9 +116,9 @@ const statusClass = (status) => {
     planned: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
     done: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
     cancelled: 'bg-red-500/15 text-red-300 border border-red-500/30',
-    no_show: 'bg-slate-500/15 text-slate-300 border border-slate-500/30',
+    no_show: 'bg-card/20 text-text/80 border border-border/30',
   };
-  return classes[status] || 'bg-slate-800/50 text-slate-200 border border-slate-700';
+  return classes[status] || 'bg-card/50 text-text/90 border border-border/80';
 };
 
 const fillForm = (data) => {
@@ -189,111 +189,111 @@ const validatePhone = (event) => {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <button type="button" class="text-xs text-slate-400 hover:text-slate-200" @click="router.back()">
+      <button type="button" class="text-xs text-text/70 hover:text-text/90" @click="router.back()">
         ← Назад до списку
       </button>
-      <div class="text-xs text-slate-500" v-if="patient">ID: {{ patient.id }}</div>
+      <div class="text-xs text-text/60" v-if="patient">ID: {{ patient.id }}</div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-card/50 p-4 rounded-xl border border-border">
       <div>
-        <h1 class="text-2xl font-bold text-slate-100">{{ patient?.full_name || 'Завантаження...' }}</h1>
-        <div class="flex gap-3 text-sm text-slate-400 mt-1">
+        <h1 class="text-2xl font-bold text-text">{{ patient?.full_name || 'Завантаження...' }}</h1>
+        <div class="flex gap-3 text-sm text-text/70 mt-1">
           <span v-if="patient?.phone">📞 {{ patient.phone }}</span>
           <span v-if="patient?.birth_date">🎂 {{ patient.birth_date }}</span>
         </div>
       </div>
       <button
           type="button"
-          class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-bold text-slate-900 hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
+          class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-bold text-text hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
           @click="goToSchedule"
       >
         + Записати на прийом
       </button>
     </div>
 
-    <div v-if="loading" class="text-slate-300 text-center py-10">Завантаження даних...</div>
+    <div v-if="loading" class="text-text/80 text-center py-10">Завантаження даних...</div>
     <div v-else-if="error" class="text-red-400 text-center py-10">❌ {{ error }}</div>
 
     <div v-else class="space-y-6">
 
-      <div class="border-b border-slate-800">
+      <div class="border-b border-border">
         <nav class="-mb-px flex space-x-6 overflow-x-auto">
           <button
               @click="activeTab = 'info'"
-              :class="[activeTab === 'info' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
+              :class="[activeTab === 'info' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-text/70 hover:text-text/90 hover:border-border/70', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
             Інформація
           </button>
           <button
               @click="activeTab = 'dental_map'"
-              :class="[activeTab === 'dental_map' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
+              :class="[activeTab === 'dental_map' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-text/70 hover:text-text/90 hover:border-border/70', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
             🦷 Зубна формула
           </button>
           <button
               @click="activeTab = 'history'"
-              :class="[activeTab === 'history' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
+              :class="[activeTab === 'history' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-text/70 hover:text-text/90 hover:border-border/70', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors']">
             Історія лікування
           </button>
         </nav>
       </div>
 
       <div v-show="activeTab === 'info'" class="grid gap-6 lg:grid-cols-2">
-        <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
-          <h2 class="text-lg font-semibold text-slate-200 mb-4">Редагування профілю</h2>
+        <section class="rounded-xl border border-border bg-card/60 p-5 space-y-4">
+          <h2 class="text-lg font-semibold text-text/90 mb-4">Редагування профілю</h2>
           <form class="space-y-4" @submit.prevent="savePatient">
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="text-xs uppercase text-slate-500 block mb-1">ПІБ</label>
-                <input v-model="form.full_name" type="text" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200" required />
+                <label class="text-xs uppercase text-text/60 block mb-1">ПІБ</label>
+                <input v-model="form.full_name" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90" required />
               </div>
               <div>
-                <label class="text-xs uppercase text-slate-500 block mb-1">Дата народження</label>
-                <input v-model="form.birth_date" type="date" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200" />
+                <label class="text-xs uppercase text-text/60 block mb-1">Дата народження</label>
+                <input v-model="form.birth_date" type="date" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90" />
               </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="text-xs uppercase text-slate-500 block mb-1">Телефон</label>
+                <label class="text-xs uppercase text-text/60 block mb-1">Телефон</label>
                 <input
                     v-model="form.phone"
                     @input="validatePhone"
                     type="tel"
-                    class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200"
+                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
                     placeholder="+380..."
                 />
               </div>
               <div>
-                <label class="text-xs uppercase text-slate-500 block mb-1">Email</label>
-                <input v-model="form.email" type="email" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200" />
+                <label class="text-xs uppercase text-text/60 block mb-1">Email</label>
+                <input v-model="form.email" type="email" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90" />
               </div>
             </div>
 
             <div>
-              <label class="text-xs uppercase text-slate-500 block mb-1">Адреса</label>
-              <input v-model="form.address" type="text" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200" />
+              <label class="text-xs uppercase text-text/60 block mb-1">Адреса</label>
+              <input v-model="form.address" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90" />
             </div>
 
             <div>
-              <label class="text-xs uppercase text-slate-500 block mb-1">Примітка</label>
-              <div class="mt-6 border-t border-slate-800 pt-4">
-                <label class="text-xs uppercase text-slate-500 block mb-3">Історія нотаток</label>
+              <label class="text-xs uppercase text-text/60 block mb-1">Примітка</label>
+              <div class="mt-6 border-t border-border pt-4">
+                <label class="text-xs uppercase text-text/60 block mb-3">Історія нотаток</label>
 
                 <div class="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                  <div v-if="notes.length === 0" class="text-sm text-slate-500 italic text-center py-2">
+                  <div v-if="notes.length === 0" class="text-sm text-text/60 italic text-center py-2">
                     Ще немає нотаток. Додайте першу!
                   </div>
 
-                  <div v-for="note in notes" :key="note.id" class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-sm">
+                  <div v-for="note in notes" :key="note.id" class="bg-bg p-3 rounded-lg border border-border text-sm">
                     <div class="flex justify-between items-center mb-1">
                         <span class="font-bold text-xs text-emerald-400">
                           {{ note.user?.last_name || note.user?.first_name || 'Система' }}
                         </span>
-                      <span class="text-[10px] text-slate-500">
+                      <span class="text-[10px] text-text/60">
                           {{ new Date(note.created_at).toLocaleString('uk-UA') }}
                         </span>
                     </div>
-                    <div class="text-slate-200 whitespace-pre-wrap">{{ note.content }}</div>
+                    <div class="text-text/90 whitespace-pre-wrap">{{ note.content }}</div>
                   </div>
                 </div>
 
@@ -302,13 +302,13 @@ const validatePhone = (event) => {
                         v-model="newNoteText"
                         rows="1"
                         placeholder="Напишіть нотатку..."
-                        class="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-slate-200 text-sm focus:ring-1 focus:ring-emerald-500 resize-none"
+                        class="flex-1 rounded-lg bg-card border border-border/80 px-3 py-2 text-text/90 text-sm focus:ring-1 focus:ring-emerald-500 resize-none"
                     ></textarea>
                   <button
                       type="button"
                       @click="sendNote"
                       :disabled="!newNoteText"
-                      class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                      class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-text px-4 py-2 rounded-lg text-sm transition-colors"
                   >
                     ➤
                   </button>
@@ -317,8 +317,8 @@ const validatePhone = (event) => {
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-              <button type="button" @click="resetForm" class="text-slate-400 hover:text-white text-sm">Скасувати</button>
-              <button type="submit" :disabled="saving" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-500 disabled:opacity-50">
+              <button type="button" @click="resetForm" class="text-text/70 hover:text-text text-sm">Скасувати</button>
+              <button type="submit" :disabled="saving" class="bg-emerald-600 text-text px-4 py-2 rounded-lg hover:bg-emerald-500 disabled:opacity-50">
                 {{ saving ? 'Збереження...' : 'Зберегти зміни' }}
               </button>
             </div>
@@ -332,21 +332,21 @@ const validatePhone = (event) => {
       </div>
 
       <div v-if="activeTab === 'history'">
-        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div v-if="unifiedHistory.length === 0" class="text-center py-8 text-slate-500">Історія порожня</div>
+        <div class="rounded-xl border border-border bg-card/60 p-4">
+          <div v-if="unifiedHistory.length === 0" class="text-center py-8 text-text/60">Історія порожня</div>
           <div v-else class="space-y-4">
 
             <div v-for="item in unifiedHistory" :key="item.type + item.id"
-                 class="bg-slate-950 p-4 rounded-lg border flex flex-col gap-2"
-                 :class="item.type === 'record' ? 'border-emerald-500/30 border-l-4 border-l-emerald-500' : 'border-slate-800 border-l-4 border-l-amber-500'">
+                 class="bg-bg p-4 rounded-lg border flex flex-col gap-2"
+                 :class="item.type === 'record' ? 'border-emerald-500/30 border-l-4 border-l-emerald-500' : 'border-border border-l-4 border-l-amber-500'">
 
               <div class="flex justify-between items-start">
                 <div>
-                  <div class="font-bold text-slate-200 text-lg flex items-center gap-2">
+                  <div class="font-bold text-text/90 text-lg flex items-center gap-2">
                     {{ item.title }}
-                    <span v-if="item.tooth" class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded">Зуб {{ item.tooth }}</span>
+                    <span v-if="item.tooth" class="bg-card/80 text-text/80 text-xs px-2 py-0.5 rounded">Зуб {{ item.tooth }}</span>
                   </div>
-                  <div class="text-xs text-slate-400 mt-1">
+                  <div class="text-xs text-text/70 mt-1">
                     {{ formatDateTime(item.date) }} • Лікар: {{ item.doctor_name }}
                   </div>
                 </div>
@@ -358,7 +358,7 @@ const validatePhone = (event) => {
                       </span>
               </div>
 
-              <div class="text-sm text-slate-300 whitespace-pre-line mt-2 pl-2 border-l border-slate-800">
+              <div class="text-sm text-text/80 whitespace-pre-line mt-2 pl-2 border-l border-border">
                 {{ item.description || 'Без опису' }}
               </div>
 

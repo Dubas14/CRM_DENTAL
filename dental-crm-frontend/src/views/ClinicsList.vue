@@ -91,7 +91,7 @@ onMounted(loadClinics);
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Клініки</h1>
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-text/70">
           Дані тягнемо з Laravel API (<code>/api/clinics</code>).
         </p>
       </div>
@@ -109,7 +109,7 @@ onMounted(loadClinics);
 
         <button
             type="button"
-            class="px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
             @click="loadClinics"
         >
           Оновити
@@ -120,7 +120,7 @@ onMounted(loadClinics);
     <!-- форма створення -->
     <div
         v-if="showForm"
-        class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4"
+        class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
     >
       <h2 class="text-lg font-semibold">Нова клініка</h2>
 
@@ -130,86 +130,86 @@ onMounted(loadClinics);
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createClinic">
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Назва *
           </label>
           <input
               v-model="form.name"
               type="text"
               required
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Dental Plus"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Юридична назва
           </label>
           <input
               v-model="form.legal_name"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="ТОВ «Дентал Плюс»"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Місто
           </label>
           <input
               v-model="form.city"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Черкаси"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Адреса
           </label>
           <input
               v-model="form.address"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="вул. Прикладна, 10"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Телефон
           </label>
           <input
               v-model="form.phone"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="+380..."
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Email
           </label>
           <input
               v-model="form.email"
               type="email"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="clinic@example.com"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Сайт
           </label>
           <input
               v-model="form.website"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="https://..."
           />
         </div>
@@ -217,7 +217,7 @@ onMounted(loadClinics);
         <div class="md:col-span-2 flex justify-end gap-2">
           <button
               type="button"
-              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
               @click="showForm = false"
           >
             Скасувати
@@ -225,7 +225,7 @@ onMounted(loadClinics);
           <button
               type="submit"
               :disabled="creating"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {{ creating ? 'Збереження...' : 'Зберегти' }}
           </button>
@@ -234,7 +234,7 @@ onMounted(loadClinics);
     </div>
 
     <!-- список клінік -->
-    <div v-if="loading" class="text-slate-300">
+    <div v-if="loading" class="text-text/80">
       Завантаження клінік...
     </div>
 
@@ -243,16 +243,16 @@ onMounted(loadClinics);
     </div>
 
     <div v-else>
-      <div v-if="clinics.length === 0" class="text-slate-400 text-sm">
+      <div v-if="clinics.length === 0" class="text-text/70 text-sm">
         Клінік поки немає. Додай першу через форму вище 🦷
       </div>
 
       <div
           v-else
-          class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40"
+          class="overflow-hidden rounded-xl border border-border bg-card/40"
       >
         <table class="min-w-full text-sm">
-          <thead class="bg-slate-900/80 text-slate-300">
+          <thead class="bg-card/80 text-text/80">
           <tr>
             <th class="px-4 py-2 text-left">ID</th>
             <th class="px-4 py-2 text-left">Назва</th>
@@ -265,19 +265,19 @@ onMounted(loadClinics);
           <tr
               v-for="clinic in clinics"
               :key="clinic.id"
-              class="border-t border-slate-800 hover:bg-slate-800/40"
+              class="border-t border-border hover:bg-card/80/40"
           >
-            <td class="px-4 py-2 text-slate-400">#{{ clinic.id }}</td>
+            <td class="px-4 py-2 text-text/70">#{{ clinic.id }}</td>
             <td class="px-4 py-2 font-medium">
               {{ clinic.name }}
             </td>
             <td class="px-4 py-2">
               {{ clinic.city || '—' }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ clinic.address || '—' }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ clinic.phone || '—' }}
             </td>
           </tr>

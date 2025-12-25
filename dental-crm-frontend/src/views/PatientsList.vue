@@ -125,7 +125,7 @@ onMounted(async () => {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Пацієнти</h1>
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-text/70">
           Реєстрація пацієнтів та швидкий пошук по ПІБ / телефону / email.
         </p>
       </div>
@@ -140,7 +140,7 @@ onMounted(async () => {
         </button>
         <button
             type="button"
-            class="px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
             @click="loadPatients"
         >
           Оновити
@@ -155,24 +155,24 @@ onMounted(async () => {
             v-model="search"
             type="text"
             placeholder="Пошук (ПІБ / телефон / email)"
-            class="w-64 max-w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+            class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             @keyup.enter="loadPatients"
         />
         <button
             type="button"
-            class="px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
             @click="loadPatients"
         >
           Знайти
         </button>
       </div>
 
-      <label v-if="!isDoctor" class="text-sm text-slate-300">
+      <label v-if="!isDoctor" class="text-sm text-text/80">
         Клініка:
         <select
             v-model="selectedClinicFilter"
             @change="loadPatients"
-            class="ml-2 rounded-lg bg-slate-900 border border-slate-700 px-2 py-1 text-sm"
+            class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
         >
           <option value="">Усі</option>
           <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -180,7 +180,7 @@ onMounted(async () => {
           </option>
         </select>
       </label>
-      <div v-else class="text-sm text-slate-300">
+      <div v-else class="text-sm text-text/80">
         Клініка: <span class="font-semibold">{{ doctorClinic?.name || '—' }}</span>
       </div>
     </div>
@@ -188,7 +188,7 @@ onMounted(async () => {
     <!-- форма створення -->
     <div
         v-if="showForm"
-        class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4"
+        class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
     >
       <h2 class="text-lg font-semibold">Новий пацієнт</h2>
 
@@ -198,13 +198,13 @@ onMounted(async () => {
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createPatient">
         <div v-if="!isDoctor">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Клініка *
           </label>
           <select
               v-model="form.clinic_id"
               required
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           >
             <option value="" disabled>Оберіть клініку</option>
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -213,83 +213,83 @@ onMounted(async () => {
           </select>
         </div>
         <div v-else>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Клініка
           </label>
-          <div class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+          <div class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm text-text/90">
             {{ doctorClinic?.name || '—' }}
           </div>
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             ПІБ *
           </label>
           <input
               v-model="form.full_name"
               type="text"
               required
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
               placeholder="Петренко Олег Олегович"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Дата народження
           </label>
           <input
               v-model="form.birth_date"
               type="date"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Телефон
           </label>
           <input
               v-model="form.phone"
               @input="validatePhone"
               type="tel"
-              class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-slate-200"
+              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
               placeholder="+380..."
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Email
           </label>
           <input
               v-model="form.email"
               type="email"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
               placeholder="patient@example.com"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Адреса
           </label>
           <input
               v-model="form.address"
               type="text"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
               placeholder="місто, вулиця, будинок"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
             Примітка
           </label>
           <textarea
               v-model="form.note"
               rows="2"
-              class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
               placeholder="Коментар адміністратора, особливості пацієнта..."
           ></textarea>
         </div>
@@ -297,7 +297,7 @@ onMounted(async () => {
         <div class="md:col-span-2 flex justify-end gap-2">
           <button
               type="button"
-              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
               @click="showForm = false"
           >
             Скасувати
@@ -305,7 +305,7 @@ onMounted(async () => {
           <button
               type="submit"
               :disabled="creating"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
           >
             {{ creating ? 'Збереження...' : 'Зберегти' }}
           </button>
@@ -314,7 +314,7 @@ onMounted(async () => {
     </div>
 
     <!-- список -->
-    <div v-if="loading" class="text-slate-300">
+    <div v-if="loading" class="text-text/80">
       Завантаження пацієнтів...
     </div>
 
@@ -323,16 +323,16 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <div v-if="patients.length === 0" class="text-slate-400 text-sm">
+      <div v-if="patients.length === 0" class="text-text/70 text-sm">
         Пацієнтів поки немає. Додай першого через форму вище 🙂
       </div>
 
       <div
           v-else
-          class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40"
+          class="overflow-hidden rounded-xl border border-border bg-card/40"
       >
         <table class="min-w-full text-sm">
-          <thead class="bg-slate-900/80 text-slate-300">
+          <thead class="bg-card/80 text-text/80">
           <tr>
             <th class="px-4 py-2 text-left">ПІБ</th>
             <th class="px-4 py-2 text-left">Клініка</th>
@@ -344,7 +344,7 @@ onMounted(async () => {
           <tr
               v-for="patient in patients"
               :key="patient.id"
-              class="border-t border-slate-800 hover:bg-slate-800/40"
+              class="border-t border-border hover:bg-card/80/40"
           >
             <td class="px-4 py-2 font-medium">
               <RouterLink
@@ -354,13 +354,13 @@ onMounted(async () => {
                 {{ patient.full_name }}
               </RouterLink>
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ patient.clinic?.name || '—' }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ patient.phone || '—' }}
             </td>
-            <td class="px-4 py-2 text-slate-300">
+            <td class="px-4 py-2 text-text/80">
               {{ patient.email || '—' }}
             </td>
           </tr>

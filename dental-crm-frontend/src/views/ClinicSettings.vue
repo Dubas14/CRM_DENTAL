@@ -175,12 +175,12 @@ onMounted(async () => {
   <div class="space-y-6">
     <header>
       <h1 class="text-2xl font-semibold">Налаштування клініки</h1>
-      <p class="text-sm text-slate-400">Кабінети та графік роботи клініки.</p>
+      <p class="text-sm text-text/70">Кабінети та графік роботи клініки.</p>
     </header>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-      <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Клініка</label>
-      <select v-model="selectedClinicId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm w-full md:w-72">
+    <section class="rounded-xl border border-border bg-card/40 p-4">
+      <label class="block text-xs uppercase tracking-wide text-text/70 mb-2">Клініка</label>
+      <select v-model="selectedClinicId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm w-full md:w-72">
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
           {{ clinic.name }}
         </option>
@@ -188,12 +188,12 @@ onMounted(async () => {
     </section>
 
     <section class="grid lg:grid-cols-2 gap-6">
-      <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-4">
+      <div class="rounded-xl border border-border bg-card/40 p-4 space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-white">Кабінети</h2>
+          <h2 class="text-lg font-semibold text-text">Кабінети</h2>
         </div>
 
-        <div v-if="loadingRooms" class="text-sm text-slate-400">Завантаження...</div>
+        <div v-if="loadingRooms" class="text-sm text-text/70">Завантаження...</div>
         <div v-else-if="errorRooms" class="text-sm text-red-400">{{ errorRooms }}</div>
 
         <div v-else class="space-y-3">
@@ -203,28 +203,28 @@ onMounted(async () => {
                 v-model="roomForm.name"
                 type="text"
                 placeholder="Назва кабінету"
-                class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
               />
               <input
                 v-model="roomForm.equipment"
                 type="text"
                 placeholder="Обладнання (опційно)"
-                class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm"
+                class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
               />
             </div>
             <textarea
               v-model="roomForm.notes"
               rows="2"
               placeholder="Нотатки"
-              class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm w-full"
+              class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm w-full"
             />
-            <label class="flex items-center gap-2 text-sm text-slate-300">
+            <label class="flex items-center gap-2 text-sm text-text/80">
               <input v-model="roomForm.is_active" type="checkbox" class="accent-emerald-500" />
               Активний кабінет
             </label>
             <button
               type="button"
-              class="px-3 py-2 rounded-lg bg-emerald-500 text-slate-900 text-xs font-semibold hover:bg-emerald-400"
+              class="px-3 py-2 rounded-lg bg-emerald-500 text-text text-xs font-semibold hover:bg-emerald-400"
               @click="createRoom"
             >
               Додати кабінет
@@ -233,7 +233,7 @@ onMounted(async () => {
 
           <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-              <thead class="text-slate-400 text-xs uppercase">
+              <thead class="text-text/70 text-xs uppercase">
                 <tr>
                   <th class="text-left py-2 px-3">Кабінет</th>
                   <th class="text-left py-2 px-3">Обладнання</th>
@@ -242,11 +242,11 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="room in rooms" :key="room.id" class="border-t border-slate-800">
-                  <td class="py-2 px-3 text-slate-200">{{ room.name }}</td>
-                  <td class="py-2 px-3 text-slate-400">{{ room.equipment || '—' }}</td>
+                <tr v-for="room in rooms" :key="room.id" class="border-t border-border">
+                  <td class="py-2 px-3 text-text/90">{{ room.name }}</td>
+                  <td class="py-2 px-3 text-text/70">{{ room.equipment || '—' }}</td>
                   <td class="py-2 px-3">
-                    <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+                    <label class="inline-flex items-center gap-2 text-xs text-text/80">
                       <input v-model="room.is_active" type="checkbox" class="accent-emerald-500" @change="toggleRoomActive(room)" />
                       {{ room.is_active ? 'Активний' : 'Неактивний' }}
                     </label>
@@ -261,12 +261,12 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-4">
+      <div class="rounded-xl border border-border bg-card/40 p-4 space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-white">Графік роботи</h2>
+          <h2 class="text-lg font-semibold text-text">Графік роботи</h2>
           <button
             type="button"
-            class="px-3 py-2 rounded-lg bg-emerald-500 text-slate-900 text-xs font-semibold hover:bg-emerald-400 disabled:opacity-60"
+            class="px-3 py-2 rounded-lg bg-emerald-500 text-text text-xs font-semibold hover:bg-emerald-400 disabled:opacity-60"
             :disabled="savingHours || loadingHours"
             @click="saveWorkingHours"
           >
@@ -274,36 +274,36 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div v-if="loadingHours" class="text-sm text-slate-400">Завантаження...</div>
+        <div v-if="loadingHours" class="text-sm text-text/70">Завантаження...</div>
         <div v-else-if="errorHours" class="text-sm text-red-400">{{ errorHours }}</div>
 
         <div v-else class="space-y-3">
           <div
             v-for="day in workingHours"
             :key="day.weekday"
-            class="grid grid-cols-12 items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs"
+            class="grid grid-cols-12 items-center gap-2 rounded-lg border border-border bg-bg/60 px-3 py-2 text-xs"
           >
-            <div class="col-span-2 font-semibold text-slate-200">
+            <div class="col-span-2 font-semibold text-text/90">
               {{ weekdays.find((w) => w.id === day.weekday)?.label }}
             </div>
             <div class="col-span-2">
-              <label class="flex items-center gap-2 text-slate-300">
+              <label class="flex items-center gap-2 text-text/80">
                 <input v-model="day.is_working" type="checkbox" class="accent-emerald-500" />
                 Працює
               </label>
             </div>
             <div class="col-span-4 flex items-center gap-2">
-              <input v-model="day.start_time" type="time" class="rounded bg-slate-900 border border-slate-700 px-2 py-1" :disabled="!day.is_working" />
-              <span class="text-slate-500">—</span>
-              <input v-model="day.end_time" type="time" class="rounded bg-slate-900 border border-slate-700 px-2 py-1" :disabled="!day.is_working" />
+              <input v-model="day.start_time" type="time" class="rounded bg-card border border-border/80 px-2 py-1" :disabled="!day.is_working" />
+              <span class="text-text/60">—</span>
+              <input v-model="day.end_time" type="time" class="rounded bg-card border border-border/80 px-2 py-1" :disabled="!day.is_working" />
             </div>
             <div class="col-span-4 flex items-center gap-2">
-              <input v-model="day.break_start" type="time" class="rounded bg-slate-900 border border-slate-700 px-2 py-1" :disabled="!day.is_working" />
-              <span class="text-slate-500">—</span>
-              <input v-model="day.break_end" type="time" class="rounded bg-slate-900 border border-slate-700 px-2 py-1" :disabled="!day.is_working" />
+              <input v-model="day.break_start" type="time" class="rounded bg-card border border-border/80 px-2 py-1" :disabled="!day.is_working" />
+              <span class="text-text/60">—</span>
+              <input v-model="day.break_end" type="time" class="rounded bg-card border border-border/80 px-2 py-1" :disabled="!day.is_working" />
             </div>
           </div>
-          <p class="text-[11px] text-slate-500">Вкажіть час початку/закінчення та перерви для кожного робочого дня.</p>
+          <p class="text-[11px] text-text/60">Вкажіть час початку/закінчення та перерви для кожного робочого дня.</p>
         </div>
       </div>
     </section>

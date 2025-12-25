@@ -171,7 +171,7 @@ onMounted(loadDoctorProcedures);
   <div class="space-y-6">
     <button
         type="button"
-        class="text-xs text-slate-400 hover:text-slate-200"
+        class="text-xs text-text/70 hover:text-text/90"
         @click="$router.back()"
     >
       ← Назад до списку лікарів
@@ -182,28 +182,28 @@ onMounted(loadDoctorProcedures);
         <h1 class="text-2xl font-semibold">
           {{ doctor?.full_name || 'Лікар' }}
         </h1>
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-text/70">
           Керування профілем лікаря та переходом до розкладу.
         </p>
       </div>
 
       <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-slate-700 text-sm text-slate-200 hover:bg-slate-800"
+          class="px-4 py-2 rounded-lg border border-border/80 text-sm text-text/90 hover:bg-card/80"
           @click="goToSchedule"
       >
         Перейти до розкладу
       </button>
       <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-slate-700 text-sm text-slate-200 hover:bg-slate-800"
+          class="px-4 py-2 rounded-lg border border-border/80 text-sm text-text/90 hover:bg-card/80"
           @click="$router.push({ name: 'doctor-weekly-schedule', params: { id: doctorId } })"
       >
         Налаштувати тижневий розклад
       </button>
     </div>
 
-    <div v-if="loading" class="text-sm text-slate-400">
+    <div v-if="loading" class="text-sm text-text/70">
       Завантаження даних лікаря...
     </div>
 
@@ -214,9 +214,9 @@ onMounted(loadDoctorProcedures);
     <div v-else class="grid gap-6 md:grid-cols-[2fr,1fr]">
       <!-- Профіль лікаря -->
       <section
-          class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4"
+          class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
       >
-        <h2 class="text-sm font-semibold text-slate-200 mb-2">
+        <h2 class="text-sm font-semibold text-text/90 mb-2">
           Анкетні дані
         </h2>
 
@@ -229,51 +229,51 @@ onMounted(loadDoctorProcedures);
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs uppercase text-slate-400 mb-1">
+            <label class="block text-xs uppercase text-text/70 mb-1">
               ПІБ
             </label>
             <input
                 v-model="form.full_name"
                 :disabled="!canEdit"
                 type="text"
-                class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-70"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
             />
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-slate-400 mb-1">
+            <label class="block text-xs uppercase text-text/70 mb-1">
               Спеціалізація
             </label>
             <input
                 v-model="form.specialization"
                 :disabled="!canEdit"
                 type="text"
-                class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-70"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
             />
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-slate-400 mb-1">
+            <label class="block text-xs uppercase text-text/70 mb-1">
               Коротке біо
             </label>
             <textarea
                 v-model="form.bio"
                 :disabled="!canEdit"
                 rows="3"
-                class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-70"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
             />
           </div>
 
           <div class="flex flex-wrap items-center gap-4">
             <div>
-              <label class="block text-xs uppercase text-slate-400 mb-1">
+              <label class="block text-xs uppercase text-text/70 mb-1">
                 Колір картки
               </label>
               <input
                   v-model="form.color"
                   :disabled="!canEdit"
                   type="color"
-                  class="h-10 w-20 rounded-lg bg-slate-950 border border-slate-700"
+                  class="h-10 w-20 rounded-lg bg-bg border border-border/80"
               />
             </div>
             <div class="flex items-center gap-2 mt-4">
@@ -282,9 +282,9 @@ onMounted(loadDoctorProcedures);
                   v-model="form.is_active"
                   :disabled="!canEdit"
                   type="checkbox"
-                  class="h-4 w-4 rounded border-slate-600 bg-slate-900"
+                  class="h-4 w-4 rounded border-border/70 bg-card"
               />
-              <label for="active" class="text-sm text-slate-200">
+              <label for="active" class="text-sm text-text/90">
                 Активний лікар
               </label>
             </div>
@@ -294,7 +294,7 @@ onMounted(loadDoctorProcedures);
         <div class="flex justify-end gap-2 mt-4" v-if="canEdit">
           <button
               type="button"
-              class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
               @click="resetForm"
           >
             Скасувати
@@ -302,7 +302,7 @@ onMounted(loadDoctorProcedures);
           <button
               type="button"
               :disabled="saving"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
               @click="saveDoctor"
           >
             {{ saving ? 'Збереження...' : 'Зберегти' }}
@@ -312,24 +312,24 @@ onMounted(loadDoctorProcedures);
 
       <!-- Інфо про акаунт -->
       <section
-          class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-3"
+          class="rounded-xl border border-border bg-card/60 p-4 space-y-3"
       >
-        <h2 class="text-sm font-semibold text-slate-200">
+        <h2 class="text-sm font-semibold text-text/90">
           Акаунт користувача
         </h2>
-        <p class="text-xs text-slate-400">
+        <p class="text-xs text-text/70">
           Цей лікар прив’язаний до користувача системи.
         </p>
         <div class="space-y-2 text-sm">
           <div>
-            <span class="text-slate-400">Email (логін): </span>
-            <span class="text-slate-100">
+            <span class="text-text/70">Email (логін): </span>
+            <span class="text-text">
               {{ doctor?.user?.email || '—' }}
             </span>
           </div>
           <div>
-            <span class="text-slate-400">Клініка: </span>
-            <span class="text-slate-100">
+            <span class="text-text/70">Клініка: </span>
+            <span class="text-text">
               {{ doctor?.clinic?.name || '—' }}
             </span>
           </div>
@@ -337,18 +337,18 @@ onMounted(loadDoctorProcedures);
       </section>
     </div>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+    <section class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
       <div class="flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-sm font-semibold text-slate-200">Процедури лікаря</h2>
-          <p class="text-xs text-slate-400">
+          <h2 class="text-sm font-semibold text-text/90">Процедури лікаря</h2>
+          <p class="text-xs text-text/70">
             Оберіть доступні процедури та задайте персональну тривалість (за потреби).
           </p>
         </div>
         <button
             type="button"
             :disabled="proceduresSaving || !canEdit"
-            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
             @click="saveDoctorProcedures"
         >
           {{ proceduresSaving ? 'Збереження...' : 'Зберегти процедури' }}
@@ -358,18 +358,18 @@ onMounted(loadDoctorProcedures);
       <div v-if="proceduresError" class="text-sm text-red-400">❌ {{ proceduresError }}</div>
       <div v-if="proceduresSavedMessage" class="text-sm text-emerald-400">✅ {{ proceduresSavedMessage }}</div>
 
-      <div v-if="proceduresLoading" class="text-sm text-slate-400">
+      <div v-if="proceduresLoading" class="text-sm text-text/70">
         Завантаження процедур...
       </div>
 
-      <div v-else-if="!procedures.length" class="text-sm text-slate-400">
+      <div v-else-if="!procedures.length" class="text-sm text-text/70">
         Процедури для цієї клініки відсутні.
       </div>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs uppercase text-slate-500 border-b border-slate-800">
+            <tr class="text-left text-xs uppercase text-text/60 border-b border-border">
               <th class="py-2 pr-2">Активна</th>
               <th class="py-2 pr-2">Процедура</th>
               <th class="py-2 pr-2">Категорія</th>
@@ -378,18 +378,18 @@ onMounted(loadDoctorProcedures);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="procedure in procedures" :key="procedure.id" class="border-b border-slate-800">
+            <tr v-for="procedure in procedures" :key="procedure.id" class="border-b border-border">
               <td class="py-2 pr-2">
                 <input
                     v-model="procedure.is_assigned"
                     :disabled="!canEdit"
                     type="checkbox"
-                    class="h-4 w-4 rounded border-slate-600 bg-slate-900"
+                    class="h-4 w-4 rounded border-border/70 bg-card"
                 />
               </td>
-              <td class="py-2 pr-2 text-slate-100">{{ procedure.name }}</td>
-              <td class="py-2 pr-2 text-slate-400">{{ procedure.category || '—' }}</td>
-              <td class="py-2 pr-2 text-slate-300">{{ procedure.duration_minutes }} хв</td>
+              <td class="py-2 pr-2 text-text">{{ procedure.name }}</td>
+              <td class="py-2 pr-2 text-text/70">{{ procedure.category || '—' }}</td>
+              <td class="py-2 pr-2 text-text/80">{{ procedure.duration_minutes }} хв</td>
               <td class="py-2 pr-2">
                 <div class="flex items-center gap-2">
                   <input
@@ -399,9 +399,9 @@ onMounted(loadDoctorProcedures);
                       min="5"
                       max="480"
                       placeholder="За замовчуванням"
-                      class="w-32 rounded-lg bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-slate-100 disabled:opacity-60"
+                      class="w-32 rounded-lg bg-bg border border-border/80 px-2 py-1 text-xs text-text disabled:opacity-60"
                   />
-                  <span class="text-xs text-slate-500">хв</span>
+                  <span class="text-xs text-text/60">хв</span>
                 </div>
               </td>
             </tr>
