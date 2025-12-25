@@ -437,6 +437,7 @@ const {
   baseView, // ← ТЕПЕР ДОСТУПНО
   uiMode,   // ← ТЕПЕР ДОСТУПНО
   isResourceView,
+  calendarView,
   showClinicSelector,
 
   // Loading states
@@ -485,14 +486,6 @@ const {
 // const toQCalendarDateTime = ... // ВЖЕ Є В useCalendar
 
 const uniqStr = (arr) => Array.from(new Set((arr || []).filter(Boolean).map((v) => String(v))));
-
-// QCalendar view: 'day'|'week'|'month'
-const calendarView = computed(() => {
-  // Конвертуємо baseView в формат QCalendar
-  if (baseView.value === 'month') return 'month';
-  if (baseView.value === 'day') return 'day';
-  return 'week'; // за замовчуванням
-});
 
 /* -----------------------------
  * Dropdown multiselect (лікарі/кабінети)
