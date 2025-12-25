@@ -6,6 +6,14 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
+import { defineExpose } from 'vue'
+
+defineExpose({
+  next: () => calendarInstance?.next(),
+  prev: () => calendarInstance?.prev(),
+  today: () => calendarInstance?.today(),
+  changeView: (view) => calendarInstance?.changeView(view),
+})
 
 const props = defineProps({
   events: {

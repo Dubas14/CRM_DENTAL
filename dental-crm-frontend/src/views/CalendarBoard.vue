@@ -1,42 +1,64 @@
-<!-- src/views/CalendarBoard.vue -->
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-950 to-slate-900">
-    <!-- Заголовок сторінки -->
+    <!-- Заголовок -->
     <div class="p-6 pb-2">
       <h1 class="text-2xl font-bold text-white mb-2">Календар записів</h1>
       <p class="text-slate-400 text-sm">
         Управління розкладом лікарів, бронювання та перегляд записів
       </p>
-
-      <div class="fc mt-3 flex flex-wrap gap-4 text-xs text-slate-300">
-        <div class="flex items-center gap-2">
-          <span class="fc-event inline-block h-3 w-3 rounded-sm"></span>
-          <span>Запис</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="fc-bg-event free-slot inline-block h-3 w-3 rounded-sm"></span>
-          <span>Вільний слот</span>
-        </div>
-      </div>
     </div>
 
-    <!-- 🟢 КАЛЕНДАР -->
+    <!-- Навігація -->
+    <div class="px-6 flex items-center gap-2 mb-4">
+      <button @click="prev">‹</button>
+      <button @click="today">Today</button>
+      <button @click="next">›</button>
+
+      <select
+          v-model="view"
+          @change="changeView"
+          class="bg-slate-900 border border-slate-700 text-slate-200
+         rounded-md px-3 py-1 text-sm
+         focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      >
+        <option value="day">Day</option>
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+      </select>
+    </div>
+    <button
+        class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200"
+        @click="prev"
+    >‹</button>
+
+    <button
+        class="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
+        @click="today"
+    >Today</button>
+
+    <button
+        class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200"
+        @click="next"
+    >›</button>
+
+    <!-- Календар -->
     <div class="px-6 pb-6 h-[calc(100vh-160px)] overflow-hidden">
-      <ToastCalendar :events="events" />
+      <ToastCalendar ref="calendarRef" :events="events" />
     </div>
 
-    <!-- Toast повідомлення -->
     <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import ToastContainer from '../components/ToastContainer.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
+import ToastContainer from '../components/ToastContainer.vue'
 import '../assets/css/calendar.css'
 
-// 🧪 ТИМЧАСОВІ тестові події
+const calendarRef = ref(null)
+const view = ref('week')
+
 const events = ref([
   {
     id: '1',
@@ -45,12 +67,17 @@ const events = ref([
     category: 'time',
     start: '2025-12-25T09:30:00',
     end: '2025-12-25T10:00:00',
-
-    backgroundColor: '#2563eb',   // синій
+    backgroundColor: '#2563eb',
     borderColor: '#60a5fa',
     color: '#ffffff',
-
-    dragBackgroundColor: '#2563eb',
   },
 ])
+
+const next = () => calendarRef.value?.next()
+const prev = () => calendarRef.value?.prev()
+const today = () => calendarRef.value?.today()
+
+const changeView = () => {
+  calendarRef.value?.changeView(view.value)
+}
 </script>

@@ -1,129 +1,43 @@
-/* =======================================================
-   Toast UI Calendar — CRM Dental (MIT)
-   Dark / Light theme integration
-   ======================================================= */
+/* =====================================================
+   Toast UI Calendar — Header (Week / Month)
+   REAL DOM selectors (verified via DevTools)
+   ===================================================== */
 
-/* ---------- ROOT LAYOUT (override inline styles) ---------- */
-.dark .toastui-calendar-layout {
+/* Header background */
+.dark .toastui-calendar-week-view-day-names,
+.dark .toastui-calendar-month-view-day-names {
     background-color: #020617 !important; /* slate-950 */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.light .toastui-calendar-layout,
-html:not(.dark) .toastui-calendar-layout {
-    background-color: #ffffff !important;
-}
-
-/* ---------- PANELS ---------- */
-.toastui-calendar-panel {
-    border-radius: 8px;
-}
-
-.dark .toastui-calendar-panel {
-    background-color: #020617 !important;
+/* Day name container */
+.dark .toastui-calendar-day-name-container {
     color: #e5e7eb;
 }
 
-.light .toastui-calendar-panel {
-    background-color: #ffffff;
-    color: #0f172a;
+/* Date number (22, 23, 24...) */
+.dark .toastui-calendar-day-name_date {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e5e7eb;
 }
 
-/* ---------- HEADER (days row) ---------- */
-.dark .toastui-calendar-week-view-day-names {
-    background-color: #020617;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.light .toastui-calendar-week-view-day-names {
-    background-color: #f8fafc;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-/* ---------- GRID ---------- */
-.dark .toastui-calendar-timegrid-cell {
-    border-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-.light .toastui-calendar-timegrid-cell {
-    border-color: #e5e7eb;
-}
-
-/* ---------- TIME LABELS ---------- */
-.toastui-calendar-timegrid-hour-label {
+/* Day label (Mon, Tue, Sun) */
+.dark .toastui-calendar-day-name_day {
     font-size: 11px;
-    font-weight: 500;
+    color: #94a3b8; /* slate-400 */
 }
 
-.dark .toastui-calendar-timegrid-hour-label {
-    color: #94a3b8;
+/* Sunday highlight */
+.dark .toastui-calendar-holiday-sun
+.toastui-calendar-day-name_day,
+.dark .toastui-calendar-holiday-sun
+.toastui-calendar-day-name_date {
+    color: #f87171 !important; /* red-400 */
 }
 
-.light .toastui-calendar-timegrid-hour-label {
-    color: #475569;
-}
-
-/* ---------- TODAY COLUMN ---------- */
-.dark .toastui-calendar-day-today {
-    background-color: rgba(16, 185, 129, 0.06);
-}
-
-.light .toastui-calendar-day-today {
-    background-color: rgba(16, 185, 129, 0.08);
-}
-
-/* ---------- EVENTS (appointments) ---------- */
-.toastui-calendar-time-event {
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
-}
-
-.toastui-calendar-time-event-content {
-    padding: 2px 6px;
-}
-
-.toastui-calendar-time-event-title {
-    color: #ffffff !important;
-}
-
-/* Main appointment */
-.dark .toastui-calendar-time-event {
-    background-color: #2563eb;
-    border-color: #60a5fa;
-    color: #ffffff;
-}
-
-.light .toastui-calendar-time-event {
-    background-color: #2563eb;
-    border-color: #2563eb;
-    color: #ffffff;
-}
-
-/* ---------- FREE SLOT (availability) ---------- */
-.toastui-calendar-time-event.is-readonly {
-    background-color: rgba(16, 185, 129, 0.25);
-    border-color: rgba(16, 185, 129, 0.5);
-    color: #064e3b;
-}
-
-.dark .toastui-calendar-time-event.is-readonly {
-    color: #ecfdf5;
-}
-
-/* ---------- HOVER & INTERACTION ---------- */
-.toastui-calendar-time-event:hover {
-    filter: brightness(1.08);
-    cursor: pointer;
-}
-
-/* ---------- SCROLLBAR (optional, aesthetic) ---------- */
-.toastui-calendar-week-view::-webkit-scrollbar {
-    width: 8px;
-}
-
-.toastui-calendar-week-view::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.3);
-    border-radius: 4px;
-}
-
-.dark .toastui-calendar-week-view::-webkit-scrollbar-thumb {
-    background-color: rgba(148, 163, 184, 0.25);
+/* Today highlight */
+.dark .toastui-calendar-day-name-container.toastui-calendar-today {
+    background: rgba(16, 185, 129, 0.15);
+    border-radius: 6px;
 }
