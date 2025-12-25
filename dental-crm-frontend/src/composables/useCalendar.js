@@ -187,8 +187,10 @@ export function useCalendar() {
 
     const mapAppointmentsToEvents = (appts, { resourceType } = {}) => {
         return appts
-            .filter(appt => appt?.start_at && appt?.end_at)
+            .filter((appt) => (appt?.start_at || appt?.start) && (appt?.end_at || appt?.end))
             .map((appt) => {
+                const startAt = appt?.start_at || appt?.start;
+                const endAt = appt?.end_at || appt?.end;
                 const resourceId = resourceType === 'doctor'
                     ? appt?.doctor_id
                     : resourceType === 'room'
@@ -198,8 +200,8 @@ export function useCalendar() {
                 return {
                     id: String(appt.id),
                     title: buildEventTitle(appt),
-                    start: toQCalendarDateTime(appt.start_at),
-                    end: toQCalendarDateTime(appt.end_at),
+                    start: toQCalendarDateTime(startAt),
+                    end: toQCalendarDateTime(endAt),
                     resourceId: resourceId ? String(resourceId) : undefined,
                     extendedProps: {
                         appointment: appt,
