@@ -374,6 +374,9 @@ export function useCalendar() {
     };
 
     const loadCalendarBlocksRange = async ({ doctorId, fromDate, toDate }) => {
+        if (!clinicId.value) {
+            return [];
+        }
         const { data } = await calendarApi.getCalendarBlocks({
             doctor_id: doctorId,
             clinic_id: clinicId.value,
@@ -458,6 +461,10 @@ export function useCalendar() {
 
         const doctorIds = resolveDoctorIdsForEvents();
         if (!doctorIds.length) return;
+        if (!clinicId.value) {
+            calendarBlocks.value = [];
+            return;
+        }
 
         const reqId = ++blocksReqId;
 
