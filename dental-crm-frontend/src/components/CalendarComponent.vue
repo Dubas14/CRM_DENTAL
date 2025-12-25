@@ -469,8 +469,6 @@ const {
   selectAllow,
 
   handleDatesSet,
-  handleEventDragStart,
-  handleEventDrop,
 
   // Utility functions
   formatDateYMD,
@@ -779,15 +777,6 @@ const onCalendarChange = (event) => {
       view,
     });
   }
-
-  const { start, end, view } = resolveCalendarRange(event);
-  if (!start || !end) return;
-
-  handleDatesSet({
-    start,
-    end,
-    view: view || event?.view || event,
-  });
 };
 
 const calendarTitle = computed(() => {
