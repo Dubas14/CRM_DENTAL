@@ -612,13 +612,16 @@ const displayResources = computed(() => {
 });
 
 const calendarEvents = computed(() => {
+  const fallbackResourceId = displayResources.value?.[0]?.id;
   const sources = [...availabilityBgEvents.value, ...calendarBlocks.value, ...events.value];
   return sources.map((event) => ({
     id: String(event.id),
     title: event.title || '',
     start: toQCalendarDateTime(event.start),
     end: toQCalendarDateTime(event.end),
-    resourceId: event.resourceId ? String(event.resourceId) : undefined,
+    resourceId: event.resourceId
+        ? String(event.resourceId)
+        : (fallbackResourceId ? String(fallbackResourceId) : undefined),
     bgcolor: event.display === 'background'
         ? (event.backgroundColor || 'rgba(148, 163, 184, 0.22)')
         : undefined,
