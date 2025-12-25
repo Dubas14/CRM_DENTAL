@@ -288,6 +288,8 @@
             class="flex-1 min-h-0 w-full q-calendar-custom"
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
+            @event-drag-start="onEventDragStart"
+            @event-drop="onEventDrop"
             @change="onCalendarChange"
         />
       </div>
@@ -459,6 +461,8 @@ const {
 
   handleSelect,
   handleEventClick,
+  handleEventDragStart,
+  handleEventDrop,
   selectAllow,
 
   handleDatesSet,
@@ -756,6 +760,14 @@ const onEventClick = (payload) => {
   const event = payload?.event || payload;
   if (!event || (event.display === 'background' && event.class?.includes('free-slot'))) return;
   handleEventClick({ event });
+};
+
+const onEventDragStart = (payload) => {
+  handleEventDragStart(payload);
+};
+
+const onEventDrop = (payload) => {
+  handleEventDrop(payload);
 };
 
 const onCalendarChange = (event) => {
