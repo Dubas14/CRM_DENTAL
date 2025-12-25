@@ -199,8 +199,6 @@ export function useCalendar() {
                     : resourceType === 'room'
                         ? (roomId != null ? roomId : (noRoomResourceId || null))
                         : null;
-                const startAt = appt?.start_at || appt?.start;
-                const endAt = appt?.end_at || appt?.end;
 
                 return {
                     id: String(appt.id),
@@ -1271,8 +1269,6 @@ export function useCalendar() {
         handleEventDragStart,
         handleEventDrop,
         selectAllow,
-        handleEventDragStart,
-        handleEventDrop,
 
         handleDatesSet,
         cleanup,
