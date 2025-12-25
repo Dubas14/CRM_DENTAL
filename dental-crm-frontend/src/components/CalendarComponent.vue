@@ -288,8 +288,6 @@
             class="flex-1 min-h-0 w-full q-calendar-custom"
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
-            @event-drag-start="onEventDragStart"
-            @event-drop="onEventDrop"
             @change="onCalendarChange"
             @event-drag-start="handleEventDragStart"
             @event-drop="handleEventDrop"
