@@ -758,15 +758,28 @@ const onEventClick = (payload) => {
   handleEventClick({ event });
 };
 
+const resolveCalendarRange = (event) => {
+  const detail = event?.detail || event?.payload || {};
+  const view = event?.view || detail?.view || detail;
+  const start = view?.start || view?.from || view?.fromDate || event?.start || detail?.start || detail?.from;
+  const end = view?.end || view?.to || view?.toDate || event?.end || detail?.end || detail?.to;
+
+  return { start, end, view };
+};
+
 const onCalendarChange = (event) => {
-  // Обробка змін в календарі (навігація)
-  if (event?.view?.start && event?.view?.end) {
-    handleDatesSet({
-      start: event.view.start,
-      end: event.view.end,
-      view: event.view,
-    });
+  if (diagnosticsEnabled.value) {
+    console.info('[QCalendarScheduler change]', event);
   }
+
+  const { start, end, view } = resolveCalendarRange(event);
+  if (!start || !end) return;
+
+  handleDatesSet({
+    start,
+    end,
+    view: view || event?.view || event,
+  });
 };
 
 const calendarTitle = computed(() => {
