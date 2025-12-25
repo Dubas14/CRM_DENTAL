@@ -288,6 +288,8 @@
             class="flex-1 min-h-0 w-full q-calendar-custom"
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
+            @event-drag-start="onEventDragStart"
+            @event-drop="onEventDrop"
             @change="onCalendarChange"
             @event-drag-start="handleEventDragStart"
             @event-drop="handleEventDrop"
@@ -439,6 +441,7 @@ const {
   baseView, // ← ТЕПЕР ДОСТУПНО
   uiMode,   // ← ТЕПЕР ДОСТУПНО
   isResourceView,
+  calendarView,
   showClinicSelector,
 
   // Loading states
@@ -461,6 +464,8 @@ const {
 
   handleSelect,
   handleEventClick,
+  handleEventDragStart,
+  handleEventDrop,
   selectAllow,
 
   handleDatesSet,
@@ -489,14 +494,6 @@ const {
 // const toQCalendarDateTime = ... // ВЖЕ Є В useCalendar
 
 const uniqStr = (arr) => Array.from(new Set((arr || []).filter(Boolean).map((v) => String(v))));
-
-// QCalendar view: 'day'|'week'|'month'
-const calendarView = computed(() => {
-  // Конвертуємо baseView в формат QCalendar
-  if (baseView.value === 'month') return 'month';
-  if (baseView.value === 'day') return 'day';
-  return 'week'; // за замовчуванням
-});
 
 /* -----------------------------
  * Dropdown multiselect (лікарі/кабінети)
@@ -762,6 +759,14 @@ const onEventClick = (payload) => {
   handleEventClick({ event });
 };
 
+const onEventDragStart = (payload) => {
+  handleEventDragStart(payload);
+};
+
+const onEventDrop = (payload) => {
+  handleEventDrop(payload);
+};
+
 const onCalendarChange = (event) => {
   const view = event?.view || event?.new?.view || event?.old?.view;
   const start = event?.start || event?.view?.start || event?.range?.start;
@@ -774,6 +779,15 @@ const onCalendarChange = (event) => {
       view,
     });
   }
+
+  const { start, end, view } = resolveCalendarRange(event);
+  if (!start || !end) return;
+
+  handleDatesSet({
+    start,
+    end,
+    view: view || event?.view || event,
+  });
 };
 
 const calendarTitle = computed(() => {

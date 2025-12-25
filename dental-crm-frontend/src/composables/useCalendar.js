@@ -191,6 +191,8 @@ export function useCalendar() {
         return appts
             .filter((appt) => (appt?.start_at || appt?.start) && (appt?.end_at || appt?.end))
             .map((appt) => {
+                const startAt = appt?.start_at || appt?.start;
+                const endAt = appt?.end_at || appt?.end;
                 const roomId = appt?.room_id;
                 const resourceId = resourceType === 'doctor'
                     ? appt?.doctor_id
@@ -262,27 +264,33 @@ export function useCalendar() {
     };
 
     // ========== ВАЖЛИВО: Додаємо computed для baseView та uiMode ==========
+    const viewModeToBaseView = (mode) => {
+        if (mode === 'dayGridMonth') return 'month';
+        if (String(mode).endsWith('Day')) return 'day';
+        return 'week';
+    };
+
+    const viewModeToCalendarView = (mode) => viewModeToBaseView(mode);
+
+    const resolveViewMode = (base, multi) => {
+        if (base === 'month') return 'dayGridMonth';
+        if (base === 'day') return multi ? 'resourceTimeGridDay' : 'timeGridDay';
+        return multi ? 'resourceTimeGridWeek' : 'timeGridWeek';
+    };
+
     const baseView = computed({
         get() {
-            if (viewMode.value === 'dayGridMonth') return 'month';
-            if (String(viewMode.value).includes('Day')) return 'day';
-            return 'week';
+            return viewModeToBaseView(viewMode.value);
         },
         set(v) {
-            const multi = isResourceView.value;
+            const multi = uiMode.value === 'multi';
 
             if (v === 'month' && multi) {
-                viewMode.value = 'timeGridWeek';
+                viewMode.value = resolveViewMode('week', true);
                 return;
             }
 
-            if (v === 'day') {
-                viewMode.value = multi ? 'resourceTimeGridDay' : 'timeGridDay';
-            } else if (v === 'month') {
-                viewMode.value = 'dayGridMonth';
-            } else {
-                viewMode.value = multi ? 'resourceTimeGridWeek' : 'timeGridWeek';
-            }
+            viewMode.value = resolveViewMode(v, multi);
         },
     });
 
@@ -292,20 +300,14 @@ export function useCalendar() {
         },
         set(v) {
             const multi = v === 'multi';
-            const currentBase = baseView.value;
+            const currentBase = viewModeToBaseView(viewMode.value);
 
             if (currentBase === 'month' && multi) {
-                baseView.value = 'week';
+                viewMode.value = resolveViewMode('week', true);
                 return;
             }
 
-            if (currentBase === 'day') {
-                viewMode.value = multi ? 'resourceTimeGridDay' : 'timeGridDay';
-            } else if (currentBase === 'month') {
-                viewMode.value = 'dayGridMonth';
-            } else {
-                viewMode.value = multi ? 'resourceTimeGridWeek' : 'timeGridWeek';
-            }
+            viewMode.value = resolveViewMode(currentBase, multi);
         },
     });
 
@@ -329,6 +331,7 @@ export function useCalendar() {
     );
 
     const isResourceView = computed(() => viewMode.value.startsWith('resourceTimeGrid'));
+    const calendarView = computed(() => viewModeToCalendarView(viewMode.value));
 
     const resolveDoctorClinicId = (doctor) =>
         doctor?.clinic_id ||
@@ -864,18 +867,25 @@ export function useCalendar() {
     };
 
     const openBooking = (info) => {
-        booking.value.start = info.start;
-        booking.value.end = info.end;
-        booking.value.patient_id = '';
-        booking.value.comment = '';
-        booking.value.waitlist_entry_id = '';
+        if (!info?.start || !info?.end) {
+            console.warn('Booking open requested with incomplete slot info.', info);
+        }
+        booking.value = {
+            start: info?.start || null,
+            end: info?.end || null,
+            patient_id: '',
+            comment: '',
+            waitlist_entry_id: '',
+        };
         bookingError.value = null;
         isBookingOpen.value = true;
     };
 
     const closeBooking = () => {
         isBookingOpen.value = false;
+        bookingLoading.value = false;
         bookingError.value = null;
+        resetBooking();
     };
 
     const createAppointment = async (payload) => {
@@ -1045,6 +1055,9 @@ export function useCalendar() {
                 const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
 
                 activeRange.value = { start, end, fromDate, toDate };
+                if (diagnosticsEnabled.value) {
+                    console.info('[Calendar activeRange]', activeRange.value);
+                }
             } else {
                 ensureRange();
             }
@@ -1228,6 +1241,7 @@ export function useCalendar() {
         baseView, // ← ДОДАНО
         uiMode,   // ← ДОДАНО
         isResourceView,
+        calendarView,
         showClinicSelector,
 
         // Loading states
@@ -1254,6 +1268,8 @@ export function useCalendar() {
 
         handleSelect,
         handleEventClick,
+        handleEventDragStart,
+        handleEventDrop,
         selectAllow,
         handleEventDragStart,
         handleEventDrop,
