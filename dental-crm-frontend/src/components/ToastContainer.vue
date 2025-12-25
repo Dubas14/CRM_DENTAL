@@ -42,15 +42,3 @@ const variantClass = computed(() => ({
     </TransitionGroup>
   </div>
 </template>
-
-<style scoped>
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.3s ease;
-}
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(30px) scale(0.9);
-}
-</style>

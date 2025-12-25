@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-950 to-slate-900">
+  <div class="min-h-screen bg-slate-950">
     <!-- Заголовок -->
     <div class="p-6 pb-2">
       <h1 class="text-2xl font-bold text-white mb-2">Календар записів</h1>
@@ -46,14 +46,12 @@
       <ToastCalendar ref="calendarRef" :events="events" />
     </div>
 
-    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
-import ToastContainer from '../components/ToastContainer.vue'
 import '../assets/css/calendar.css'
 
 const calendarRef = ref(null)
