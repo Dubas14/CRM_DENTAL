@@ -75,7 +75,7 @@ const calendarBlockTypes = [
   { value: 'break', label: 'Перерва', badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
   { value: 'meeting', label: 'Зустріч', badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30' },
   { value: 'vacation', label: 'Відпустка', badge: 'bg-rose-500/10 text-rose-300 border-rose-500/30' },
-  { value: 'other', label: 'Інше', badge: 'bg-slate-500/10 text-slate-300 border-slate-500/30' },
+  { value: 'other', label: 'Інше', badge: 'bg-card/20 text-text/80 border-border/30' },
 ];
 
 // ---- Бронювання ----
@@ -576,7 +576,7 @@ const fmtTimeInput = (iso) => {
 
 const getCalendarBlockType = (type) =>
     calendarBlockTypes.find((entry) => entry.value === type)
-    || { value: type, label: type || 'Блок', badge: 'bg-slate-500/10 text-slate-300 border-slate-500/30' };
+    || { value: type, label: type || 'Блок', badge: 'bg-card/20 text-text/80 border-border/30' };
 
 const buildDateTime = (date, time) => {
   if (!date || !time) return null;
@@ -756,15 +756,15 @@ onUnmounted(() => {
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Розклад та слот-менеджмент</h1>
-        <p class="text-sm text-slate-400">Бронювання, скасування та робота зі списком очікування в одному місці.</p>
+        <p class="text-sm text-text/70">Бронювання, скасування та робота зі списком очікування в одному місці.</p>
       </div>
       <div class="flex items-center gap-3">
-        <div class="text-xs text-slate-600 animate-pulse">● Дані оновлюються автоматично</div>
+        <div class="text-xs text-text/60 animate-pulse">● Дані оновлюються автоматично</div>
 
         <button
             v-if="canOpenWeeklySettings"
             type="button"
-            class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-200 hover:bg-slate-800"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/90 hover:bg-card/80"
             @click="openWeeklySettings"
         >
           Налаштувати тижневий розклад
@@ -772,10 +772,10 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="flex flex-wrap items-end gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+    <div class="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card/60 p-4">
       <div v-if="showClinicSelector" class="flex flex-col gap-1 min-w-[200px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Клініка</span>
-        <select v-model="selectedClinicId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm">
+        <span class="text-xs uppercase tracking-wide text-text/70">Клініка</span>
+        <select v-model="selectedClinicId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm">
           <option value="" disabled>Оберіть клініку</option>
           <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
             {{ clinic.name }}
@@ -784,8 +784,8 @@ onUnmounted(() => {
       </div>
 
       <div v-if="!isDoctor" class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
-        <select v-model="selectedDoctorId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingDoctors">
+        <span class="text-xs uppercase tracking-wide text-text/70">Лікар</span>
+        <select v-model="selectedDoctorId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" :disabled="loadingDoctors">
           <option value="" disabled>Оберіть лікаря</option>
           <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
             {{ doctor.full_name }}
@@ -793,20 +793,20 @@ onUnmounted(() => {
         </select>
       </div>
       <div v-else class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Лікар</span>
-        <div class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-200">
+        <span class="text-xs uppercase tracking-wide text-text/70">Лікар</span>
+        <div class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm text-text/90">
           {{ doctorProfile?.full_name || selectedDoctor?.full_name || '—' }}
         </div>
       </div>
 
       <div class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Дата</span>
-        <input v-model="selectedDate" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+        <span class="text-xs uppercase tracking-wide text-text/70">Дата</span>
+        <input v-model="selectedDate" type="date" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" />
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Процедура</span>
-        <select v-model="selectedProcedureId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingProcedures">
+        <span class="text-xs uppercase tracking-wide text-text/70">Процедура</span>
+        <select v-model="selectedProcedureId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" :disabled="loadingProcedures">
           <option value="">Без процедури</option>
           <option v-for="procedure in procedures" :key="procedure.id" :value="procedure.id">
             {{ procedure.name }}
@@ -815,10 +815,10 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[200px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">
+        <span class="text-xs uppercase tracking-wide text-text/70">
           Кабінет<span v-if="requiresRoom" class="text-rose-400"> *</span>
         </span>
-        <select v-model="selectedRoomId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingRooms || !rooms.length">
+        <select v-model="selectedRoomId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" :disabled="loadingRooms || !rooms.length">
           <option value="">Будь-який</option>
           <option v-for="room in rooms" :key="room.id" :value="room.id">
             {{ room.name }}
@@ -828,8 +828,8 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">Обладнання</span>
-        <select v-model="selectedEquipmentId" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" :disabled="loadingEquipments || !equipments.length">
+        <span class="text-xs uppercase tracking-wide text-text/70">Обладнання</span>
+        <select v-model="selectedEquipmentId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" :disabled="loadingEquipments || !equipments.length">
           <option value="">Будь-яке</option>
           <option v-for="eq in equipments" :key="eq.id" :value="eq.id">
             {{ eq.name }}
@@ -838,12 +838,12 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-slate-400">
+        <span class="text-xs uppercase tracking-wide text-text/70">
           Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
         </span>
         <select
             v-model="selectedAssistantId"
-            class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+            class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             :disabled="loadingAssistants || !assistants.length"
         >
           <option value="">Без асистента</option>
@@ -857,17 +857,17 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-2">
-        <label class="flex items-center gap-2 text-sm text-slate-300">
+        <label class="flex items-center gap-2 text-sm text-text/80">
           <input v-model="isFollowUp" type="checkbox" class="accent-emerald-500" />
           <span>Повторний</span>
         </label>
-        <label class="flex items-center gap-2 text-sm text-slate-300">
+        <label class="flex items-center gap-2 text-sm text-text/80">
           <input v-model="allowSoftConflicts" type="checkbox" class="accent-emerald-500" />
           <span>Дозволити soft</span>
         </label>
       </div>
 
-      <button type="button" class="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-sm hover:bg-slate-800" @click="refreshScheduleData">
+      <button type="button" class="ml-auto px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80" @click="refreshScheduleData">
         Оновити
       </button>
     </div>
@@ -889,16 +889,16 @@ onUnmounted(() => {
             @select-slot="selectSlot"
         />
 
-        <div class="rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4 relative">
+        <div class="rounded-xl border border-border/80 bg-card shadow-xl p-5 space-y-4 relative">
           <div class="flex justify-between items-center">
             <div>
               <h3 class="text-emerald-400 font-bold text-lg">Бронювання слота</h3>
-              <p class="text-xs text-slate-500">Оберіть слот, вкажіть пацієнта, процедуру та коментар.</p>
+              <p class="text-xs text-text/60">Оберіть слот, вкажіть пацієнта, процедуру та коментар.</p>
             </div>
-            <button @click="bookingSlot = null" class="text-slate-500 hover:text-white">✕</button>
+            <button @click="bookingSlot = null" class="text-text/60 hover:text-text">✕</button>
           </div>
 
-          <div v-if="!bookingSlot" class="text-sm text-slate-400 bg-slate-800/50 border border-slate-700/60 rounded-lg p-3">
+          <div v-if="!bookingSlot" class="text-sm text-text/70 bg-card/50 border border-border/60 rounded-lg p-3">
             Спершу оберіть слот у календарі, щоб створити запис.
           </div>
 
@@ -907,16 +907,16 @@ onUnmounted(() => {
               <span class="text-sm bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded border border-emerald-500/30">
                 {{ bookingSlot.date || selectedDate }} • {{ bookingSlot.start }} – {{ bookingSlot.end }}
               </span>
-              <span v-if="selectedProcedureId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+              <span v-if="selectedProcedureId" class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
                 {{ procedures.find(p => p.id === Number(selectedProcedureId))?.name }}
               </span>
-              <span v-if="selectedRoomId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+              <span v-if="selectedRoomId" class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
                 Кабінет: {{ rooms.find(r => r.id === Number(selectedRoomId))?.name || selectedRoomId }}
               </span>
-              <span v-if="selectedEquipmentId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+              <span v-if="selectedEquipmentId" class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
                 Обладн.: {{ equipments.find(e => e.id === Number(selectedEquipmentId))?.name || selectedEquipmentId }}
               </span>
-              <span v-if="selectedAssistantId" class="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+              <span v-if="selectedAssistantId" class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
                 Асистент: {{ selectedAssistantLabel }}
               </span>
               <span v-if="isFollowUp" class="text-xs bg-emerald-900/60 px-2 py-1 rounded text-emerald-300">
@@ -925,7 +925,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="hasProcedureSteps" class="flex flex-wrap items-center gap-3">
-              <label class="flex items-center gap-2 text-sm text-slate-300">
+              <label class="flex items-center gap-2 text-sm text-text/80">
                 <input v-model="useProcedureSteps" type="checkbox" class="accent-emerald-500" />
                 <span>Створити серію по етапах</span>
               </label>
@@ -939,14 +939,14 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <div v-if="useProcedureSteps && hasProcedureSteps" class="rounded-lg border border-slate-800 bg-slate-950/60 p-3 space-y-2">
-              <div class="text-xs uppercase text-slate-400">Розклад етапів (можна змінювати)</div>
+            <div v-if="useProcedureSteps && hasProcedureSteps" class="rounded-lg border border-border bg-bg/60 p-3 space-y-2">
+              <div class="text-xs uppercase text-text/70">Розклад етапів (можна змінювати)</div>
               <div v-for="(step, index) in stepBookings" :key="`step-booking-${index}`" class="grid md:grid-cols-4 gap-2 items-center">
-                <div class="text-sm text-slate-200 md:col-span-2">
+                <div class="text-sm text-text/90 md:col-span-2">
                   {{ step.name }} • {{ step.duration_minutes }} хв
                 </div>
-                <input v-model="step.date" type="date" class="rounded-lg bg-slate-900 border border-slate-700 px-2 py-1 text-sm" />
-                <input v-model="step.time" type="time" class="rounded-lg bg-slate-900 border border-slate-700 px-2 py-1 text-sm" />
+                <input v-model="step.date" type="date" class="rounded-lg bg-card border border-border/80 px-2 py-1 text-sm" />
+                <input v-model="step.time" type="time" class="rounded-lg bg-card border border-border/80 px-2 py-1 text-sm" />
               </div>
             </div>
 
@@ -960,32 +960,32 @@ onUnmounted(() => {
             <div v-if="selectedPatientForBooking" class="flex items-center justify-between bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg">
               <div>
                 <span class="block text-xs text-blue-400 uppercase font-bold mb-1">Обраний пацієнт</span>
-                <div class="text-white text-lg font-bold">{{ selectedPatientForBooking.full_name }}</div>
-                <div class="text-slate-400 text-sm">{{ selectedPatientForBooking.phone }}</div>
+                <div class="text-text text-lg font-bold">{{ selectedPatientForBooking.full_name }}</div>
+                <div class="text-text/70 text-sm">{{ selectedPatientForBooking.phone }}</div>
               </div>
-              <button @click="selectedPatientForBooking = null; bookingName = ''" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded border border-slate-600 transition-colors">
+              <button @click="selectedPatientForBooking = null; bookingName = ''" class="px-3 py-1 bg-card/80 hover:bg-card/70 text-text/90 text-xs rounded border border-border/70 transition-colors">
                 Змінити
               </button>
             </div>
 
             <div v-else class="grid md:grid-cols-2 gap-4 relative">
               <div class="relative">
-                <label class="block text-xs text-slate-400 mb-1 uppercase">Пошук пацієнта (Ім'я або Телефон)</label>
+                <label class="block text-xs text-text/70 mb-1 uppercase">Пошук пацієнта (Ім'я або Телефон)</label>
                 <input
                     v-model="bookingName"
                     type="text"
                     placeholder="Почніть вводити..."
-                    class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                    class="w-full bg-bg border border-border/80 rounded p-2 text-text focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                 />
 
                 <div v-if="searchResults.length > 0 && !selectedPatientForBooking"
-                     class="absolute z-50 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                     class="absolute z-50 w-full bg-card/80 border border-border/70 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                   <ul>
                     <li v-for="p in searchResults" :key="p.id"
                         @click="selectPatientFromSearch(p)"
-                        class="px-3 py-2 hover:bg-slate-700 cursor-pointer text-sm text-slate-200 border-b border-slate-700 last:border-0">
+                        class="px-3 py-2 hover:bg-card/70 cursor-pointer text-sm text-text/90 border-b border-border/80 last:border-0">
                       <div class="font-bold text-emerald-400">{{ p.full_name }}</div>
-                      <div class="text-xs text-slate-400">{{ p.phone }} | {{ p.birth_date }}</div>
+                      <div class="text-xs text-text/70">{{ p.phone }} | {{ p.birth_date }}</div>
                     </li>
                   </ul>
                 </div>
@@ -993,7 +993,7 @@ onUnmounted(() => {
                 <div v-if="bookingName.length > 2 && !selectedPatientForBooking" class="mt-2">
                   <button
                       @click="showCreatePatientModal = true"
-                      class="w-full flex items-center justify-center gap-2 text-xs bg-slate-800 hover:bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 border-dashed px-3 py-2 rounded transition-all font-semibold"
+                      class="w-full flex items-center justify-center gap-2 text-xs bg-card/80 hover:bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 border-dashed px-3 py-2 rounded transition-all font-semibold"
                   >
                     <span>+</span> Створити нову анкету для "{{ bookingName }}"
                   </button>
@@ -1001,19 +1001,19 @@ onUnmounted(() => {
               </div>
 
               <div>
-                <label class="block text-xs text-slate-400 mb-1 uppercase">Телефон (для гостя)</label>
-                <input v-model="bookingPhone" @input="validatePhoneInput" type="text" placeholder="+380..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white" />
+                <label class="block text-xs text-text/70 mb-1 uppercase">Телефон (для гостя)</label>
+                <input v-model="bookingPhone" @input="validatePhoneInput" type="text" placeholder="+380..." class="w-full bg-bg border border-border/80 rounded p-2 text-text" />
               </div>
             </div>
 
             <div>
-              <label class="block text-xs text-slate-400 mb-1 uppercase">Коментар</label>
-              <textarea v-model="bookingComment" placeholder="Скарги, деталі..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white h-20"></textarea>
+              <label class="block text-xs text-text/70 mb-1 uppercase">Коментар</label>
+              <textarea v-model="bookingComment" placeholder="Скарги, деталі..." class="w-full bg-bg border border-border/80 rounded p-2 text-text h-20"></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-              <button @click="bookingSlot = null" class="text-slate-400 hover:text-white px-3 py-2 text-sm">Скасувати</button>
-              <button @click="bookSelectedSlot" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-medium shadow-lg shadow-emerald-900/50" :disabled="bookingLoading">
+              <button @click="bookingSlot = null" class="text-text/70 hover:text-text px-3 py-2 text-sm">Скасувати</button>
+              <button @click="bookSelectedSlot" class="bg-emerald-600 hover:bg-emerald-500 text-text px-6 py-2 rounded font-medium shadow-lg shadow-emerald-900/50" :disabled="bookingLoading">
                 {{ bookingLoading ? 'Створення...' : 'Підтвердити запис' }}
               </button>
             </div>
@@ -1022,17 +1022,17 @@ onUnmounted(() => {
 
         <div class="mt-4 space-y-3">
           <div class="flex items-center justify-between">
-            <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
-            <span v-if="loadingAppointments" class="text-xs text-slate-500 animate-pulse">Оновлення...</span>
+            <h3 class="text-text/70 text-xs font-bold uppercase tracking-wider">Записи на цей день</h3>
+            <span v-if="loadingAppointments" class="text-xs text-text/60 animate-pulse">Оновлення...</span>
           </div>
 
           <div v-if="appointmentsError" class="text-red-400 text-sm">{{ appointmentsError }}</div>
 
-          <div v-if="appointments.length === 0" class="text-slate-500 text-sm italic">Немає записів.</div>
+          <div v-if="appointments.length === 0" class="text-text/60 text-sm italic">Немає записів.</div>
 
-          <div v-else class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+          <div v-else class="overflow-hidden rounded-xl border border-border bg-card/40">
             <table class="min-w-full text-sm">
-              <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase">
+              <thead class="bg-card/80 text-text/70 text-xs uppercase">
               <tr>
                 <th class="px-4 py-3 text-left font-medium">Час</th>
                 <th class="px-4 py-3 text-left font-medium">Пацієнт</th>
@@ -1042,12 +1042,12 @@ onUnmounted(() => {
               </tr>
               </thead>
               <tbody class="divide-y divide-slate-800">
-              <tr v-for="a in appointments" :key="a.id" class="hover:bg-slate-800/50 transition-colors group">
+              <tr v-for="a in appointments" :key="a.id" class="hover:bg-card/50 transition-colors group">
                 <td class="px-4 py-3 text-emerald-400 font-bold font-mono">
                   {{ fmtTime(a.start_at) }}
                 </td>
 
-                <td class="px-4 py-3 text-slate-200">
+                <td class="px-4 py-3 text-text/90">
                   <div class="font-medium">{{ a.patient?.full_name || a.patient_name || a.comment || '—' }}</div>
                   <div v-if="a.patient_id" class="text-[10px] text-blue-400 inline-flex items-center gap-1 mt-0.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span> АНКЕТА Є
@@ -1057,9 +1057,9 @@ onUnmounted(() => {
                   </div>
                 </td>
 
-                <td class="px-4 py-3 text-xs text-slate-400">
-                  <div>Процедура: <span class="text-slate-200">{{ a.procedure?.name || '—' }}</span></div>
-                  <div v-if="a.procedure_step">Етап: <span class="text-slate-200">{{ a.procedure_step.name }}</span></div>
+                <td class="px-4 py-3 text-xs text-text/70">
+                  <div>Процедура: <span class="text-text/90">{{ a.procedure?.name || '—' }}</span></div>
+                  <div v-if="a.procedure_step">Етап: <span class="text-text/90">{{ a.procedure_step.name }}</span></div>
                   <div v-if="a.room">Кабінет: <span class="text-sky-300">{{ a.room.name }}</span></div>
                   <div v-if="a.equipment">Обладн.: <span class="text-amber-300">{{ a.equipment.name }}</span></div>
                   <div v-if="a.assistant">Асистент: <span class="text-indigo-300">{{ a.assistant.full_name || a.assistant.name || a.assistant.id }}</span></div>
@@ -1070,14 +1070,14 @@ onUnmounted(() => {
                     <span v-if="a.status === 'done'" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       Виконано
                     </span>
-                  <span v-else class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600">
+                  <span v-else class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-card/50 text-text/80 border border-border/70">
                       {{ a.status || 'planned' }}
                     </span>
                 </td>
 
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
-                    <button class="text-xs text-slate-300 hover:text-white underline" @click="openAppointment(a)">Деталі</button>
+                    <button class="text-xs text-text/80 hover:text-text underline" @click="openAppointment(a)">Деталі</button>
                     <button class="text-xs text-red-400 hover:text-red-300" @click="openCancellation(a)">Скасувати</button>
                   </div>
                 </td>
@@ -1112,15 +1112,15 @@ onUnmounted(() => {
       </div>
 
       <div class="space-y-4">
-        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+        <div class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3 class="text-sm font-semibold text-emerald-300">Блоки календаря</h3>
-              <p class="text-xs text-slate-500">Додавайте паузи, зустрічі чи інші блоки.</p>
+              <p class="text-xs text-text/60">Додавайте паузи, зустрічі чи інші блоки.</p>
             </div>
             <button
                 type="button"
-                class="text-xs text-slate-300 border border-slate-700 rounded-lg px-2 py-1 hover:bg-slate-800"
+                class="text-xs text-text/80 border border-border/80 rounded-lg px-2 py-1 hover:bg-card/80"
                 @click="resetCalendarBlockForm"
             >
               Очистити
@@ -1130,8 +1130,8 @@ onUnmounted(() => {
           <div class="grid gap-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label class="space-y-1 block">
-                <span class="text-[10px] uppercase tracking-wide text-slate-400">Тип блоку</span>
-                <select v-model="calendarBlockForm.type" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm">
+                <span class="text-[10px] uppercase tracking-wide text-text/70">Тип блоку</span>
+                <select v-model="calendarBlockForm.type" class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm">
                   <option v-for="type in calendarBlockTypes" :key="type.value" :value="type.value">
                     {{ type.label }}
                   </option>
@@ -1139,24 +1139,24 @@ onUnmounted(() => {
               </label>
 
               <label class="space-y-1 block">
-                <span class="text-[10px] uppercase tracking-wide text-slate-400">Нотатка (optional)</span>
+                <span class="text-[10px] uppercase tracking-wide text-text/70">Нотатка (optional)</span>
                 <input
                     v-model="calendarBlockForm.note"
                     type="text"
                     placeholder="Коротка примітка"
-                    class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"
+                    class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
                 />
               </label>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label class="space-y-1 block">
-                <span class="text-[10px] uppercase tracking-wide text-slate-400">Start</span>
-                <input v-model="calendarBlockForm.start" type="time" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+                <span class="text-[10px] uppercase tracking-wide text-text/70">Start</span>
+                <input v-model="calendarBlockForm.start" type="time" class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" />
               </label>
               <label class="space-y-1 block">
-                <span class="text-[10px] uppercase tracking-wide text-slate-400">End</span>
-                <input v-model="calendarBlockForm.end" type="time" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+                <span class="text-[10px] uppercase tracking-wide text-text/70">End</span>
+                <input v-model="calendarBlockForm.end" type="time" class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm" />
               </label>
             </div>
 
@@ -1167,27 +1167,27 @@ onUnmounted(() => {
             <div class="flex flex-wrap items-center gap-2">
               <button
                   type="button"
-                  class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-60"
+                  class="px-3 py-2 rounded-lg bg-emerald-600 text-text text-sm hover:bg-emerald-500 disabled:opacity-60"
                   :disabled="calendarBlockSaving"
                   @click="saveCalendarBlock"
               >
                 {{ calendarBlockSaving ? 'Збереження...' : (editingCalendarBlockId ? 'Оновити блок' : 'Створити блок') }}
               </button>
-              <span v-if="editingCalendarBlockId" class="text-xs text-slate-400">Редагування активне</span>
+              <span v-if="editingCalendarBlockId" class="text-xs text-text/70">Редагування активне</span>
             </div>
           </div>
 
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs uppercase tracking-wide text-slate-500">Блоки на {{ selectedDate }}</h4>
-              <span v-if="loadingCalendarBlocks" class="text-xs text-slate-500 animate-pulse">Оновлення...</span>
+              <h4 class="text-xs uppercase tracking-wide text-text/60">Блоки на {{ selectedDate }}</h4>
+              <span v-if="loadingCalendarBlocks" class="text-xs text-text/60 animate-pulse">Оновлення...</span>
             </div>
 
             <div v-if="calendarBlocksError" class="text-xs text-rose-400">
               {{ calendarBlocksError }}
             </div>
 
-            <div v-if="calendarBlocks.length === 0 && !loadingCalendarBlocks" class="text-xs text-slate-500 italic">
+            <div v-if="calendarBlocks.length === 0 && !loadingCalendarBlocks" class="text-xs text-text/60 italic">
               Немає блоків на цю дату.
             </div>
 
@@ -1195,7 +1195,7 @@ onUnmounted(() => {
               <div
                   v-for="block in calendarBlocks"
                   :key="block.id"
-                  class="flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  class="flex items-start justify-between gap-3 rounded-lg border border-border bg-bg/60 px-3 py-2"
               >
                 <div class="space-y-1">
                   <span
@@ -1204,15 +1204,15 @@ onUnmounted(() => {
                   >
                     {{ getCalendarBlockType(block.type).label }}
                   </span>
-                  <div class="text-sm text-slate-200">
+                  <div class="text-sm text-text/90">
                     {{ fmtTime(block.start_at) }} – {{ fmtTime(block.end_at) }}
                   </div>
-                  <div v-if="block.note" class="text-xs text-slate-500">
+                  <div v-if="block.note" class="text-xs text-text/60">
                     {{ block.note }}
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-2 text-xs">
-                  <button class="text-slate-300 hover:text-white" type="button" @click="applyCalendarBlockToForm(block)">
+                  <button class="text-text/80 hover:text-text" type="button" @click="applyCalendarBlockToForm(block)">
                     Редагувати
                   </button>
                   <button class="text-rose-400 hover:text-rose-300" type="button" @click="deleteCalendarBlock(block)">
@@ -1240,7 +1240,7 @@ onUnmounted(() => {
             :default-procedure-id="selectedProcedureId"
             @created="refreshScheduleData"
         />
-        <div v-else class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-sm text-slate-400">
+        <div v-else class="bg-card/60 border border-border rounded-xl p-4 text-sm text-text/70">
           Потрібен clinic_id для роботи зі списком очікування.
         </div>
       </div>

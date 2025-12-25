@@ -102,11 +102,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-3 bg-slate-900/60 border border-slate-800 rounded-xl p-4">
+  <div class="space-y-3 bg-card/60 border border-border rounded-xl p-4">
     <div class="flex items-center justify-between">
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Доступні слоти</p>
-        <p class="text-lg font-semibold text-white">{{ date }}</p>
+        <p class="text-xs uppercase tracking-wide text-text/70">Доступні слоти</p>
+        <p class="text-lg font-semibold text-text">{{ date }}</p>
       </div>
       <button
         class="text-sm text-emerald-400 hover:text-emerald-300"
@@ -117,7 +117,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
+    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-text/70 bg-card/60 border border-border/60 rounded-lg p-3">
       <span v-if="slotRoom" class="mr-3">Кабінет: <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span>
       <span v-if="slotEquipment" class="mr-3">Обладнання: <strong class="text-amber-300">{{ slotEquipment.name || `#${slotEquipment.id}` }}</strong></span>
       <span v-if="slotAssistantId">Асистент: <strong class="text-indigo-300">{{ slotAssistantName }}</strong></span>
@@ -141,26 +141,26 @@ onMounted(() => {
           v-for="slot in slots"
           :key="slot.start"
           :disabled="disabled"
-          class="w-full px-3 py-2 rounded-lg border border-emerald-600/60 bg-emerald-900/30 text-white hover:bg-emerald-800/40 transition"
+          class="w-full px-3 py-2 rounded-lg border border-emerald-600/60 bg-emerald-900/30 text-text hover:bg-emerald-800/40 transition"
           @click="emit('select-slot', slot)"
         >
           {{ formatSlot(slot) }}
         </button>
       </div>
 
-      <div v-else-if="loading" class="text-sm text-slate-400">Завантаження слотів...</div>
+      <div v-else-if="loading" class="text-sm text-text/70">Завантаження слотів...</div>
 
-      <div v-else class="text-sm text-slate-400 bg-slate-800/60 border border-slate-700/60 rounded-lg p-3">
-        <p class="font-semibold text-white mb-1">Вільних слотів немає</p>
+      <div v-else class="text-sm text-text/70 bg-card/60 border border-border/60 rounded-lg p-3">
+        <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
         <p v-if="reason" class="text-xs uppercase tracking-wide text-amber-400">Причина: {{ reason }}</p>
-        <p v-else class="text-xs text-slate-400">Обрати іншу дату або подивіться рекомендації нижче.</p>
+        <p v-else class="text-xs text-text/70">Обрати іншу дату або подивіться рекомендації нижче.</p>
       </div>
 
-      <div class="border-t border-slate-800 pt-3 mt-3 space-y-2">
+      <div class="border-t border-border pt-3 mt-3 space-y-2">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold text-white">Рекомендовані найближчі</p>
+          <p class="text-sm font-semibold text-text">Рекомендовані найближчі</p>
           <button
-            class="text-xs text-slate-400 hover:text-white"
+            class="text-xs text-text/70 hover:text-text"
             type="button"
             :disabled="disabled"
             @click="loadRecommended"
@@ -172,14 +172,14 @@ onMounted(() => {
             v-for="slot in recommended"
             :key="`${slot.date}-${slot.start}`"
             :disabled="disabled"
-            class="px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 text-white hover:bg-slate-700/60 transition"
+            class="px-3 py-2 rounded-lg border border-border/80 bg-card/70 text-text hover:bg-card/60 transition"
             @click="emit('select-slot', slot)"
           >
-            <span class="text-xs text-slate-400 block">{{ slot.date }}</span>
+            <span class="text-xs text-text/70 block">{{ slot.date }}</span>
             <span class="font-semibold">{{ formatSlot(slot) }}</span>
           </button>
         </div>
-        <p v-else class="text-xs text-slate-500">Поки що немає рекомендацій</p>
+        <p v-else class="text-xs text-text/60">Поки що немає рекомендацій</p>
       </div>
     </div>
   </div>

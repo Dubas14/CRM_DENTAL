@@ -70,39 +70,39 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 space-y-3">
+  <div class="bg-card/60 border border-border rounded-xl p-4 space-y-3">
     <div class="flex items-center justify-between">
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Список очікування</p>
-        <p class="text-lg font-semibold text-white">Кандидати на слот</p>
+        <p class="text-xs uppercase tracking-wide text-text/70">Список очікування</p>
+        <p class="text-lg font-semibold text-text">Кандидати на слот</p>
       </div>
       <button class="text-sm text-emerald-400 hover:text-emerald-300" @click="loadCandidates">Оновити</button>
     </div>
 
     <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3">{{ error }}</div>
-    <div v-if="loading" class="text-sm text-slate-300">Завантаження кандидатів...</div>
+    <div v-if="loading" class="text-sm text-text/80">Завантаження кандидатів...</div>
 
     <div v-else>
       <div v-if="candidates.length" class="divide-y divide-slate-800">
         <div v-for="candidate in candidates" :key="candidate.id" class="py-3 flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-white font-semibold">{{ candidate.patient?.full_name || 'Пацієнт' }}</p>
-              <p class="text-xs text-slate-400">
+              <p class="text-text font-semibold">{{ candidate.patient?.full_name || 'Пацієнт' }}</p>
+              <p class="text-xs text-text/70">
                 {{ candidate.procedure?.name || 'Процедура не вказана' }}
-                <span v-if="candidate.doctor" class="text-slate-500">• {{ candidate.doctor.full_name }}</span>
+                <span v-if="candidate.doctor" class="text-text/60">• {{ candidate.doctor.full_name }}</span>
               </p>
             </div>
             <div class="flex items-center gap-2">
               <button
-                class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm rounded-lg border border-slate-600"
+                class="px-3 py-1 bg-card/80 hover:bg-card/70 text-text/90 text-sm rounded-lg border border-border/70"
                 type="button"
                 @click="cancelEntry(candidate)"
               >
                 Скасувати
               </button>
               <button
-                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg"
+                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-text text-sm rounded-lg"
                 type="button"
                 @click="markBooked(candidate)"
               >
@@ -110,13 +110,13 @@ onMounted(() => {
               </button>
             </div>
           </div>
-          <div class="flex items-center gap-3 text-xs text-slate-400">
-            <span v-if="candidate.preferred_date" class="bg-slate-800/60 px-2 py-1 rounded">{{ candidate.preferred_date }}</span>
-            <span class="bg-slate-800/60 px-2 py-1 rounded">Статус: {{ candidate.status }}</span>
+          <div class="flex items-center gap-3 text-xs text-text/70">
+            <span v-if="candidate.preferred_date" class="bg-card/60 px-2 py-1 rounded">{{ candidate.preferred_date }}</span>
+            <span class="bg-card/60 px-2 py-1 rounded">Статус: {{ candidate.status }}</span>
           </div>
         </div>
       </div>
-      <p v-else class="text-sm text-slate-500">Кандидатів поки що немає</p>
+      <p v-else class="text-sm text-text/60">Кандидатів поки що немає</p>
     </div>
   </div>
 </template>

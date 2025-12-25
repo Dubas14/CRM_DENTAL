@@ -406,11 +406,11 @@ watch(() => user.value, (val) => {
   <div class="space-y-6 animate-fade-in">
     <!-- Заголовок з кнопкою оновлення -->
     <div class="flex justify-between items-start gap-4">
-      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 p-8 text-white shadow-lg flex-1">
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 p-8 text-text shadow-lg flex-1">
         <div class="relative z-10">
           <div class="flex items-center gap-3 mb-1">
             <h1 class="text-3xl font-bold">Вітаємо, {{ greetingName }}! 👋</h1>
-            <span class="px-3 py-1 rounded-full bg-white/15 text-sm font-semibold">{{ greetingSubtitle }}</span>
+            <span class="px-3 py-1 rounded-full bg-card/15 text-sm font-semibold">{{ greetingSubtitle }}</span>
           </div>
           <p class="text-emerald-100 text-lg">
             <span v-if="skeletonStates.stats" class="inline-block h-5 w-40 bg-emerald-400/30 rounded animate-pulse"></span>
@@ -422,15 +422,15 @@ watch(() => user.value, (val) => {
             ⚠️ {{ errors.general }}. Показуються кешовані дані.
           </div>
         </div>
-        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-card/10 rounded-full blur-2xl"></div>
+        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-card/10 rounded-full blur-2xl"></div>
       </div>
 
       <!-- Кнопка оновлення -->
       <button
           @click="refreshData"
           :disabled="loading"
-          class="p-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+          class="p-4 bg-card hover:bg-card/80 border border-border/80 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
           title="Оновити дані"
           aria-label="Оновити статистику"
       >
@@ -445,75 +445,75 @@ watch(() => user.value, (val) => {
     <!-- Картки статистики з skeleton loading -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Пацієнти -->
-      <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-md hover:shadow-xl hover:border-emerald-500/30 transition-all duration-300 group">
+      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-emerald-500/30 transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
-            <p class="text-slate-400 text-sm font-medium uppercase">Всього пацієнтів</p>
+            <p class="text-text/70 text-sm font-medium uppercase">Всього пацієнтів</p>
 
             <!-- Skeleton loading -->
-            <div v-if="skeletonStates.stats" class="h-10 w-20 bg-slate-800 rounded animate-pulse mt-2"></div>
+            <div v-if="skeletonStates.stats" class="h-10 w-20 bg-card/80 rounded animate-pulse mt-2"></div>
 
             <!-- Дані -->
             <div v-else>
-              <h3 class="text-3xl font-bold text-white mt-2">{{ stats.patientsCount }}</h3>
+              <h3 class="text-3xl font-bold text-text mt-2">{{ stats.patientsCount }}</h3>
               <p v-if="errors.patients" class="text-xs text-red-400 mt-1">⚠️ {{ errors.patients }}</p>
             </div>
           </div>
-          <div class="p-3 bg-slate-800 rounded-lg text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+          <div class="p-3 bg-card/80 rounded-lg text-emerald-400 group-hover:bg-emerald-500 group-hover:text-text transition-colors shrink-0">
             <Users size="24" />
           </div>
         </div>
       </div>
 
       <!-- Записи сьогодні -->
-      <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-md hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 group">
+      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
-            <p class="text-slate-400 text-sm font-medium uppercase">Записи сьогодні</p>
+            <p class="text-text/70 text-sm font-medium uppercase">Записи сьогодні</p>
 
             <!-- Skeleton loading -->
-            <div v-if="skeletonStates.stats" class="h-10 w-20 bg-slate-800 rounded animate-pulse mt-2"></div>
+            <div v-if="skeletonStates.stats" class="h-10 w-20 bg-card/80 rounded animate-pulse mt-2"></div>
 
             <!-- Дані -->
             <div v-else>
-              <h3 class="text-3xl font-bold text-white mt-2">{{ stats.appointmentsToday }}</h3>
+              <h3 class="text-3xl font-bold text-text mt-2">{{ stats.appointmentsToday }}</h3>
               <p v-if="errors.appointments" class="text-xs text-red-400 mt-1">⚠️ {{ errors.appointments }}</p>
             </div>
           </div>
-          <div class="p-3 bg-slate-800 rounded-lg text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+          <div class="p-3 bg-card/80 rounded-lg text-blue-400 group-hover:bg-blue-500 group-hover:text-text transition-colors shrink-0">
             <Calendar size="24" />
           </div>
         </div>
       </div>
 
       <!-- Найближчий візит -->
-      <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-md hover:shadow-xl hover:border-purple-500/30 transition-all duration-300 group">
+      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-purple-500/30 transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
-            <p class="text-slate-400 text-sm font-medium uppercase">Найближчий візит</p>
+            <p class="text-text/70 text-sm font-medium uppercase">Найближчий візит</p>
 
             <!-- Skeleton loading -->
-            <div v-if="skeletonStates.stats" class="h-10 w-full bg-slate-800 rounded animate-pulse mt-2"></div>
+            <div v-if="skeletonStates.stats" class="h-10 w-full bg-card/80 rounded animate-pulse mt-2"></div>
 
             <!-- Дані -->
             <div v-else>
-              <h3 class="text-xl font-bold text-white mt-2 truncate">
+              <h3 class="text-xl font-bold text-text mt-2 truncate">
                 {{ stats.nextAppointment ? stats.nextAppointment.displayTime : '—' }}
               </h3>
-              <p class="text-xs text-slate-500 mt-1" v-if="stats.nextAppointment">
+              <p class="text-xs text-text/60 mt-1" v-if="stats.nextAppointment">
                 {{ stats.nextAppointment.patientLabel || 'Без імені' }}
-                <span v-if="stats.nextAppointment.displayDate" class="text-slate-600">· {{ stats.nextAppointment.displayDate }}</span>
+                <span v-if="stats.nextAppointment.displayDate" class="text-text/60">· {{ stats.nextAppointment.displayDate }}</span>
               </p>
-              <p v-if="stats.nextAppointment" class="text-xs text-slate-600 mt-1">
+              <p v-if="stats.nextAppointment" class="text-xs text-text/60 mt-1">
                 <span v-if="stats.nextAppointment.clinicLabel">Клініка: {{ stats.nextAppointment.clinicLabel }}</span>
                 <span v-if="stats.nextAppointment.clinicLabel && stats.nextAppointment.doctorLabel" class="mx-1">·</span>
                 <span v-if="stats.nextAppointment.doctorLabel">Лікар: {{ stats.nextAppointment.doctorLabel }}</span>
                 <span v-if="stats.nextAppointment.roomLabel" class="ml-1">· Кабінет: {{ stats.nextAppointment.roomLabel }}</span>
               </p>
-              <p v-else class="text-sm text-slate-500 mt-1">Записів немає</p>
+              <p v-else class="text-sm text-text/60 mt-1">Записів немає</p>
             </div>
           </div>
-          <div class="p-3 bg-slate-800 rounded-lg text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
+          <div class="p-3 bg-card/80 rounded-lg text-purple-400 group-hover:bg-purple-500 group-hover:text-text transition-colors shrink-0">
             <Clock size="24" />
           </div>
         </div>
@@ -521,14 +521,14 @@ watch(() => user.value, (val) => {
     </div>
 
     <!-- Найближчі візити -->
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md">
+    <div class="bg-card border border-border rounded-xl p-6 shadow-md">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <h3 class="text-lg font-bold text-text flex items-center gap-2">
             <Clock size="18" class="text-emerald-400" />
             Найближчі візити
           </h3>
-          <p class="text-slate-500 text-sm">Перші 5 записів з найближчим часом</p>
+          <p class="text-text/60 text-sm">Перші 5 записів з найближчим часом</p>
         </div>
         <router-link :to="{ name: 'schedule' }" class="text-sm text-emerald-400 hover:text-emerald-300 whitespace-nowrap">
           Перейти до розкладу →
@@ -537,11 +537,11 @@ watch(() => user.value, (val) => {
 
       <!-- Skeleton для списку -->
       <div v-if="skeletonStates.appointments" class="space-y-3">
-        <div v-for="i in 3" :key="i" class="h-16 bg-slate-800 rounded-lg animate-pulse"></div>
+        <div v-for="i in 3" :key="i" class="h-16 bg-card/80 rounded-lg animate-pulse"></div>
       </div>
 
       <!-- Дані -->
-      <div v-else-if="!upcomingAppointments.length" class="text-slate-500 text-sm py-4 text-center">
+      <div v-else-if="!upcomingAppointments.length" class="text-text/60 text-sm py-4 text-center">
         Найближчих записів немає.
       </div>
 
@@ -549,15 +549,15 @@ watch(() => user.value, (val) => {
         <li v-for="appt in upcomingAppointments" :key="appt.id">
           <router-link
               :to="{ name: 'schedule', query: { date: appt.dateParam, doctor: appt.doctorId || undefined, clinic: appt.clinicId || undefined } }"
-              class="flex items-start justify-between bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors group"
+              class="flex items-start justify-between bg-bg border border-border rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors group"
           >
             <div class="min-w-0 flex-1">
-              <p class="text-white font-semibold truncate">
+              <p class="text-text font-semibold truncate">
                 {{ appt.patientLabel }}
-                <span v-if="appt.taskLabel" class="text-slate-400 text-xs font-normal">· {{ appt.taskLabel }}</span>
+                <span v-if="appt.taskLabel" class="text-text/70 text-xs font-normal">· {{ appt.taskLabel }}</span>
               </p>
-              <p class="text-slate-500 text-xs mt-1">{{ appt.displayDate }} · {{ appt.displayTime }}</p>
-              <p class="text-slate-500 text-xs mt-1">
+              <p class="text-text/60 text-xs mt-1">{{ appt.displayDate }} · {{ appt.displayTime }}</p>
+              <p class="text-text/60 text-xs mt-1">
                 <span v-if="appt.clinicLabel">Клініка: {{ appt.clinicLabel }}</span>
                 <span v-if="appt.clinicLabel && appt.doctorLabel" class="mx-1">·</span>
                 <span v-if="appt.doctorLabel">Лікар: {{ appt.doctorLabel }}</span>
@@ -566,7 +566,7 @@ watch(() => user.value, (val) => {
             </div>
             <div class="ml-4 flex flex-col items-end gap-1">
               <span class="text-emerald-400 font-mono text-sm whitespace-nowrap">{{ appt.displayTime }}</span>
-              <span class="text-[11px] text-slate-400 group-hover:text-emerald-300">Відкрити →</span>
+              <span class="text-[11px] text-text/70 group-hover:text-emerald-300">Відкрити →</span>
             </div>
           </router-link>
         </li>
@@ -575,37 +575,37 @@ watch(() => user.value, (val) => {
 
     <!-- Секція швидких дій та графік -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+      <div class="bg-card border border-border rounded-xl p-6">
+        <h3 class="text-lg font-bold text-text mb-4 flex items-center gap-2">
           <Activity size="20" class="text-emerald-400"/>
           Швидкі дії
         </h3>
         <div class="grid grid-cols-2 gap-4">
           <router-link :to="{name: 'schedule'}"
-                       class="flex flex-col items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer group">
+                       class="flex flex-col items-center justify-center p-4 bg-bg border border-border rounded-lg hover:bg-card/80 transition-colors cursor-pointer group">
             <Calendar class="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" size="28"/>
-            <span class="text-slate-300 text-sm">Мій розклад</span>
+            <span class="text-text/80 text-sm">Мій розклад</span>
           </router-link>
           <router-link :to="{name: 'patients'}"
-                       class="flex flex-col items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer group">
+                       class="flex flex-col items-center justify-center p-4 bg-bg border border-border rounded-lg hover:bg-card/80 transition-colors cursor-pointer group">
             <Users class="text-blue-500 mb-2 group-hover:scale-110 transition-transform" size="28"/>
-            <span class="text-slate-300 text-sm">База пацієнтів</span>
+            <span class="text-text/80 text-sm">База пацієнтів</span>
           </router-link>
         </div>
       </div>
 
       <!-- Графік з skeleton -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h3 class="text-lg font-bold text-white mb-4">Активність за тиждень</h3>
+      <div class="bg-card border border-border rounded-xl p-6">
+        <h3 class="text-lg font-bold text-text mb-4">Активність за тиждень</h3>
 
         <!-- Skeleton для графіка -->
-        <div v-if="skeletonStates.chart" class="h-64 bg-slate-800 rounded animate-pulse"></div>
+        <div v-if="skeletonStates.chart" class="h-64 bg-card/80 rounded animate-pulse"></div>
 
         <!-- Графік -->
         <ActivityChart v-else :data="weeklyActivity" title="Активність за тиждень" />
 
         <!-- Повідомлення про дані -->
-        <p v-if="!skeletonStates.chart && weeklyActivity.length === 0" class="text-slate-500 text-sm mt-2">
+        <p v-if="!skeletonStates.chart && weeklyActivity.length === 0" class="text-text/60 text-sm mt-2">
           Немає даних для відображення активності
         </p>
       </div>

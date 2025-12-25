@@ -123,7 +123,7 @@ onMounted(loadSchedule);
   <div class="space-y-6">
     <button
         type="button"
-        class="text-xs text-slate-400 hover:text-slate-200"
+        class="text-xs text-text/70 hover:text-text/90"
         @click="$router.back()"
     >
       ← Назад
@@ -131,12 +131,12 @@ onMounted(loadSchedule);
 
     <div>
       <h1 class="text-2xl font-semibold">Тижневий розклад лікаря</h1>
-      <p class="text-sm text-slate-400">
+      <p class="text-sm text-text/70">
         Вкажіть робочі дні та години. На основі цього будуть будуватися вільні слоти.
       </p>
     </div>
 
-    <div v-if="loading" class="text-sm text-slate-400">
+    <div v-if="loading" class="text-sm text-text/70">
       Завантаження...
     </div>
 
@@ -144,9 +144,9 @@ onMounted(loadSchedule);
       ❌ {{ error }}
     </div>
 
-    <div v-else class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+    <div v-else class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
       <table class="min-w-full text-sm">
-        <thead class="text-slate-400 border-b border-slate-800">
+        <thead class="text-text/70 border-b border-border">
         <tr>
           <th class="px-3 py-2 text-left">День</th>
           <th class="px-3 py-2 text-left">Працює</th>
@@ -161,7 +161,7 @@ onMounted(loadSchedule);
         <tr
             v-for="day in days"
             :key="day.weekday"
-            class="border-t border-slate-800"
+            class="border-t border-border"
         >
           <td class="px-3 py-2">
             {{ weekdayLabels[day.weekday] }}
@@ -170,7 +170,7 @@ onMounted(loadSchedule);
             <input
                 v-model="day.is_working"
                 type="checkbox"
-                class="h-4 w-4 rounded border-slate-600 bg-slate-900"
+                class="h-4 w-4 rounded border-border/70 bg-card"
             />
           </td>
           <td class="px-3 py-2">
@@ -178,7 +178,7 @@ onMounted(loadSchedule);
                 v-model="day.start_time"
                 :disabled="!day.is_working"
                 type="time"
-                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+                class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
             />
           </td>
           <td class="px-3 py-2">
@@ -186,7 +186,7 @@ onMounted(loadSchedule);
                 v-model="day.end_time"
                 :disabled="!day.is_working"
                 type="time"
-                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+                class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
             />
           </td>
           <td class="px-3 py-2">
@@ -194,7 +194,7 @@ onMounted(loadSchedule);
                 v-model="day.break_start"
                 :disabled="!day.is_working"
                 type="time"
-                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+                class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
             />
           </td>
           <td class="px-3 py-2">
@@ -202,7 +202,7 @@ onMounted(loadSchedule);
                 v-model="day.break_end"
                 :disabled="!day.is_working"
                 type="time"
-                class="rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100 disabled:opacity-60"
+                class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
             />
           </td>
           <td class="px-3 py-2">
@@ -211,7 +211,7 @@ onMounted(loadSchedule);
                 type="number"
                 min="5"
                 max="240"
-                class="w-20 rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                class="w-20 rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text"
             />
           </td>
         </tr>
@@ -225,7 +225,7 @@ onMounted(loadSchedule);
       <div class="flex justify-end gap-2">
         <button
             type="button"
-            class="px-3 py-2 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
             @click="loadSchedule"
         >
           Скасувати
@@ -233,7 +233,7 @@ onMounted(loadSchedule);
         <button
             type="button"
             :disabled="saving"
-            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-slate-900 hover:bg-emerald-400 disabled:opacity-60"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
             @click="saveSchedule"
         >
           {{ saving ? 'Збереження...' : 'Зберегти' }}

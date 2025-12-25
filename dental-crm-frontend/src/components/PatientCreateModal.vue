@@ -92,12 +92,12 @@ const submit = async () => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+  <div v-if="isOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-text/20 dark:bg-bg/50 backdrop-blur-sm p-4">
+    <div class="bg-card border border-border/80 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
 
-      <div class="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
-        <h3 class="text-lg font-bold text-white">Нова анкета пацієнта</h3>
-        <button @click="$emit('close')" class="text-slate-400 hover:text-white">✕</button>
+      <div class="bg-bg p-4 border-b border-border flex justify-between items-center">
+        <h3 class="text-lg font-bold text-text">Нова анкета пацієнта</h3>
+        <button @click="$emit('close')" class="text-text/70 hover:text-text">✕</button>
       </div>
 
       <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
@@ -108,37 +108,37 @@ const submit = async () => {
         <form @submit.prevent="submit" class="space-y-4">
 
           <div v-if="!isDoctor && clinics.length > 0">
-            <label class="block text-xs uppercase text-slate-400 mb-1">Клініка</label>
-            <select v-model="form.clinic_id" required class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200">
+            <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
+            <select v-model="form.clinic_id" required class="w-full bg-bg border border-border/80 rounded p-2 text-text/90">
               <option value="" disabled>Оберіть клініку</option>
               <option v-for="c in clinics" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-slate-400 mb-1">ПІБ <span class="text-red-400">*</span></label>
-            <input v-model="form.full_name" type="text" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200" placeholder="Іванов Іван Іванович">
+            <label class="block text-xs uppercase text-text/70 mb-1">ПІБ <span class="text-red-400">*</span></label>
+            <input v-model="form.full_name" type="text" class="w-full bg-bg border border-border/80 rounded p-2 text-text/90" placeholder="Іванов Іван Іванович">
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs uppercase text-slate-400 mb-1">Телефон</label>
-              <input v-model="form.phone" @input="validatePhone" type="text" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200" placeholder="+380...">
+              <label class="block text-xs uppercase text-text/70 mb-1">Телефон</label>
+              <input v-model="form.phone" @input="validatePhone" type="text" class="w-full bg-bg border border-border/80 rounded p-2 text-text/90" placeholder="+380...">
             </div>
             <div>
-              <label class="block text-xs uppercase text-slate-400 mb-1">Дата народження</label>
-              <input v-model="form.birth_date" type="date" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200">
+              <label class="block text-xs uppercase text-text/70 mb-1">Дата народження</label>
+              <input v-model="form.birth_date" type="date" class="w-full bg-bg border border-border/80 rounded p-2 text-text/90">
             </div>
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-slate-400 mb-1">Примітка</label>
-            <textarea v-model="form.note" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200"></textarea>
+            <label class="block text-xs uppercase text-text/70 mb-1">Примітка</label>
+            <textarea v-model="form.note" rows="2" class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"></textarea>
           </div>
 
           <div class="pt-2 flex justify-end gap-3">
-            <button type="button" @click="$emit('close')" class="px-4 py-2 text-slate-400 hover:text-white">Скасувати</button>
-            <button type="submit" :disabled="loading" class="bg-emerald-600 text-white px-6 py-2 rounded hover:bg-emerald-500 disabled:opacity-50">
+            <button type="button" @click="$emit('close')" class="px-4 py-2 text-text/70 hover:text-text">Скасувати</button>
+            <button type="submit" :disabled="loading" class="bg-emerald-600 text-text px-6 py-2 rounded hover:bg-emerald-500 disabled:opacity-50">
               {{ loading ? 'Збереження...' : 'Створити анкету' }}
             </button>
           </div>

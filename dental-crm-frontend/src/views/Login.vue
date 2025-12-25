@@ -42,7 +42,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-950 relative overflow-hidden px-4">
+  <div class="min-h-screen flex items-center justify-center bg-bg relative overflow-hidden px-4">
     <!-- фон -->
     <div class="absolute inset-0 opacity-40">
       <div class="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-emerald-500/30 blur-3xl"></div>
@@ -50,21 +50,21 @@ const handleSubmit = async () => {
     </div>
 
     <div class="relative w-full max-w-md">
-      <div class="rounded-2xl bg-slate-900/70 border border-slate-700/60 p-6 shadow-2xl backdrop-blur">
+      <div class="rounded-2xl bg-card/70 border border-border/60 p-6 shadow-2xl backdrop-blur">
         <div class="mb-6">
-          <h1 class="text-2xl font-bold text-white">Dental CRM</h1>
-          <p class="text-sm text-slate-400 mt-1">Вхід до системи</p>
+          <h1 class="text-2xl font-bold text-text">Dental CRM</h1>
+          <p class="text-sm text-text/70 mt-1">Вхід до системи</p>
         </div>
 
         <form class="space-y-4" @submit.prevent="handleSubmit">
           <!-- Email -->
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">
+            <label class="block text-xs font-medium text-text/80 mb-1">
               Email
             </label>
 
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text/60">
                 <!-- mail icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M4 6h16"></path>
@@ -80,8 +80,8 @@ const handleSubmit = async () => {
                   autocomplete="username"
                   inputmode="email"
                   placeholder="name@clinic.com"
-                  class="w-full rounded-xl bg-slate-950/60 border border-slate-700/70 pl-10 pr-3 py-2.5 text-sm text-slate-100
-                       placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                  class="w-full rounded-xl bg-bg/60 border border-border/80/70 pl-10 pr-3 py-2.5 text-sm text-text
+                       placeholder:text-text/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
               />
             </div>
           </div>
@@ -89,7 +89,7 @@ const handleSubmit = async () => {
           <!-- Password -->
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label class="block text-xs font-medium text-slate-300">
+              <label class="block text-xs font-medium text-text/80">
                 Пароль
               </label>
 
@@ -113,7 +113,7 @@ const handleSubmit = async () => {
             </div>
 
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text/60">
                 <!-- lock icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 11V7a5 5 0 0 0-10 0v4"></path>
@@ -127,13 +127,13 @@ const handleSubmit = async () => {
                   required
                   autocomplete="current-password"
                   placeholder="••••••••"
-                  class="w-full rounded-xl bg-slate-950/60 border border-slate-700/70 pl-10 pr-11 py-2.5 text-sm text-slate-100
-                       placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                  class="w-full rounded-xl bg-bg/60 border border-border/80/70 pl-10 pr-11 py-2.5 text-sm text-text
+                       placeholder:text-text/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
               />
 
               <button
                   type="button"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-text/70 hover:text-text/90 hover:bg-card/60"
                   @click="showPassword = !showPassword"
                   :aria-label="showPassword ? 'Сховати пароль' : 'Показати пароль'"
               >
@@ -158,9 +158,9 @@ const handleSubmit = async () => {
               <input
                   v-model="rememberMe"
                   type="checkbox"
-                  class="h-4 w-4 rounded border-slate-600 bg-slate-950/60 text-emerald-500 focus:ring-emerald-500/50"
+                  class="h-4 w-4 rounded border-border/70 bg-bg/60 text-emerald-500 focus:ring-emerald-500/50"
               />
-              <span class="text-sm text-slate-300">Запам’ятати мене</span>
+              <span class="text-sm text-text/80">Запам’ятати мене</span>
             </label>
 
           </div>
@@ -174,7 +174,7 @@ const handleSubmit = async () => {
           <button
               type="submit"
               :disabled="loading || !email || !password"
-              class="w-full mt-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-sm
+              class="w-full mt-1 px-4 py-2.5 rounded-xl bg-emerald-500 text-text font-semibold text-sm
                    hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <svg v-if="loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -185,7 +185,7 @@ const handleSubmit = async () => {
           </button>
         </form>
 
-        <div class="mt-6 text-center text-xs text-slate-500">
+        <div class="mt-6 text-center text-xs text-text/60">
           © {{ new Date().getFullYear() }} Dental CRM
         </div>
       </div>

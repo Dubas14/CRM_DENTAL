@@ -159,10 +159,10 @@ onMounted(async () => {
     <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Обладнання</h1>
-        <p class="text-sm text-slate-400">Створення та перегляд обладнання для клініки.</p>
+        <p class="text-sm text-text/70">Створення та перегляд обладнання для клініки.</p>
       </div>
       <button
-        class="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 text-sm font-semibold hover:bg-emerald-400"
+        class="px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400"
         @click="toggleForm"
       >
         {{ showForm ? 'Приховати форму' : 'Нове обладнання' }}
@@ -170,10 +170,10 @@ onMounted(async () => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
-      <label class="text-xs uppercase text-slate-400">Клініка</label>
+      <label class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"
-        class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+        class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
       >
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
           {{ clinic.name }}
@@ -183,16 +183,16 @@ onMounted(async () => {
 
     <section
       v-if="showForm"
-      class="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4"
+      class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
     >
-      <h2 class="text-sm font-semibold text-slate-200">Додати нове обладнання</h2>
+      <h2 class="text-sm font-semibold text-text/90">Додати нове обладнання</h2>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">Клініка</label>
+          <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
           <select
             v-model="form.clinic_id"
-            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
               {{ clinic.name }}
@@ -201,33 +201,33 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-slate-400 mb-1">Назва</label>
+          <label class="block text-xs uppercase text-text/70 mb-1">Назва</label>
           <input
             v-model="form.name"
             type="text"
-            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
       </div>
 
       <div>
-        <label class="block text-xs uppercase text-slate-400 mb-1">Опис</label>
+        <label class="block text-xs uppercase text-text/70 mb-1">Опис</label>
         <textarea
           v-model="form.description"
           rows="2"
-          class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+          class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
         />
       </div>
 
-      <label class="flex items-center gap-2 text-sm text-slate-300">
-        <input v-model="form.is_active" type="checkbox" class="rounded border-slate-700 bg-slate-950" />
+      <label class="flex items-center gap-2 text-sm text-text/80">
+        <input v-model="form.is_active" type="checkbox" class="rounded border-border/80 bg-bg" />
         Активне обладнання
       </label>
 
       <div class="flex items-center justify-between gap-3">
         <span v-if="createError" class="text-sm text-red-400">❌ {{ createError }}</span>
         <button
-          class="ml-auto px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
+          class="ml-auto px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
           :disabled="creating"
           @click="createEquipment"
         >
@@ -236,14 +236,14 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-      <div v-if="loading" class="text-sm text-slate-400">Завантаження...</div>
+    <section class="rounded-xl border border-border bg-card/40 p-4">
+      <div v-if="loading" class="text-sm text-text/70">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
       <div v-else-if="editError" class="text-sm text-red-400">{{ editError }}</div>
-      <div v-else-if="!equipments.length" class="text-sm text-slate-400">Немає обладнання.</div>
+      <div v-else-if="!equipments.length" class="text-sm text-text/70">Немає обладнання.</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead class="text-slate-400 text-xs uppercase">
+          <thead class="text-text/70 text-xs uppercase">
             <tr>
               <th class="text-left py-2 px-3">Назва</th>
               <th class="text-left py-2 px-3">Опис</th>
@@ -252,34 +252,34 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="equipment in equipments" :key="equipment.id" class="border-t border-slate-800">
+            <tr v-for="equipment in equipments" :key="equipment.id" class="border-t border-border">
               <td class="py-2 px-3">
                 <input
                   v-if="editingEquipmentId === equipment.id"
                   v-model="editForm.name"
                   type="text"
-                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
-                <span v-else class="text-slate-200">{{ equipment.name }}</span>
+                <span v-else class="text-text/90">{{ equipment.name }}</span>
               </td>
               <td class="py-2 px-3">
                 <input
                   v-if="editingEquipmentId === equipment.id"
                   v-model="editForm.description"
                   type="text"
-                  class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-100"
+                  class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
-                <span v-else class="text-slate-400">{{ equipment.description || '—' }}</span>
+                <span v-else class="text-text/70">{{ equipment.description || '—' }}</span>
               </td>
               <td class="py-2 px-3">
-                <label v-if="editingEquipmentId === equipment.id" class="inline-flex items-center gap-2 text-xs text-slate-300">
+                <label v-if="editingEquipmentId === equipment.id" class="inline-flex items-center gap-2 text-xs text-text/80">
                   <input v-model="editForm.is_active" type="checkbox" class="accent-emerald-500" />
                   {{ editForm.is_active ? 'Активне' : 'Неактивне' }}
                 </label>
                 <span
                   v-else
                   class="px-2 py-1 rounded-full text-xs"
-                  :class="equipment.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'"
+                  :class="equipment.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-card/80 text-text/70'"
                 >
                   {{ equipment.is_active ? 'Активне' : 'Неактивне' }}
                 </span>
@@ -293,7 +293,7 @@ onMounted(async () => {
                   >
                     {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
                   </button>
-                  <button class="text-slate-400 hover:text-slate-200" @click="cancelEdit">Скасувати</button>
+                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">Скасувати</button>
                 </div>
                 <div v-else class="flex justify-end gap-3">
                   <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(equipment)">Редагувати</button>
