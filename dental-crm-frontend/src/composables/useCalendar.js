@@ -1,5 +1,5 @@
 // src/composables/useCalendar.js
-import { computed, onMounted, ref, watch, onUnmounted } from 'vue';
+import { computed, onMounted, ref, watch, onUnmounted, toRaw } from 'vue';
 import { debounce } from 'lodash-es';
 import apiClient from '../services/apiClient';
 import calendarApi from '../services/calendarApi';
@@ -27,7 +27,7 @@ export function useCalendar() {
     const NO_ROOM_RESOURCE_ID = 'no-room';
     const isFollowUp = ref(false);
     const allowSoftConflicts = ref(false);
-    const diagnosticsEnabled = ref(true);
+    const diagnosticsEnabled = ref(false);
     const doctorSelectionMessage = ref('');
 
     // Data
@@ -354,7 +354,7 @@ export function useCalendar() {
         selectedClinicId: selectedClinicId.value,
         clinicId: clinicId.value,
         selectedDoctorId: selectedDoctorId.value,
-        selectedDoctorIds: [...selectedDoctorIds.value],
+        selectedDoctorIds: [...toRaw(selectedDoctorIds.value)],
         filteredDoctorsCount: filteredDoctors.value.length,
         doctorsCount: doctors.value.length,
         clinicsCount: clinics.value.length,
@@ -1053,9 +1053,9 @@ export function useCalendar() {
                 const toDate = formatDateYMD(new Date(end.getTime() - 86400000));
 
                 activeRange.value = { start, end, fromDate, toDate };
-                if (diagnosticsEnabled.value) {
-                    console.info('[Calendar activeRange]', activeRange.value);
-                }
+            if (diagnosticsEnabled.value) {
+                console.info('[Calendar activeRange]', toRaw(activeRange.value));
+            }
             } else {
                 ensureRange();
             }

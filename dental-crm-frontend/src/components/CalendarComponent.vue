@@ -262,6 +262,13 @@
           <span class="text-xs text-slate-400">Оновлення слотів...</span>
         </div>
 
+        <div
+            v-if="resourceWarningMessage"
+            class="text-sm text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded-lg p-3 mb-3"
+        >
+          {{ resourceWarningMessage }}
+        </div>
+
         <!-- QCalendarScheduler -->
         <QCalendarScheduler
             ref="qcalendarRef"
@@ -285,7 +292,8 @@
             :resource-label="'title'"
             :resource-height="50"
 
-            class="flex-1 min-h-0 w-full q-calendar-custom"
+            class="flex-1 min-h-0 w-full h-full q-calendar-custom"
+            :style="{ height: '100%' }"
             @click:interval="onIntervalClick"
             @click:event="onEventClick"
             @change="onCalendarChange"
