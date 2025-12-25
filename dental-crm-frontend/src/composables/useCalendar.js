@@ -863,18 +863,25 @@ export function useCalendar() {
     };
 
     const openBooking = (info) => {
-        booking.value.start = info.start;
-        booking.value.end = info.end;
-        booking.value.patient_id = '';
-        booking.value.comment = '';
-        booking.value.waitlist_entry_id = '';
+        if (!info?.start || !info?.end) {
+            console.warn('Booking open requested with incomplete slot info.', info);
+        }
+        booking.value = {
+            start: info?.start || null,
+            end: info?.end || null,
+            patient_id: '',
+            comment: '',
+            waitlist_entry_id: '',
+        };
         bookingError.value = null;
         isBookingOpen.value = true;
     };
 
     const closeBooking = () => {
         isBookingOpen.value = false;
+        bookingLoading.value = false;
         bookingError.value = null;
+        resetBooking();
     };
 
     const createAppointment = async (payload) => {
