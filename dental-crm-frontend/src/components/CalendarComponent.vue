@@ -291,6 +291,8 @@
             @event-drag-start="onEventDragStart"
             @event-drop="onEventDrop"
             @change="onCalendarChange"
+            @event-drag-start="handleEventDragStart"
+            @event-drop="handleEventDrop"
         />
       </div>
 
@@ -467,6 +469,8 @@ const {
   selectAllow,
 
   handleDatesSet,
+  handleEventDragStart,
+  handleEventDrop,
 
   // Utility functions
   formatDateYMD,
@@ -764,8 +768,16 @@ const onEventDrop = (payload) => {
 };
 
 const onCalendarChange = (event) => {
-  if (diagnosticsEnabled.value) {
-    console.info('[QCalendarScheduler change]', event);
+  const view = event?.view || event?.new?.view || event?.old?.view;
+  const start = event?.start || event?.view?.start || event?.range?.start;
+  const end = event?.end || event?.view?.end || event?.range?.end;
+
+  if (start && end) {
+    handleDatesSet({
+      start,
+      end,
+      view,
+    });
   }
 
   const { start, end, view } = resolveCalendarRange(event);

@@ -199,6 +199,8 @@ export function useCalendar() {
                     : resourceType === 'room'
                         ? (roomId != null ? roomId : (noRoomResourceId || null))
                         : null;
+                const startAt = appt?.start_at || appt?.start;
+                const endAt = appt?.end_at || appt?.end;
 
                 return {
                     id: String(appt.id),
@@ -651,7 +653,9 @@ export function useCalendar() {
 
             if (isResourceView.value && resourceViewType.value === 'room') {
                 missingRoomAppointmentsCount.value = appts.filter(
-                    (appt) => appt?.start_at && appt?.end_at && appt?.room_id == null
+                    (appt) => (appt?.start_at || appt?.start)
+                        && (appt?.end_at || appt?.end)
+                        && appt?.room_id == null
                 ).length;
             } else {
                 missingRoomAppointmentsCount.value = 0;
@@ -989,83 +993,11 @@ export function useCalendar() {
         toastInfo(message, { timeout: 5000 });
     };
 
-    const padTime = (value) => String(value).padStart(2, '0');
-
-    const resolveDropStart = (payload, fallbackEvent) => {
-        const scope = payload?.scope || payload?.target?.scope || payload?.target || payload;
-        const timestamp = payload?.timestamp || scope?.timestamp || scope?.interval || scope;
-        const date = timestamp?.date || scope?.date || payload?.date;
-        let time = timestamp?.time || scope?.time || payload?.time;
-
-        if (!time && typeof timestamp?.hour === 'number' && typeof timestamp?.minute === 'number') {
-            time = `${padTime(timestamp.hour)}:${padTime(timestamp.minute)}`;
-        }
-
-        if (date && time) {
-            return new Date(`${date}T${time}:00`);
-        }
-
-        const startValue = payload?.start || payload?.event?.start || fallbackEvent?.start;
-        return startValue ? fromQCalendarDateTime(startValue) : null;
-    };
-
-    const resolveDropResourceId = (payload) => {
-        const scope = payload?.scope || payload?.target?.scope || payload?.target || payload;
-        const resource = payload?.resource || scope?.resource || payload?.resourceId || scope?.resourceId;
-        return resource?.id ?? resource ?? null;
-    };
-
-    const checkAppointmentSlotAvailability = async ({ appointment, start, end, resourceId }) => {
-        try {
-            if (viewMode.value === 'dayGridMonth') return true;
-
-            const startDate = formatDateYMD(start);
-            const startTime = formatTimeHM(start);
-            const duration = minutesDiff(start, end) || 30;
-
-            let doctorId = appointment?.doctor_id || selectedDoctorId.value;
-            let roomId = appointment?.room_id ?? null;
-
-            if (isResourceView.value && resourceId) {
-                if (resourceViewType.value === 'doctor') {
-                    doctorId = resourceId;
-                } else if (resourceViewType.value === 'room') {
-                    roomId = resourceId === NO_ROOM_RESOURCE_ID ? null : resourceId;
-                }
-            }
-
-            if (!doctorId) return false;
-
-            const slotRes = await fetchDoctorSlots({
-                doctorId,
-                date: startDate,
-                procedureId: appointment?.procedure_id ?? (selectedProcedureId.value ? Number(selectedProcedureId.value) : null),
-                roomId: roomId != null ? Number(roomId) : null,
-                equipmentId: appointment?.equipment_id ?? (selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null),
-                assistantId: appointment?.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
-                durationMinutes: duration,
-            });
-
-            return slotRes.set.has(startTime);
-        } catch {
-            return true;
-        }
-    };
-
-    const handleEventDragStart = async (payload) => {
+    const handleEventDragStart = (payload) => {
         const event = payload?.event || payload;
-        const appt = event?.extendedProps?.appointment;
-        if (!appt) return;
-
-        if (isResourceView.value && resourceViewType.value === 'doctor' && appt?.doctor_id) {
-            selectedDoctorId.value = String(appt.doctor_id);
+        if (!event?.extendedProps?.appointment) {
+            toastInfo('Перетягувати можна лише записи.');
         }
-
-        if (isResourceView.value && resourceViewType.value === 'room') {
-            selectedRoomId.value = appt?.room_id ? String(appt.room_id) : '';
-        }
-
-        await refreshAvailabilityBackground();
     };
 
     const handleEventDrop = async (payload) => {
@@ -1073,70 +1005,39 @@ export function useCalendar() {
         const appt = event?.extendedProps?.appointment;
         if (!appt) return;
 
-        const originalStart = fromQCalendarDateTime(event?.start);
-        const originalEnd = fromQCalendarDateTime(event?.end);
-        const duration = minutesDiff(originalStart, originalEnd) || 30;
+        const nextStart = payload?.start || event?.start;
+        const nextEnd = payload?.end || event?.end;
+        if (!nextStart || !nextEnd) return;
 
-        const newStart = resolveDropStart(payload, event);
-        if (!newStart || Number.isNaN(newStart.getTime())) {
-            toastError('Не вдалося визначити новий час для запису.');
-            await refreshCalendar();
-            return;
-        }
+        const startDate = fromQCalendarDateTime(nextStart);
+        const endDate = fromQCalendarDateTime(nextEnd);
+        if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
 
-        const newEnd = payload?.end
-            ? fromQCalendarDateTime(payload.end)
-            : new Date(newStart.getTime() + duration * 60000);
-
-        const resourceId = resolveDropResourceId(payload);
-        const canMove = await checkAppointmentSlotAvailability({
-            appointment: appt,
-            start: newStart,
-            end: newEnd,
-            resourceId,
-        });
-
-        if (!canMove) {
-            toastError('Цей час недоступний для перенесення.');
-            await refreshCalendar();
-            return;
-        }
-
+        const resourceId = payload?.resource?.id || payload?.resourceId || event?.resourceId;
         const updatePayload = {
-            start_at: newStart.toISOString(),
-            end_at: newEnd.toISOString(),
+            start_at: startDate?.toISOString?.() || startDate,
+            end_at: endDate?.toISOString?.() || endDate,
         };
 
-        if (isResourceView.value && resourceId) {
-            if (resourceViewType.value === 'doctor') {
-                updatePayload.doctor_id = Number(resourceId);
-            } else if (resourceViewType.value === 'room') {
-                updatePayload.room_id = resourceId === NO_ROOM_RESOURCE_ID ? null : Number(resourceId);
-            }
+        if (isResourceView.value && resourceViewType.value === 'doctor' && resourceId) {
+            updatePayload.doctor_id = Number(resourceId);
         }
 
-        const updateNeeded = updatePayload.doctor_id
-            ? Number(updatePayload.doctor_id) !== Number(appt?.doctor_id)
-            : updatePayload.room_id !== undefined
-                ? Number(updatePayload.room_id) !== Number(appt?.room_id)
-                : false;
-
-        const timeChanged = formatDateYMD(originalStart) !== formatDateYMD(newStart)
-            || formatTimeHM(originalStart) !== formatTimeHM(newStart);
-
-        if (!timeChanged && !updateNeeded) {
-            await refreshCalendar();
-            return;
+        if (isResourceView.value && resourceViewType.value === 'room') {
+            if (resourceId === NO_ROOM_RESOURCE_ID) {
+                updatePayload.room_id = null;
+            } else if (resourceId) {
+                updatePayload.room_id = Number(resourceId);
+            }
         }
 
         try {
             await calendarApi.updateAppointment(appt.id, updatePayload);
-            toastSuccess('Запис перенесено');
+            toastSuccess('Запис успішно перенесено');
             await refreshCalendar();
-        } catch (err) {
-            const message = err.response?.data?.message || err.message || 'Не вдалося перенести запис';
+        } catch (error) {
+            const message = error?.response?.data?.message || error?.message || 'Помилка перенесення запису';
             toastError(message);
-            await refreshCalendar();
         }
     };
 
@@ -1229,6 +1130,11 @@ export function useCalendar() {
         logDiagnostics('selectedSpecializations');
     });
 
+    watch(filteredDoctors, () => {
+        syncSelectedDoctorWithClinic();
+        logDiagnostics('filteredDoctors');
+    });
+
     watch(selectedDoctorId, async () => {
         if (selectedDoctorId.value && !selectedDoctorIds.value.includes(String(selectedDoctorId.value))) {
             selectedDoctorIds.value = [...new Set([...selectedDoctorIds.value, String(selectedDoctorId.value)])];
@@ -1251,6 +1157,10 @@ export function useCalendar() {
         if (isResourceView.value && resourceViewType.value === 'room') {
             await refreshCalendar();
         }
+    });
+
+    watch(rooms, () => {
+        syncSelectedRooms();
     });
 
     watch(resourceViewType, async () => {
@@ -1361,6 +1271,8 @@ export function useCalendar() {
         handleEventDragStart,
         handleEventDrop,
         selectAllow,
+        handleEventDragStart,
+        handleEventDrop,
 
         handleDatesSet,
         cleanup,
