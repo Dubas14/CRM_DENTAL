@@ -26,6 +26,8 @@ export function useCalendar() {
     const resourceViewType = ref('doctor');
     const isFollowUp = ref(false);
     const allowSoftConflicts = ref(false);
+    const diagnosticsEnabled = ref(true);
+    const doctorSelectionMessage = ref('');
 
     // Data
     const doctors = ref([]);
@@ -342,6 +344,33 @@ export function useCalendar() {
         return base.filter((doctor) => selectedSpecializations.value.includes(doctor.specialization));
     });
 
+    const diagnosticsSnapshot = computed(() => ({
+        selectedClinicId: selectedClinicId.value,
+        clinicId: clinicId.value,
+        selectedDoctorId: selectedDoctorId.value,
+        selectedDoctorIds: [...selectedDoctorIds.value],
+        filteredDoctorsCount: filteredDoctors.value.length,
+        doctorsCount: doctors.value.length,
+        clinicsCount: clinics.value.length,
+    }));
+
+    const logDiagnostics = (label) => {
+        if (!diagnosticsEnabled.value) return;
+        console.info('[Calendar diagnostics]', label, diagnosticsSnapshot.value);
+    };
+
+    const updateDoctorSelectionMessage = (context = 'unknown') => {
+        if (!doctors.value.length) {
+            doctorSelectionMessage.value = 'Лікарів не знайдено.';
+        } else if (clinicId.value && !filteredDoctors.value.length) {
+            doctorSelectionMessage.value = 'Для вибраної клініки немає лікарів.';
+        } else {
+            doctorSelectionMessage.value = '';
+        }
+
+        logDiagnostics(`doctor-selection:${context}`);
+    };
+
     const specializations = computed(() => {
         const list = new Set();
         doctors.value.forEach((doctor) => {
@@ -368,6 +397,7 @@ export function useCalendar() {
             selectedDoctorIds.value = [];
             events.value = [];
             availabilityBgEvents.value = [];
+            updateDoctorSelectionMessage('sync-empty');
             return;
         }
 
@@ -383,6 +413,8 @@ export function useCalendar() {
         } else {
             selectedDoctorIds.value = synced;
         }
+
+        updateDoctorSelectionMessage('sync');
     };
 
     const syncSelectedRooms = () => {
@@ -404,9 +436,12 @@ export function useCalendar() {
         try {
             const { data } = await apiClient.get('/doctors');
             doctors.value = Array.isArray(data) ? data : (data?.data || []);
+            syncSelectedDoctorWithClinic();
+            logDiagnostics('fetchDoctors');
         } catch (error) {
             console.error('Помилка завантаження лікарів:', error);
             doctors.value = [];
+            updateDoctorSelectionMessage('fetchDoctors-error');
         }
     };
 
@@ -453,6 +488,9 @@ export function useCalendar() {
             if (!selectedClinicId.value && clinics.value.length) {
                 selectedClinicId.value = defaultClinicId.value || clinics.value[0]?.id || '';
             }
+
+            syncSelectedDoctorWithClinic();
+            logDiagnostics('fetchClinics');
         } catch (error) {
             console.error('Помилка завантаження клінік:', error);
             clinics.value = [];
@@ -561,7 +599,9 @@ export function useCalendar() {
 
     const resolveDoctorIdsForEvents = () => {
         if (isResourceView.value && resourceViewType.value === 'doctor') {
-            return selectedDoctorIds.value.length ? selectedDoctorIds.value : [];
+            return selectedDoctorIds.value.length
+                ? selectedDoctorIds.value
+                : (selectedDoctorId.value ? [selectedDoctorId.value] : []);
         }
 
         if (isResourceView.value && resourceViewType.value === 'room') {
@@ -962,6 +1002,7 @@ export function useCalendar() {
             await Promise.all([fetchDoctors(), fetchProcedures(), fetchClinics()]);
 
             syncSelectedDoctorWithClinic();
+            updateDoctorSelectionMessage('initialize');
 
             await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
             await refreshCalendar();
@@ -991,16 +1032,19 @@ export function useCalendar() {
         selectedEquipmentId.value = '';
         selectedAssistantId.value = '';
         syncSelectedDoctorWithClinic();
+        logDiagnostics('selectedClinicId');
     });
 
     watch(selectedSpecializations, () => {
         syncSelectedDoctorWithClinic();
+        logDiagnostics('selectedSpecializations');
     });
 
     watch(selectedDoctorId, async () => {
         if (selectedDoctorId.value && !selectedDoctorIds.value.includes(String(selectedDoctorId.value))) {
             selectedDoctorIds.value = [...new Set([...selectedDoctorIds.value, String(selectedDoctorId.value)])];
         }
+        logDiagnostics('selectedDoctorId');
         await refreshCalendar();
     });
 
@@ -1011,6 +1055,7 @@ export function useCalendar() {
             }
             await refreshCalendar();
         }
+        logDiagnostics('selectedDoctorIds');
     });
 
     watch(selectedRoomIds, async () => {
@@ -1025,6 +1070,7 @@ export function useCalendar() {
         } else {
             syncSelectedDoctorWithClinic();
         }
+        logDiagnostics('resourceViewType');
         await refreshCalendar();
     });
 
@@ -1032,7 +1078,13 @@ export function useCalendar() {
         syncSelectedDoctorWithClinic();
         await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants(), fetchProcedures()]);
         await refreshCalendar();
+        logDiagnostics('clinicId');
     });
+
+    watch(
+        [selectedClinicId, () => doctors.value.length, () => filteredDoctors.value.length],
+        () => updateDoctorSelectionMessage('watch'),
+    );
 
     watch(selectedProcedureId, () => {
         const p = procedures.value.find((x) => x.id === Number(selectedProcedureId.value));
@@ -1070,6 +1122,8 @@ export function useCalendar() {
         resourceViewType,
         isFollowUp,
         allowSoftConflicts,
+        diagnosticsEnabled,
+        doctorSelectionMessage,
 
         // Data collections
         doctors,
@@ -1080,6 +1134,7 @@ export function useCalendar() {
         assistants,
         clinics,
         specializations,
+        diagnosticsSnapshot,
 
         // Computed properties (ЕКСПОРТУЄМО!)
         baseView, // ← ДОДАНО
