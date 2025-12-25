@@ -57,19 +57,20 @@ const isLoginPage = computed(() => route.name === 'login');
 </script>
 
 <template>
-  <!-- Якщо це сторінка логіна - просто рендеримо її на весь екран -->
-  <div v-if="isLoginPage" :class="['min-h-screen font-sans selection:bg-emerald-500/30', themeClass]">
-    <router-view />
-  </div>
+  <div :class="['min-h-screen font-sans selection:bg-emerald-500/30', themeClass]">
+    <!-- Якщо це сторінка логіна - просто рендеримо її на весь екран -->
+    <div v-if="isLoginPage" class="min-h-screen">
+      <router-view />
+    </div>
 
-  <!-- Основний лейаут -->
-  <div v-else :class="['flex min-h-screen font-sans selection:bg-emerald-500/30', themeClass]">
+    <!-- Основний лейаут -->
+    <div v-else class="flex min-h-screen">
 
-    <!-- SIDEBAR (Бокова панель) -->
-    <aside
-        class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 flex flex-col"
-        :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
-    >
+      <!-- SIDEBAR (Бокова панель) -->
+      <aside
+          class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 flex flex-col"
+          :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
+      >
       <!-- Лого -->
       <div class="h-16 flex items-center px-6 border-b border-slate-800">
         <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-emerald-500/20">
@@ -248,12 +249,13 @@ const isLoginPage = computed(() => route.name === 'login');
 
     </main>
 
-    <!-- Затемнення для мобільного меню -->
-    <div
-        v-if="isMobileMenuOpen"
-        @click="isMobileMenuOpen = false"
-        class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-    ></div>
+      <!-- Затемнення для мобільного меню -->
+      <div
+          v-if="isMobileMenuOpen"
+          @click="isMobileMenuOpen = false"
+          class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+      ></div>
+    </div>
+    <ToastContainer />
   </div>
-  <ToastContainer />
 </template>
