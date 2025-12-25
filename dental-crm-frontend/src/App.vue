@@ -18,7 +18,9 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-vue-next';
 
 const { user, logout } = useAuth();
@@ -29,6 +31,11 @@ const route = useRoute();
 const isSidebarOpen = ref(true); // Стан меню на десктопі
 const isMobileMenuOpen = ref(false); // Для мобілок
 
+const defaultTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
+const theme = ref(defaultTheme || 'dark');
+const isDarkTheme = computed(() => theme.value === 'dark');
+const themeClass = computed(() => (isDarkTheme.value ? 'theme-dark dark' : 'theme-light'));
+
 // Активний клас для меню
 const activeClass = "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30";
 const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-slate-100";
@@ -38,18 +45,25 @@ const handleLogout = async () => {
   router.push({ name: 'login' });
 };
 
+const toggleTheme = () => {
+  theme.value = isDarkTheme.value ? 'light' : 'dark';
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('theme', theme.value);
+  }
+};
+
 // Якщо ми на сторінці логіна - не показуємо лейаут
 const isLoginPage = computed(() => route.name === 'login');
 </script>
 
 <template>
   <!-- Якщо це сторінка логіна - просто рендеримо її на весь екран -->
-  <div v-if="isLoginPage" class="bg-slate-950 min-h-screen text-slate-200">
+  <div v-if="isLoginPage" :class="['min-h-screen font-sans selection:bg-emerald-500/30', themeClass]">
     <router-view />
   </div>
 
   <!-- Основний лейаут -->
-  <div v-else class="flex min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-emerald-500/30">
+  <div v-else :class="['flex min-h-screen font-sans selection:bg-emerald-500/30', themeClass]">
 
     <!-- SIDEBAR (Бокова панель) -->
     <aside
@@ -203,6 +217,15 @@ const isLoginPage = computed(() => route.name === 'login');
 
         <!-- Профіль користувача -->
         <div class="flex items-center gap-4">
+          <button
+            type="button"
+            class="theme-toggle-button"
+            :aria-label="isDarkTheme ? 'Увімкнути світлу тему' : 'Увімкнути темну тему'"
+            @click="toggleTheme"
+          >
+            <Sun v-if="!isDarkTheme" size="18" />
+            <Moon v-else size="18" />
+          </button>
           <div class="text-right hidden sm:block">
             <p class="text-sm font-bold text-white leading-none">{{ user?.first_name }} {{ user?.last_name }}</p>
             <p class="text-xs text-slate-500 mt-1">{{ isDoctor ? 'Лікар' : (isSuperAdmin ? 'Адміністратор' : 'Користувач') }}</p>
@@ -234,31 +257,3 @@ const isLoginPage = computed(() => route.name === 'login');
   </div>
   <ToastContainer />
 </template>
-
-<style>
-/* Глобальні стилі для скролбару */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #0f172a;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Анімація переходу сторінок */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>
