@@ -379,13 +379,25 @@ export function useCalendar() {
         return Array.from(list).sort((a, b) => a.localeCompare(b));
     });
 
+    const eventResourceIds = computed(() => {
+        const ids = new Set();
+        events.value.forEach((event) => {
+            if (event?.resourceId) ids.add(String(event.resourceId));
+        });
+        return Array.from(ids);
+    });
+
     const selectedDoctorResources = computed(() => {
-        const ids = new Set(selectedDoctorIds.value.map(id => String(id)));
+        const ids = eventResourceIds.value.length
+            ? new Set(eventResourceIds.value)
+            : new Set(selectedDoctorIds.value.map(id => String(id)));
         return doctors.value.filter((doctor) => ids.has(String(doctor.id)));
     });
 
     const selectedRoomResources = computed(() => {
-        const ids = new Set(selectedRoomIds.value.map(id => String(id)));
+        const ids = eventResourceIds.value.length
+            ? new Set(eventResourceIds.value)
+            : new Set(selectedRoomIds.value.map(id => String(id)));
         return rooms.value.filter((room) => ids.has(String(room.id)));
     });
 
