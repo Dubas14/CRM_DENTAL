@@ -299,6 +299,11 @@ const calendarResources = computed(() => {
   }));
 });
 
+const displayResources = computed(() => {
+  if (calendarResources.value.length) return calendarResources.value;
+  return [{ id: 'placeholder', title: 'Розклад' }];
+});
+
 const calendarEvents = computed(() => {
   const sources = [...availabilityBgEvents.value, ...calendarBlocks.value, ...events.value];
   return sources.map((event) => ({
@@ -698,7 +703,7 @@ onMounted(() => {
             ref="qcalendarRef"
             v-model="selectedDate"
             :view="calendarView"
-            :resources="calendarResources"
+            :resources="displayResources"
             :events="calendarEvents"
 
             dark

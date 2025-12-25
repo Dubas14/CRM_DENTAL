@@ -296,10 +296,25 @@ export function useCalendar() {
         return Array.from(map.values());
     };
 
+    const normalizeProcedureName = (proc) => (proc?.name || '').trim().toLowerCase();
+
+    const dedupeProcedures = (items) => {
+        const byId = dedupeByKey(items, (proc) => proc.id ?? proc.procedure_id ?? proc.name);
+        const seenNames = new Set();
+        return byId.filter((proc) => {
+            const nameKey = normalizeProcedureName(proc);
+            if (!nameKey) return true;
+            if (seenNames.has(nameKey)) return false;
+            seenNames.add(nameKey);
+            return true;
+        });
+    };
+
     const fetchProcedures = async () => {
-        const { data } = await apiClient.get('/procedures');
+        const params = clinicId.value ? { clinic_id: clinicId.value } : undefined;
+        const { data } = await apiClient.get('/procedures', { params });
         const list = Array.isArray(data) ? data : (data?.data || []);
-        procedures.value = dedupeByKey(list, (proc) => proc.id ?? proc.procedure_id ?? proc.name);
+        procedures.value = dedupeProcedures(list);
     };
 
     const fetchClinics = async () => {
@@ -952,7 +967,7 @@ export function useCalendar() {
 
     watch(clinicId, async () => {
         syncSelectedDoctorWithClinic();
-        await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants()]);
+        await Promise.all([fetchRooms(), fetchEquipments(), fetchAssistants(), fetchProcedures()]);
         await refreshAvailabilityBackground();
     });
 
