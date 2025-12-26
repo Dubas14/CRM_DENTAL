@@ -9,7 +9,11 @@
       >
         {{ formattedLabel }}
       </button>
-      <div ref="pickerRef" class="absolute left-0 top-full z-20 mt-2"></div>
+      <div
+        ref="pickerRef"
+        class="absolute left-0 top-full z-20 mt-2"
+        v-show="isPickerOpen"
+      ></div>
     </div>
 
     <div class="flex items-center gap-2">
@@ -55,6 +59,7 @@ const emit = defineEmits(['select-date', 'prev', 'next', 'today']);
 const pickerRef = ref(null);
 const inputRef = ref(null);
 const pickerWrapper = ref(null);
+const isPickerOpen = ref(false);
 let pickerInstance = null;
 
 const formatMonthLabel = (date) => {
@@ -69,12 +74,19 @@ const formatMonthLabel = (date) => {
 const formattedLabel = computed(() => formatMonthLabel(props.currentDate));
 
 const openPicker = () => {
-  pickerInstance?.open?.();
+  isPickerOpen.value = !isPickerOpen.value;
 };
 
 const handleSelect = (date) => {
   if (!date) return;
   emit('select-date', new Date(date.getFullYear(), date.getMonth(), 1));
+  isPickerOpen.value = false;
+};
+
+const handleDocumentClick = (event) => {
+  const wrapper = pickerWrapper.value;
+  if (!wrapper || wrapper.contains(event.target)) return;
+  isPickerOpen.value = false;
 };
 
 onMounted(() => {
@@ -88,13 +100,14 @@ onMounted(() => {
     input: {
       element: inputRef.value,
     },
-    openers: [pickerWrapper.value],
-    autoClose: true,
+    showAlways: true,
   });
 
   pickerInstance.on('change', () => {
     handleSelect(pickerInstance.getDate());
   });
+
+  document.addEventListener('click', handleDocumentClick);
 });
 
 watch(
@@ -106,6 +119,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick);
   pickerInstance?.destroy();
 });
 </script>
