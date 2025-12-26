@@ -433,7 +433,7 @@ const goToPage = async (page) => {
             :disabled="safeCurrentPage === 1"
             @click="goToPage(safeCurrentPage - 1)"
           >
-            Prev
+            Попередня
           </button>
 
           <button
@@ -453,7 +453,7 @@ const goToPage = async (page) => {
             :disabled="safeCurrentPage === pageCount"
             @click="goToPage(safeCurrentPage + 1)"
           >
-            Next
+            Наступна
           </button>
         </div>
       </div>

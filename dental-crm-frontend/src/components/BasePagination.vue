@@ -6,7 +6,7 @@
       :disabled="safeCurrentPage === 1"
       @click="goToPage(safeCurrentPage - 1)"
     >
-      Prev
+      Попередня
     </button>
 
     <button
@@ -26,7 +26,7 @@
       :disabled="safeCurrentPage === totalPages"
       @click="goToPage(safeCurrentPage + 1)"
     >
-      Next
+      Наступна
     </button>
   </div>
 </template>
