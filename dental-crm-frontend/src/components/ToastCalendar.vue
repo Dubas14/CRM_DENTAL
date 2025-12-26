@@ -11,6 +11,7 @@ import '../assets/css/toast-calendar-theme.css'
 import { defineExpose } from 'vue'
 
 const DAY_NAMES = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const HOUR_FORMAT = 'HH:mm';
 
 const ukLocale = {
   week: {
@@ -79,6 +80,8 @@ const formatTime = (time) => {
   return `${hours}:${minutes}`;
 };
 
+const formatTemplateTime = ({ time }) => formatTime(time);
+
 defineExpose({
   next: () => calendarInstance?.next(),
   prev: () => calendarInstance?.prev(),
@@ -106,10 +109,10 @@ onMounted(() => {
       hourStart: 8,
       hourEnd: 22,
       dayNames: DAY_NAMES,
-      timegridDisplayTime: formatTime,
+      hourFormat: HOUR_FORMAT,
     },
     day: {
-      timegridDisplayTime: formatTime,
+      hourFormat: HOUR_FORMAT,
     },
     month: {
       dayNames: DAY_NAMES,
@@ -117,6 +120,11 @@ onMounted(() => {
     templates: {
       weekDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
       monthDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
+      milestoneTitle: () => 'Етапи',
+      taskTitle: () => 'Завдання',
+      alldayTitle: () => 'Весь день',
+      timegridDisplayPrimaryTime: formatTemplateTime,
+      timegridDisplayTime: formatTemplateTime,
     },
     useDetailPopup: false,
     useFormPopup: false,
