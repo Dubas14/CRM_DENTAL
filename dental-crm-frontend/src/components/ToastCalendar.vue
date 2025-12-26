@@ -144,7 +144,6 @@ onMounted(() => {
   })
 
   calendarInstance.on('beforeUpdateEvent', (info) => {
-    info?.stop?.()
     emit('beforeUpdateEvent', info)
   })
 
