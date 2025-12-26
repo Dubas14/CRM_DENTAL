@@ -72,6 +72,13 @@
         @save="handleSaveEvent"
         @close="handleCloseModal"
     />
+
+    <AppointmentModal
+        :is-open="isAppointmentModalOpen"
+        :appointment="selectedAppointment"
+        @close="handleCloseAppointmentModal"
+        @saved="handleAppointmentSaved"
+    />
   </div>
 </template>
 
@@ -80,6 +87,7 @@ import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
+import AppointmentModal from '../components/AppointmentModal.vue'
 import calendarApi from '../services/calendarApi'
 import clinicApi from '../services/clinicApi'
 import { useToast } from '../composables/useToast'
@@ -91,6 +99,8 @@ const view = ref('week')
 const currentDate = ref(new Date())
 const isEventModalOpen = ref(false)
 const activeEvent = ref({})
+const isAppointmentModalOpen = ref(false)
+const selectedAppointment = ref(null)
 
 const events = ref([])
 const clinics = ref([])
@@ -328,6 +338,15 @@ const handleCloseModal = () => {
   activeEvent.value = {}
 }
 
+const handleCloseAppointmentModal = () => {
+  isAppointmentModalOpen.value = false
+  selectedAppointment.value = null
+}
+
+const handleAppointmentSaved = () => {
+  fetchEvents()
+}
+
 const handleSelectDateTime = (info) => {
   const start = toDate(info?.start)
   const end = toDate(info?.end)
@@ -338,8 +357,9 @@ const handleClickEvent = (info) => {
   const event = info?.event
   if (!event) return
 
-  if (event.raw && event.raw.patient_id) {
-    toastSuccess(`Це запис пацієнта: ${event.title}`);
+  if (event.raw && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) {
+    selectedAppointment.value = event.raw
+    isAppointmentModalOpen.value = true
     return;
   }
   openEventModal(createDefaultEvent({ event, start: event.start, end: event.end }))
@@ -371,7 +391,10 @@ onMounted(async () => {
   }, 100)
 })
 
-watch(view, handleCloseModal)
+watch(view, () => {
+  handleCloseModal()
+  handleCloseAppointmentModal()
+})
 watch(currentClinicId, () => {
   fetchEvents()
 })
