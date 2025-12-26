@@ -88,6 +88,8 @@ defineExpose({
   setDate: (date) => calendarInstance?.setDate?.(date),
   changeView: (view) => calendarInstance?.changeView(view),
   getDate: () => calendarInstance?.getDate?.(),
+  updateEvent: (eventId, calendarId, changes) => calendarInstance?.updateEvent?.(eventId, calendarId, changes),
+  createEvents: (events) => calendarInstance?.createEvents?.(events),
 })
 
 const props = defineProps({
@@ -96,6 +98,8 @@ const props = defineProps({
     default: () => [],
   },
 })
+
+const emit = defineEmits(['selectDateTime', 'clickEvent', 'beforeUpdateEvent'])
 
 const calendarEl = ref(null)
 let calendarInstance = null
@@ -135,6 +139,18 @@ onMounted(() => {
     useFormPopup: false,
   });
 
+  calendarInstance.on('selectDateTime', (info) => {
+    emit('selectDateTime', info)
+  })
+
+  calendarInstance.on('clickEvent', (info) => {
+    emit('clickEvent', info)
+  })
+
+  calendarInstance.on('beforeUpdateEvent', (info) => {
+    info?.stop?.()
+    emit('beforeUpdateEvent', info)
+  })
 
   if (props.events.length) {
     calendarInstance.createEvents(props.events)
