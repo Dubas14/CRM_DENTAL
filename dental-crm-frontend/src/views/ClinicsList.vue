@@ -2,8 +2,8 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
-import ToastGrid from '../components/ToastGrid.vue';
-import ToastPagination from '../components/ToastPagination.vue';
+import BaseGrid from '../components/BaseGrid.vue';
+import BasePagination from '../components/BasePagination.vue';
 
 const { user } = useAuth();
 const canManageClinics = computed(() => user.value?.global_role === 'super_admin');
@@ -308,10 +308,10 @@ watch(
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <ToastGrid :columns="gridColumns" :data="pagedClinics" />
+        <BaseGrid :columns="gridColumns" :data="pagedClinics" />
       </div>
 
-      <ToastPagination
+      <BasePagination
         v-show="totalItems > pageSize"
         v-model:currentPage="currentPage"
         :total-items="totalItems"
