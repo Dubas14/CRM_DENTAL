@@ -145,6 +145,8 @@ const save = () => {
 onMounted(() => {
   ensureUkLocale();
 
+  syncFromProps();
+
   datePickerInstance = new DatePicker(datePickerRef.value, {
     date: form.value.date,
     language: 'uk',
