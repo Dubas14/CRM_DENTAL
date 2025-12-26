@@ -49,12 +49,13 @@
 </template>
 
 <script setup>
-import { onMounted, nextTick, ref, watch } from 'vue'
+import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
 import calendarApi from '../services/calendarApi'
 import { useToast } from '../composables/useToast'
+import { useAuth } from '../composables/useAuth'
 
 
 const calendarRef = ref(null)
@@ -64,6 +65,7 @@ const isEventModalOpen = ref(false)
 const activeEvent = ref({})
 const pendingUpdateInfo = ref(null)
 const { error: toastError, success: toastSuccess } = useToast()
+const { user } = useAuth()
 
 const events = ref([])
 
@@ -94,10 +96,19 @@ const formatDateTime = (date) => {
   return `${year}-${month}-${day}T${hour}:${minute}:00`
 }
 
+const clinicId = computed(
+  () =>
+    user.value?.clinic_id ||
+    user.value?.doctor?.clinic_id ||
+    user.value?.doctor?.clinic?.id ||
+    user.value?.clinics?.[0]?.clinic_id ||
+    ''
+)
+
 const mapApiEventToCalendar = (event) => ({
   id: event.id,
   calendarId: 'main',
-  title: event.title ?? event.comment ?? event.note ?? '',
+  title: event.title ?? event.note ?? event.type ?? event.comment ?? '',
   category: 'time',
   start: event.start ?? event.start_at,
   end: event.end ?? event.end_at,
@@ -111,17 +122,21 @@ const getRangeParams = () => {
   const start = calendarRef.value?.getDateRangeStart?.()
   const end = calendarRef.value?.getDateRangeEnd?.()
   return {
-    start: formatDateOnly(start),
-    end: formatDateOnly(end),
+    from: formatDateOnly(start),
+    to: formatDateOnly(end),
   }
 }
 
 const fetchEvents = async () => {
-  const { start, end } = getRangeParams()
-  if (!start || !end) return
+  const { from, to } = getRangeParams()
+  if (!from || !to || !clinicId.value) return
 
   try {
-    const { data } = await calendarApi.getCalendarBlocks({ start, end })
+    const { data } = await calendarApi.getCalendarBlocks({
+      clinic_id: clinicId.value,
+      from,
+      to,
+    })
     const blocks = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
     events.value = blocks.map(mapApiEventToCalendar)
     calendarRef.value?.clear?.()
