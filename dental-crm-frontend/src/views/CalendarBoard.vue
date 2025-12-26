@@ -210,6 +210,7 @@ const fetchEvents = async () => {
       const s = toDate(appt.start_at);
       const e = toDate(appt.end_at);
       if (!s || !e) return null;
+      const isDone = appt.status === 'done';
       return {
         id: String(appt.id),
         calendarId: 'main',
@@ -217,10 +218,10 @@ const fetchEvents = async () => {
         category: 'time',
         start: s,
         end: e,
-        isReadOnly: true,
-        backgroundColor: '#10b981',
-        borderColor: '#059669',
-        color: '#fff',
+        isReadOnly: isDone,
+        backgroundColor: isDone ? '#dbeafe' : '#10b981',
+        borderColor: isDone ? '#93c5fd' : '#059669',
+        color: isDone ? '#1e3a8a' : '#fff',
         raw: appt
       }
     }).filter(Boolean);
@@ -365,17 +366,38 @@ const handleClickEvent = (info) => {
   openEventModal(createDefaultEvent({ event, start: event.start, end: event.end }))
 }
 
-const handleBeforeUpdateEvent = (info) => {
+const handleBeforeUpdateEvent = async (info) => {
   const event = info?.event
   if (!event) return
 
-  if (event.raw && event.raw.patient_id) {
-    toastError('Редагування записів пацієнтів тут недоступне');
-    return;
+  const nextStart = toDate(info?.changes?.start ?? event.start)
+  const nextEnd = toDate(info?.changes?.end ?? event.end)
+
+  if (!nextStart || !nextEnd) {
+    toastError('Не вдалося оновити час запису');
+    return
   }
 
-  const nextStart = info?.changes?.start ?? event.start
-  const nextEnd = info?.changes?.end ?? event.end
+  if (event.raw && event.raw.patient_id) {
+    if (event.raw.status === 'done') {
+      toastError('Завершений запис не можна переносити');
+      return
+    }
+
+    try {
+      await calendarApi.updateAppointment(event.id, {
+        start_at: formatDateTime(nextStart),
+        end_at: formatDateTime(nextEnd),
+      })
+      toastSuccess('Запис перенесено')
+      fetchEvents()
+    } catch (error) {
+      console.error(error)
+      toastError('Не вдалося перенести запис')
+    }
+    return
+  }
+
   openEventModal(createDefaultEvent({ event, start: nextStart, end: nextEnd }))
 }
 
