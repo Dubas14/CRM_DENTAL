@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
+import ToastGrid from '../components/ToastGrid.vue';
+import ToastPagination from '../components/ToastPagination.vue';
 
 const { user } = useAuth();
 const canManageClinics = computed(() => user.value?.global_role === 'super_admin');
@@ -9,6 +11,51 @@ const canManageClinics = computed(() => user.value?.global_role === 'super_admin
 const clinics = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const pageSize = 10;
+const currentPage = ref(1);
+
+const gridData = computed(() => clinics.value);
+const totalItems = computed(() => gridData.value.length);
+const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)));
+const pagedClinics = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return gridData.value.slice(start, start + pageSize);
+});
+
+const gridColumns = [
+  {
+    header: 'ID',
+    name: 'id',
+    sortable: true,
+  },
+  {
+    header: 'Назва',
+    name: 'name',
+    sortable: true,
+    filter: 'text',
+  },
+  {
+    header: 'Місто',
+    name: 'city',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ value }) => value || '—',
+  },
+  {
+    header: 'Адреса',
+    name: 'address',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ value }) => value || '—',
+  },
+  {
+    header: 'Телефон',
+    name: 'phone',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ value }) => value || '—',
+  },
+];
 
 // --- стан форми створення ---
 const showForm = ref(false);
@@ -33,6 +80,7 @@ const loadClinics = async () => {
   try {
     const { data } = await apiClient.get('/clinics');
     clinics.value = data;
+    currentPage.value = 1;
   } catch (e) {
     console.error(e);
     error.value =
@@ -83,6 +131,15 @@ const createClinic = async () => {
 };
 
 onMounted(loadClinics);
+
+watch(
+  () => totalItems.value,
+  () => {
+    if (currentPage.value > pageCount.value) {
+      currentPage.value = pageCount.value;
+    }
+  }
+);
 </script>
 
 <template>
@@ -251,39 +308,16 @@ onMounted(loadClinics);
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <table class="min-w-full text-sm">
-          <thead class="bg-card/80 text-text/80">
-          <tr>
-            <th class="px-4 py-2 text-left">ID</th>
-            <th class="px-4 py-2 text-left">Назва</th>
-            <th class="px-4 py-2 text-left">Місто</th>
-            <th class="px-4 py-2 text-left">Адреса</th>
-            <th class="px-4 py-2 text-left">Телефон</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr
-              v-for="clinic in clinics"
-              :key="clinic.id"
-              class="border-t border-border hover:bg-card/80/40"
-          >
-            <td class="px-4 py-2 text-text/70">#{{ clinic.id }}</td>
-            <td class="px-4 py-2 font-medium">
-              {{ clinic.name }}
-            </td>
-            <td class="px-4 py-2">
-              {{ clinic.city || '—' }}
-            </td>
-            <td class="px-4 py-2 text-text/80">
-              {{ clinic.address || '—' }}
-            </td>
-            <td class="px-4 py-2 text-text/80">
-              {{ clinic.phone || '—' }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
+        <ToastGrid :columns="gridColumns" :data="pagedClinics" />
       </div>
+
+      <ToastPagination
+        v-if="totalItems > pageSize"
+        v-model:currentPage="currentPage"
+        :total-items="totalItems"
+        :items-per-page="pageSize"
+        class="mt-4"
+      />
     </div>
   </div>
 </template>

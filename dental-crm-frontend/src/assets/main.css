@@ -1,5 +1,10 @@
 @import './css/app.css';
 @import './css/components.css';
+@import './css/toast-grid-theme.css';
+@import 'tui-date-picker/dist/tui-date-picker.css';
+@import 'tui-time-picker/dist/tui-time-picker.css';
+@import 'tui-grid/dist/tui-grid.css';
+@import 'tui-pagination/dist/tui-pagination.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
