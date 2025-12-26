@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import DatePicker from 'tui-date-picker';
 import { ensureUkLocale } from '../utils/toastUiLocale';
 
@@ -61,6 +61,7 @@ const inputRef = ref(null);
 const pickerWrapper = ref(null);
 const isPickerOpen = ref(false);
 let pickerInstance = null;
+let isSyncing = false;
 
 const formatMonthLabel = (date) => {
   const formatter = new Intl.DateTimeFormat('uk-UA', {
@@ -75,12 +76,30 @@ const formattedLabel = computed(() => formatMonthLabel(props.currentDate));
 
 const openPicker = () => {
   isPickerOpen.value = !isPickerOpen.value;
+  if (isPickerOpen.value && pickerInstance) {
+    const current = pickerInstance.getDate();
+    if (
+      !current ||
+      current.getFullYear() !== props.currentDate.getFullYear() ||
+      current.getMonth() !== props.currentDate.getMonth()
+    ) {
+      isSyncing = true;
+      pickerInstance.setDate(props.currentDate);
+    }
+  }
 };
 
 const handleSelect = (date) => {
   if (!date) return;
   emit('select-date', new Date(date.getFullYear(), date.getMonth(), 1));
   isPickerOpen.value = false;
+};
+
+const handleYearNavigation = (offset) => {
+  if (!pickerInstance) return;
+  const current = pickerInstance.getDate() || props.currentDate;
+  const nextDate = new Date(current.getFullYear() + offset, current.getMonth(), 1);
+  pickerInstance.setDate(nextDate);
 };
 
 const handleDocumentClick = (event) => {
@@ -104,19 +123,23 @@ onMounted(() => {
   });
 
   pickerInstance.on('change', () => {
+    if (isSyncing) {
+      isSyncing = false;
+      return;
+    }
     handleSelect(pickerInstance.getDate());
+  });
+
+  pickerInstance.on('click:prevYear', () => {
+    handleYearNavigation(-1);
+  });
+
+  pickerInstance.on('click:nextYear', () => {
+    handleYearNavigation(1);
   });
 
   document.addEventListener('click', handleDocumentClick);
 });
-
-watch(
-  () => props.currentDate,
-  (date) => {
-    if (!pickerInstance || !date) return;
-    pickerInstance.setDate(date);
-  }
-);
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick);
