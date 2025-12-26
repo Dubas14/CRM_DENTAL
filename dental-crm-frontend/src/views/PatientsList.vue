@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
-import ToastGrid from '../components/ToastGrid.vue';
-import ToastPagination from '../components/ToastPagination.vue';
+import BaseGrid from '../components/BaseGrid.vue';
+import BasePagination from '../components/BasePagination.vue';
 
 const patients = ref([]);
 const clinics = ref([]);
@@ -394,10 +394,10 @@ watch(
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <ToastGrid :columns="gridColumns" :data="pagedPatients" />
+        <BaseGrid :columns="gridColumns" :data="pagedPatients" />
       </div>
 
-      <ToastPagination
+      <BasePagination
         v-show="totalItems > pageSize"
         v-model:currentPage="currentPage"
         :total-items="totalItems"

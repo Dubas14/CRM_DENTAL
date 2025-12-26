@@ -1,4 +1,4 @@
-.toastui-grid-container {
+.base-grid {
   background-color: rgb(var(--bg-card));
   color: rgb(var(--text-main));
   border: 1px solid rgb(var(--border-soft));
@@ -6,60 +6,41 @@
   overflow: hidden;
 }
 
-.toastui-grid-container .toastui-grid-header-area,
-.toastui-grid-container .toastui-grid-body-area,
-.toastui-grid-container .toastui-grid-row-header-area {
+.base-grid .toastui-grid-header-area,
+.base-grid .toastui-grid-body-area,
+.base-grid .toastui-grid-row-header-area,
+.base-grid .toastui-grid-table {
   background-color: rgb(var(--bg-card));
+  color: rgb(var(--text-main));
 }
 
-.toastui-grid-container .toastui-grid-header-area .toastui-grid-cell {
-  background-color: rgb(var(--bg-surface));
-  color: rgb(var(--text-muted));
+.base-grid .toastui-grid-header-area .toastui-grid-cell,
+.base-grid .toastui-grid-row-header-area .toastui-grid-cell {
+  background-color: rgb(var(--bg-card) / 0.8);
+  color: rgb(var(--text-main));
   font-weight: 600;
 }
 
-.toastui-grid-container .toastui-grid-cell {
+.base-grid .toastui-grid-cell {
+  background-color: rgb(var(--bg-card));
+  color: rgb(var(--text-main));
   border-color: rgb(var(--border-soft));
 }
 
-.toastui-grid-container .toastui-grid-row:hover .toastui-grid-cell {
-  background-color: rgb(var(--bg-surface));
+.base-grid .toastui-grid-row:hover .toastui-grid-cell,
+.base-grid .toastui-grid-row-hover .toastui-grid-cell {
+  background-color: rgb(var(--bg-card) / 0.7);
 }
 
-.toastui-grid-container .toastui-grid-cell-content {
+.base-grid .toastui-grid-cell-content {
   font-family: inherit;
 }
 
-.toastui-grid-container .toastui-grid-cell-content a {
+.base-grid .toastui-grid-cell-content a {
   color: rgb(var(--accent));
   text-decoration: none;
 }
 
-.toastui-grid-container .toastui-grid-cell-content a:hover {
+.base-grid .toastui-grid-cell-content a:hover {
   text-decoration: underline;
-}
-
-.tui-pagination {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 0;
-}
-
-.tui-pagination .tui-page-btn {
-  border-radius: 10px;
-  border: 1px solid rgb(var(--border-soft));
-  color: rgb(var(--text-main));
-  background: rgb(var(--bg-card));
-  padding: 6px 10px;
-}
-
-.tui-pagination .tui-page-btn:hover {
-  background: rgb(var(--bg-surface));
-}
-
-.tui-pagination .tui-is-selected {
-  background: rgb(var(--accent));
-  color: rgb(var(--bg-card));
-  border-color: rgb(var(--accent));
 }
