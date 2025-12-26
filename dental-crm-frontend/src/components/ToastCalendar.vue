@@ -122,6 +122,15 @@ onMounted(() => {
     month: {
       dayNames: DAY_NAMES,
     },
+    calendars: [
+      {
+        id: 'main',
+        name: 'Основний',
+        backgroundColor: '#10b981',
+        borderColor: '#10b981',
+        color: '#ffffff',
+      },
+    ],
     templates: {
       weekDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
       monthDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
