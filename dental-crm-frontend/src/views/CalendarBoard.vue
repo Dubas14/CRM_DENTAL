@@ -10,9 +10,7 @@
 
     <!-- Навігація -->
     <div class="px-6 flex items-center gap-4 mb-4">
-      <div class="text-lg font-semibold text-text">
-        {{ currentMonthLabel }}
-      </div>
+      <MonthPicker :date="currentDate" @select="selectMonth" />
       <button @click="prev">‹</button>
       <button @click="today">Сьогодні</button>
       <button @click="next">›</button>
@@ -54,16 +52,13 @@
 
 <script setup>
 import { onMounted, nextTick, ref } from 'vue'
+import MonthPicker from '../components/MonthPicker.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 
 
 const calendarRef = ref(null)
 const view = ref('week')
-const currentMonthLabel = ref('')
-const monthYearFormatter = new Intl.DateTimeFormat('uk-UA', {
-  month: 'long',
-  year: 'numeric',
-})
+const currentDate = ref(new Date())
 
 const events = ref([
   {
@@ -76,33 +71,39 @@ const events = ref([
   },
 ])
 
-const updateMonthLabel = () => {
+const updateCurrentDate = () => {
   const date = calendarRef.value?.getDate?.()
   if (!date) return
-  const formatted = monthYearFormatter.format(date)
-  currentMonthLabel.value = formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  currentDate.value = new Date(date)
 }
 
 const next = () => {
   calendarRef.value?.next()
-  updateMonthLabel()
+  updateCurrentDate()
 }
 const prev = () => {
   calendarRef.value?.prev()
-  updateMonthLabel()
+  updateCurrentDate()
 }
 const today = () => {
   calendarRef.value?.today()
-  updateMonthLabel()
+  updateCurrentDate()
 }
 
 const changeView = () => {
   calendarRef.value?.changeView(view.value)
-  updateMonthLabel()
+  updateCurrentDate()
+}
+
+const selectMonth = (monthIndex) => {
+  const date = calendarRef.value?.getDate?.()
+  if (!date) return
+  calendarRef.value?.setDate?.(new Date(date.getFullYear(), monthIndex, 1))
+  updateCurrentDate()
 }
 
 onMounted(async () => {
   await nextTick()
-  updateMonthLabel()
+  updateCurrentDate()
 })
 </script>
