@@ -53,7 +53,7 @@ import { onMounted, nextTick, ref, watch } from 'vue'
 import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
-import apiClient from '../services/apiClient'
+import calendarApi from '../services/calendarApi'
 import { useToast } from '../composables/useToast'
 
 
@@ -97,10 +97,10 @@ const formatDateTime = (date) => {
 const mapApiEventToCalendar = (event) => ({
   id: event.id,
   calendarId: 'main',
-  title: event.title,
+  title: event.title ?? event.comment ?? event.note ?? '',
   category: 'time',
-  start: event.start,
-  end: event.end,
+  start: event.start ?? event.start_at,
+  end: event.end ?? event.end_at,
   doctor_id: event.doctor_id,
   patient_id: event.patient_id,
   status: event.status,
@@ -121,10 +121,9 @@ const fetchEvents = async () => {
   if (!start || !end) return
 
   try {
-    const { data } = await apiClient.get('/calendar/events', {
-      params: { start, end },
-    })
-    events.value = Array.isArray(data) ? data.map(mapApiEventToCalendar) : []
+    const { data } = await calendarApi.getCalendarBlocks({ start, end })
+    const blocks = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+    events.value = blocks.map(mapApiEventToCalendar)
     calendarRef.value?.clear?.()
     if (events.value.length) {
       calendarRef.value?.createEvents?.(events.value)
@@ -286,7 +285,7 @@ const saveEvent = async (payload) => {
 
   try {
     if (isEdit) {
-      const { data } = await apiClient.put(`/calendar/events/${payload.id}`, apiPayload)
+      const { data } = await calendarApi.updateCalendarBlock(payload.id, apiPayload)
       const updatedEvent = mapApiEventToCalendar(data ?? { ...payload, ...apiPayload })
       const existingIndex = events.value.findIndex((event) => event.id === payload.id)
       if (existingIndex >= 0) {
@@ -297,7 +296,7 @@ const saveEvent = async (payload) => {
       calendarRef.value?.updateEvent?.(updatedEvent.id, updatedEvent.calendarId, updatedEvent)
       toastSuccess('Запис оновлено')
     } else {
-      const { data } = await apiClient.post('/calendar/events', apiPayload)
+      const { data } = await calendarApi.createCalendarBlock(apiPayload)
       const createdEvent = mapApiEventToCalendar(data ?? { ...payload, ...apiPayload, id: generateEventId() })
       events.value = [...events.value, createdEvent]
       calendarRef.value?.createEvents?.([createdEvent])
