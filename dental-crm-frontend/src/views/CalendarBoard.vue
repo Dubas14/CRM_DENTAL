@@ -11,7 +11,7 @@
     <!-- Навігація -->
     <div class="px-6 flex items-center gap-2 mb-4">
       <button @click="prev">‹</button>
-      <button @click="today">Today</button>
+      <button @click="today">Сьогодні</button>
       <button @click="next">›</button>
 
       <select
@@ -21,9 +21,9 @@
          rounded-md px-3 py-1 text-sm
          focus:outline-none focus:ring-2 focus:ring-emerald-500"
       >
-        <option value="day">Day</option>
-        <option value="week">Week</option>
-        <option value="month">Month</option>
+        <option value="day">День</option>
+        <option value="week">Тиждень</option>
+        <option value="month">Місяць</option>
       </select>
     </div>
     <button
@@ -34,7 +34,7 @@
     <button
         class="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-text text-sm font-medium"
         @click="today"
-    >Today</button>
+    >сьогодні</button>
 
     <button
         class="px-2 py-1 rounded-md bg-card/80 hover:bg-card/70 text-text/90"
@@ -52,6 +52,7 @@
 <script setup>
 import { ref } from 'vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
+
 
 const calendarRef = ref(null)
 const view = ref('week')

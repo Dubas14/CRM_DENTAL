@@ -3,6 +3,28 @@
 </template>
 
 <script setup>
+
+const ukLocale = {
+  week: {
+    dayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+    narrowDayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+  },
+  month: {
+    dayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+  },
+  titles: {
+    today: 'Сьогодні',
+    day: 'День',
+    week: 'Тиждень',
+    month: 'Місяць',
+  },
+  time: {
+    am: 'дп',
+    pm: 'пп',
+  },
+  allDay: 'Весь день',
+};
+
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
@@ -30,14 +52,7 @@ onMounted(() => {
   calendarInstance = new Calendar(calendarEl.value, {
     defaultView: 'week',
     height: '100%',
-    calendars: [
-      {
-        id: 'main',
-        name: 'Основний',
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
-      },
-    ],
+    locale: ukLocale,
     week: {
       startDayOfWeek: 1,
       hourStart: 8,
@@ -45,9 +60,9 @@ onMounted(() => {
     },
     useDetailPopup: false,
     useFormPopup: false,
-  })
+  });
 
-  // 🔥 ОЦЕ КРИТИЧНО
+
   if (props.events.length) {
     calendarInstance.createEvents(props.events)
   }
