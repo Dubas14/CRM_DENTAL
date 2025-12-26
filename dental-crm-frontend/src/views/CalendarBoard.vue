@@ -9,7 +9,10 @@
     </div>
 
     <!-- Навігація -->
-    <div class="px-6 flex items-center gap-2 mb-4">
+    <div class="px-6 flex items-center gap-4 mb-4">
+      <div class="text-lg font-semibold text-text">
+        {{ currentMonthLabel }}
+      </div>
       <button @click="prev">‹</button>
       <button @click="today">Сьогодні</button>
       <button @click="next">›</button>
@@ -50,12 +53,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, nextTick, ref } from 'vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 
 
 const calendarRef = ref(null)
 const view = ref('week')
+const currentMonthLabel = ref('')
+const monthYearFormatter = new Intl.DateTimeFormat('uk-UA', {
+  month: 'long',
+  year: 'numeric',
+})
 
 const events = ref([
   {
@@ -68,11 +76,33 @@ const events = ref([
   },
 ])
 
-const next = () => calendarRef.value?.next()
-const prev = () => calendarRef.value?.prev()
-const today = () => calendarRef.value?.today()
+const updateMonthLabel = () => {
+  const date = calendarRef.value?.getDate?.()
+  if (!date) return
+  const formatted = monthYearFormatter.format(date)
+  currentMonthLabel.value = formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
+const next = () => {
+  calendarRef.value?.next()
+  updateMonthLabel()
+}
+const prev = () => {
+  calendarRef.value?.prev()
+  updateMonthLabel()
+}
+const today = () => {
+  calendarRef.value?.today()
+  updateMonthLabel()
+}
 
 const changeView = () => {
   calendarRef.value?.changeView(view.value)
+  updateMonthLabel()
 }
+
+onMounted(async () => {
+  await nextTick()
+  updateMonthLabel()
+})
 </script>
