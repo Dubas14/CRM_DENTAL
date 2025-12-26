@@ -6,6 +6,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
+import '../assets/css/toast-calendar-theme.css'
 import { defineExpose } from 'vue'
 
 defineExpose({

@@ -52,7 +52,6 @@
 <script setup>
 import { ref } from 'vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
-import '../assets/css/calendar-theme.css'
 
 const calendarRef = ref(null)
 const view = ref('week')
