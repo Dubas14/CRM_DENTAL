@@ -1,65 +1,44 @@
 /* =====================================================
-   Toast UI Calendar — Theme Overrides (Design Tokens)
+   Toast UI Calendar — App Design System Style
+   Uses global CSS variables from app
    ===================================================== */
 
+/* ===============================
+   BASE LAYOUT
+   =============================== */
+
 .toastui-calendar-layout {
-  --calendar-line-soft: rgb(var(--border-soft) / 0.7);
-  --calendar-line-strong: rgb(var(--border-soft) / 0.9);
-  --calendar-event-opacity: 1;
-  --calendar-accent-soft: rgb(var(--accent) / 0.14);
-  --calendar-accent-strong: rgb(var(--accent) / 0.45);
-  background-color: rgb(var(--bg-main));
+  background-color: rgb(var(--bg-surface));
   color: rgb(var(--text-main));
-  font-family: inherit;
-  border: 1px solid var(--calendar-line-soft);
+  border: 1px solid rgb(var(--border-soft));
   border-radius: 12px;
   overflow: hidden;
-}
-
-.dark .toastui-calendar-layout {
-  --calendar-line-soft: rgb(var(--border-soft) / 0.5);
-  --calendar-line-strong: rgb(var(--border-soft) / 0.75);
-  --calendar-event-opacity: 0.85;
-}
-
-.toastui-calendar-layout * {
   font-family: inherit;
 }
+
+/* ===============================
+   HEADER (DAY NAMES)
+   =============================== */
 
 .toastui-calendar-day-view-day-names,
 .toastui-calendar-week-view-day-names,
 .toastui-calendar-month .toastui-calendar-day-names {
-  background-color: rgb(var(--bg-surface));
-  border-bottom: 1px solid var(--calendar-line-soft);
+  background-color: rgb(var(--bg-card));
+  border-bottom: 1px solid rgb(var(--border-soft));
 }
 
-.toastui-calendar-day-name-item,
-.toastui-calendar-day-name__date {
+.toastui-calendar-day-name-item {
   color: rgb(var(--text-main));
   font-weight: 600;
 }
 
-.toastui-calendar-day-name__name,
-.toastui-calendar-day-name-container {
+.toastui-calendar-day-name__name {
   color: rgb(var(--text-muted));
 }
 
-.toastui-calendar-day-name-container.toastui-calendar-today {
-  background-color: var(--calendar-accent-soft);
-  border-radius: 8px;
-}
-
-.toastui-calendar-grid-cell-date,
-.toastui-calendar-weekday-grid-date.toastui-calendar-weekday-grid-date-decorator,
-.toastui-calendar-month-daygrid-date {
-  background-color: rgb(var(--accent) / 0.18);
-  color: rgb(var(--text-main));
-}
-
-.dark .toastui-calendar-month-daygrid-date,
-.dark .toastui-calendar-weekday-grid-date {
-  color: rgb(var(--text-main));
-}
+/* ===============================
+   GRID / CELLS
+   =============================== */
 
 .toastui-calendar-timegrid,
 .toastui-calendar-weekday-grid,
@@ -67,149 +46,151 @@
   background-color: rgb(var(--bg-surface));
 }
 
-.toastui-calendar-panel,
-.toastui-calendar-panel-title,
-.toastui-calendar-panel-grid-wrapper,
-.toastui-calendar-allday-panel {
+.toastui-calendar-daygrid-cell {
   background-color: rgb(var(--bg-surface));
+  border-color: rgb(var(--border-soft));
 }
 
-.toastui-calendar-panel-title {
-  border-right: 1px solid var(--calendar-line-soft);
+.dark .toastui-calendar-daygrid-cell {
+  background-color: rgb(var(--bg-surface));
+  border-color: rgb(var(--border-soft));
 }
 
-.toastui-calendar-panel-title .toastui-calendar-left-content {
-  color: rgb(var(--text-muted));
+/* ===============================
+   DAY NUMBER
+   =============================== */
+
+.toastui-calendar-month-daygrid-date {
+  background-color: rgb(var(--border-soft));
+  color: rgb(var(--text-main));
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
 }
 
-.toastui-calendar-panel-grid,
-.toastui-calendar-panel-grid-wrapper {
-  border-top: 1px solid var(--calendar-line-strong);
+.dark .toastui-calendar-month-daygrid-date {
+  background-color: rgb(var(--border-soft));
+  color: rgb(var(--text-main));
 }
+
+/* TODAY */
+.toastui-calendar-month-daygrid-cell.toastui-calendar-today {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: -2px;
+}
+
+/* ===============================
+   GRID LINES
+   =============================== */
 
 .toastui-calendar-daygrid-cell + .toastui-calendar-daygrid-cell {
-  border-left: 1px solid var(--calendar-line-soft);
+  border-left: 1px solid rgb(var(--border-soft));
 }
 
-.toastui-calendar-gridline-half,
-.toastui-calendar-timegrid .toastui-calendar-columns .toastui-calendar-gridline-half {
-  border-top: 1px solid var(--calendar-line-soft);
-}
-
-.toastui-calendar-timegrid-time-column {
-  border-right: 1px solid var(--calendar-line-strong);
-  color: rgb(var(--text-muted));
-  background-color: rgb(var(--bg-surface));
-}
-
-.toastui-calendar-timegrid-time,
-.toastui-calendar-timegrid-time-label,
-.toastui-calendar-timegrid-time span {
-  color: rgb(var(--text-muted));
+.toastui-calendar-gridline-half {
+  border-top: 1px solid rgb(var(--border-soft));
 }
 
 .toastui-calendar-vertical-line {
-  background-color: var(--calendar-line-soft);
+  background-color: rgb(var(--border-soft));
 }
 
-.toastui-calendar-grid-selection {
-  background-color: var(--calendar-accent-soft);
-  border: 1px solid var(--calendar-accent-strong);
-  border-radius: 8px;
-}
+/* ===============================
+   EVENTS — DEFAULT (FLAT)
+   =============================== */
 
-.toastui-calendar-grid-selection-label {
-  color: rgb(var(--text-main));
-}
-
-.toastui-calendar-timegrid-now-indicator .toastui-calendar-timegrid-now-indicator-left,
-.toastui-calendar-timegrid-now-indicator .toastui-calendar-timegrid-now-indicator-right {
-  border-top: 1px solid rgb(var(--accent));
-}
-
-.toastui-calendar-timegrid-now-indicator .toastui-calendar-timegrid-now-indicator-marker {
-  background-color: rgb(var(--accent));
-}
-
-.toastui-calendar-event-background,
-.toastui-calendar-event-time,
 .toastui-calendar-weekday-event,
-.toastui-calendar-weekday-event-block {
-  background-color: rgb(var(--bg-card) / var(--calendar-event-opacity)) !important;
-  border: 1px solid var(--calendar-line-soft) !important;
-  border-radius: 10px;
+.toastui-calendar-event-time {
+  background-color: rgb(var(--bg-card));
+  color: rgb(var(--text-main));
+
+  border: 1px solid rgb(var(--border-soft));
+  border-radius: 8px;
+
   box-shadow: none;
-  color: rgb(var(--text-main));
+  outline: none;
+  backdrop-filter: none;
+  background-image: none;
 }
 
-.toastui-calendar-event-time .toastui-calendar-event-time-content,
-.toastui-calendar-weekday-event-title,
+.toastui-calendar-event-time {
+  font-size: 12px;
+  color: rgb(var(--text-muted));
+}
+
 .toastui-calendar-event-title {
-  color: rgb(var(--text-main));
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.toastui-calendar-event-time:hover,
-.toastui-calendar-weekday-event:hover,
-.toastui-calendar-weekday-event-block:hover {
-  border-color: rgb(var(--accent)) !important;
-  box-shadow: 0 0 0 1px rgb(var(--accent) / 0.25);
+/* ===============================
+   MONTH VIEW — SIMPLE & CLEAN
+   =============================== */
+
+.toastui-calendar-month
+.toastui-calendar-weekday-event {
+  background-color: rgb(var(--bg-card));
+  color: rgb(var(--text-main));
+  border: 1px solid rgb(var(--border-soft));
 }
+
+/* ===============================
+   MULTI-DAY EVENTS (ACCENT)
+   =============================== */
+
+.toastui-calendar-weekday-event-block {
+  background-color: rgb(var(--accent));
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+}
+
+/* ===============================
+   HOVER — MINIMAL
+   =============================== */
+
+.toastui-calendar-weekday-event:hover,
+.toastui-calendar-event-time:hover {
+  background-color: rgb(var(--bg-surface));
+}
+
+/* ===============================
+   MORE / OVERFLOW
+   =============================== */
 
 .toastui-calendar-weekday-exceed-in-week {
   background-color: rgb(var(--bg-card));
-  border: 1px solid var(--calendar-line-soft);
-  color: rgb(var(--text-main));
+  color: rgb(var(--text-muted));
+  border: 1px solid rgb(var(--border-soft));
 }
+
+/* ===============================
+   POPUP / DROPDOWN
+   =============================== */
 
 .toastui-calendar-popup-container,
 .toastui-calendar-see-more-container,
 .toastui-calendar-dropdown-menu {
   background-color: rgb(var(--bg-card));
-  border: 1px solid var(--calendar-line-strong);
   color: rgb(var(--text-main));
+  border: 1px solid rgb(var(--border-soft));
   border-radius: 12px;
   box-shadow: none;
 }
 
-.toastui-calendar-popup-arrow-border,
-.toastui-calendar-popup-arrow-fill {
-  border-color: var(--calendar-line-strong);
-}
-
-.toastui-calendar-popup-section,
-.toastui-calendar-popup-section-item,
-.toastui-calendar-popup-section-title input,
-.toastui-calendar-dropdown-menu-item {
-  color: rgb(var(--text-main));
-}
-
 .toastui-calendar-popup-section-item input,
-.toastui-calendar-popup-section-title input,
-.toastui-calendar-popup-date-picker .toastui-calendar-content,
-.toastui-calendar-dropdown-section .toastui-calendar-content {
+.toastui-calendar-popup-section-title input {
   background-color: rgb(var(--bg-surface));
-  border: 1px solid var(--calendar-line-soft);
   color: rgb(var(--text-main));
-  border-radius: 8px;
+  border: 1px solid rgb(var(--border-soft));
+  border-radius: 6px;
 }
 
-.toastui-calendar-popup-button,
-.toastui-calendar-popup-button.toastui-calendar-popup-close,
-.toastui-calendar-popup-button.toastui-calendar-popup-confirm {
-  border-radius: 8px;
-  border: 1px solid var(--calendar-line-soft);
-  color: rgb(var(--text-main));
-}
-
-.toastui-calendar-popup-button.toastui-calendar-popup-confirm {
-  background-color: rgb(var(--accent) / 0.15);
-  border-color: rgb(var(--accent) / 0.4);
-}
-
-.toastui-calendar-popup-button:hover,
-.toastui-calendar-dropdown-menu-item:hover {
-  background-color: rgb(var(--bg-surface));
-}
+/* ===============================
+   MISC
+   =============================== */
 
 .toastui-calendar-grid-cell-more-events {
   color: rgb(var(--text-muted));
