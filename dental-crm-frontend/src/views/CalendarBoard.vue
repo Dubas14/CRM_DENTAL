@@ -27,20 +27,6 @@
         <option value="month">Місяць</option>
       </select>
     </div>
-    <button
-        class="px-2 py-1 rounded-md bg-card/80 hover:bg-card/70 text-text/90"
-        @click="prev"
-    >‹</button>
-
-    <button
-        class="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-text text-sm font-medium"
-        @click="today"
-    >сьогодні</button>
-
-    <button
-        class="px-2 py-1 rounded-md bg-card/80 hover:bg-card/70 text-text/90"
-        @click="next"
-    >›</button>
 
     <!-- Календар -->
     <div class="px-6 pb-6 h-[calc(100vh-160px)] overflow-hidden">
@@ -95,10 +81,8 @@ const changeView = () => {
   updateCurrentDate()
 }
 
-const selectMonth = (monthIndex) => {
-  const date = calendarRef.value?.getDate?.()
-  if (!date) return
-  calendarRef.value?.setDate?.(new Date(date.getFullYear(), monthIndex, 1))
+const selectMonth = ({ monthIndex, year }) => {
+  calendarRef.value?.setDate?.(new Date(year, monthIndex, 1))
   updateCurrentDate()
 }
 

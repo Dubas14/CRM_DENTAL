@@ -86,6 +86,7 @@ defineExpose({
   next: () => calendarInstance?.next(),
   prev: () => calendarInstance?.prev(),
   today: () => calendarInstance?.today(),
+  setDate: (date) => calendarInstance?.setDate?.(date),
   changeView: (view) => calendarInstance?.changeView(view),
   getDate: () => calendarInstance?.getDate?.(),
 })

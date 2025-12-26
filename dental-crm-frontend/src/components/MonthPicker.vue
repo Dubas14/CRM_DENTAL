@@ -12,13 +12,30 @@
       v-if="open"
       class="absolute left-0 top-full z-20 mt-2 w-60 rounded-md border border-border/80 bg-card p-2 shadow-lg"
     >
+      <div class="mb-2 flex items-center justify-between px-1 text-sm font-medium text-text/80">
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 transition hover:bg-card/80"
+          @click="changeYear(-1)"
+        >
+          ◀
+        </button>
+        <span class="text-text/90">{{ selectedYear }}</span>
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 transition hover:bg-card/80"
+          @click="changeYear(1)"
+        >
+          ▶
+        </button>
+      </div>
       <div class="grid grid-cols-4 gap-1 text-sm">
         <button
           v-for="(month, index) in months"
           :key="month"
           type="button"
           class="rounded-md px-2 py-1 text-text/90 transition hover:bg-emerald-600/10 hover:text-emerald-600"
-          :class="index === currentMonth ? 'bg-emerald-600/15 text-emerald-600 font-semibold' : ''"
+          :class="index === currentMonth && selectedYear === currentYear ? 'bg-emerald-600/15 text-emerald-600 font-semibold' : ''"
           @click="selectMonth(index)"
         >
           {{ month }}
@@ -29,7 +46,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   date: {
@@ -55,28 +72,47 @@ const months = [
   'Гру',
 ]
 
-const formatter = new Intl.DateTimeFormat('uk-UA', {
-  month: 'long',
-  year: 'numeric',
-})
+const fullMonths = [
+  'Січень',
+  'Лютий',
+  'Березень',
+  'Квітень',
+  'Травень',
+  'Червень',
+  'Липень',
+  'Серпень',
+  'Вересень',
+  'Жовтень',
+  'Листопад',
+  'Грудень',
+]
 
 const open = ref(false)
 const root = ref(null)
+const selectedYear = ref(props.date.getFullYear())
 
 const formattedLabel = computed(() => {
-  const formatted = formatter.format(props.date)
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+  const monthName = fullMonths[props.date.getMonth()]
+  return `${monthName} ${props.date.getFullYear()} р.`
 })
 
 const currentMonth = computed(() => props.date.getMonth())
+const currentYear = computed(() => props.date.getFullYear())
 
 const toggle = () => {
+  if (!open.value) {
+    selectedYear.value = props.date.getFullYear()
+  }
   open.value = !open.value
 }
 
 const selectMonth = (monthIndex) => {
-  emit('select', monthIndex)
+  emit('select', { monthIndex, year: selectedYear.value })
   open.value = false
+}
+
+const changeYear = (delta) => {
+  selectedYear.value += delta
 }
 
 const handleClickOutside = (event) => {
@@ -85,6 +121,14 @@ const handleClickOutside = (event) => {
     open.value = false
   }
 }
+
+watch(
+  () => props.date,
+  (newDate) => {
+    if (open.value) return
+    selectedYear.value = newDate.getFullYear()
+  }
+)
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
