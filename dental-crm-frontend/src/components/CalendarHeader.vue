@@ -62,7 +62,7 @@ const formatMonthLabel = (date) => {
     month: 'long',
     year: 'numeric',
   });
-  const normalized = formatter.format(date).replace(/\s*р\.?$/u, ' р.');
+  const normalized = formatter.format(date).replace(/\s*р\.?$/u, '').trim();
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 

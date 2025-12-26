@@ -14,10 +14,10 @@
     "lodash-es": "^4.17.22",
     "lucide-vue-next": "^0.555.0",
     "pinia": "^3.0.3",
-    "tui-date-picker": "^4.3.4",
-    "tui-grid": "^4.21.23",
+    "tui-date-picker": "^4.2.2",
+    "tui-grid": "^4.21.22",
     "tui-pagination": "^3.4.1",
-    "tui-time-picker": "^2.2.8",
+    "tui-time-picker": "^2.1.6",
     "vue": "^3.5.24",
     "vue-router": "^4.6.3"
   },
