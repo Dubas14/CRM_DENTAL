@@ -9,11 +9,7 @@
       >
         {{ formattedLabel }}
       </button>
-      <div
-        ref="pickerRef"
-        class="absolute left-0 top-full z-20 mt-2"
-        v-show="isPickerOpen"
-      ></div>
+      <div ref="pickerRef" class="absolute left-0 top-full z-20 mt-2"></div>
     </div>
 
     <div class="flex items-center gap-2">
@@ -43,7 +39,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import DatePicker from 'tui-date-picker';
 import { ensureUkLocale } from '../utils/toastUiLocale';
 
@@ -59,7 +55,6 @@ const emit = defineEmits(['select-date', 'prev', 'next', 'today']);
 const pickerRef = ref(null);
 const inputRef = ref(null);
 const pickerWrapper = ref(null);
-const isPickerOpen = ref(false);
 let pickerInstance = null;
 let isSyncing = false;
 
@@ -75,24 +70,23 @@ const formatMonthLabel = (date) => {
 const formattedLabel = computed(() => formatMonthLabel(props.currentDate));
 
 const openPicker = () => {
-  isPickerOpen.value = !isPickerOpen.value;
-  if (isPickerOpen.value && pickerInstance) {
-    const current = pickerInstance.getDate();
-    if (
-      !current ||
-      current.getFullYear() !== props.currentDate.getFullYear() ||
-      current.getMonth() !== props.currentDate.getMonth()
-    ) {
-      isSyncing = true;
-      pickerInstance.setDate(props.currentDate);
-    }
+  if (!pickerInstance) return;
+  const current = pickerInstance.getDate();
+  if (
+    !current ||
+    current.getFullYear() !== props.currentDate.getFullYear() ||
+    current.getMonth() !== props.currentDate.getMonth()
+  ) {
+    isSyncing = true;
+    pickerInstance.setDate(props.currentDate);
   }
+  pickerInstance.open();
 };
 
 const handleSelect = (date) => {
   if (!date) return;
   emit('select-date', new Date(date.getFullYear(), date.getMonth(), 1));
-  isPickerOpen.value = false;
+  pickerInstance?.close();
 };
 
 const handleYearNavigation = (offset) => {
@@ -100,12 +94,6 @@ const handleYearNavigation = (offset) => {
   const current = pickerInstance.getDate() || props.currentDate;
   const nextDate = new Date(current.getFullYear() + offset, current.getMonth(), 1);
   pickerInstance.setDate(nextDate);
-};
-
-const handleDocumentClick = (event) => {
-  const wrapper = pickerWrapper.value;
-  if (!wrapper || wrapper.contains(event.target)) return;
-  isPickerOpen.value = false;
 };
 
 onMounted(() => {
@@ -119,7 +107,7 @@ onMounted(() => {
     input: {
       element: inputRef.value,
     },
-    showAlways: true,
+    showAlways: false,
   });
 
   pickerInstance.on('change', () => {
@@ -138,11 +126,26 @@ onMounted(() => {
     handleYearNavigation(1);
   });
 
-  document.addEventListener('click', handleDocumentClick);
 });
 
+watch(
+  () => props.currentDate,
+  (nextDate) => {
+    if (!pickerInstance || !nextDate) return;
+    const current = pickerInstance.getDate();
+    if (
+      current &&
+      current.getFullYear() === nextDate.getFullYear() &&
+      current.getMonth() === nextDate.getMonth()
+    ) {
+      return;
+    }
+    isSyncing = true;
+    pickerInstance.setDate(nextDate);
+  }
+);
+
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleDocumentClick);
   pickerInstance?.destroy();
 });
 </script>
