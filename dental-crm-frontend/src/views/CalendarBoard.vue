@@ -65,7 +65,7 @@ const isEventModalOpen = ref(false)
 const activeEvent = ref({})
 const pendingUpdateInfo = ref(null)
 const { error: toastError, success: toastSuccess } = useToast()
-const { user } = useAuth()
+const { user, initAuth } = useAuth()
 
 const events = ref([])
 
@@ -93,7 +93,7 @@ const formatDateTime = (date) => {
   const day = `${normalized.getDate()}`.padStart(2, '0')
   const hour = `${normalized.getHours()}`.padStart(2, '0')
   const minute = `${normalized.getMinutes()}`.padStart(2, '0')
-  return `${year}-${month}-${day}T${hour}:${minute}:00`
+  return `${year}-${month}-${day} ${hour}:${minute}:00`
 }
 
 const clinicId = computed(
@@ -101,21 +101,24 @@ const clinicId = computed(
     user.value?.clinic_id ||
     user.value?.doctor?.clinic_id ||
     user.value?.doctor?.clinic?.id ||
-    user.value?.clinics?.[0]?.clinic_id ||
-    ''
+    null
 )
+
+const defaultDoctorId = computed(() => user.value?.doctor_id || user.value?.doctor?.id || null)
 
 const mapApiEventToCalendar = (event) => ({
   id: event.id,
   calendarId: 'main',
-  title: event.title ?? event.note ?? event.type ?? event.comment ?? '',
+  title: String(event.note || event.type || 'Запис'),
   category: 'time',
-  start: event.start ?? event.start_at,
-  end: event.end ?? event.end_at,
+  start: event.start_at,
+  end: event.end_at,
   doctor_id: event.doctor_id,
-  patient_id: event.patient_id,
-  status: event.status,
+  room_id: event.room_id,
+  equipment_id: event.equipment_id,
+  assistant_id: event.assistant_id,
   type: event.type,
+  note: event.note,
 })
 
 const getRangeParams = () => {
@@ -128,8 +131,9 @@ const getRangeParams = () => {
 }
 
 const fetchEvents = async () => {
+  if (!clinicId.value) return
   const { from, to } = getRangeParams()
-  if (!from || !to || !clinicId.value) return
+  if (!from || !to) return
 
   try {
     const { data } = await calendarApi.getCalendarBlocks({
@@ -195,9 +199,11 @@ const createDefaultEvent = ({ start, end, event }) => {
     start: startDate,
     end: endDate,
     doctor_id: event?.doctor_id,
-    patient_id: event?.patient_id,
-    status: event?.status,
+    room_id: event?.room_id,
+    equipment_id: event?.equipment_id,
+    assistant_id: event?.assistant_id,
     type: event?.type,
+    note: event?.note,
   }
 }
 
@@ -262,24 +268,46 @@ const handleSaveEvent = (payload) => {
 }
 
 onMounted(async () => {
+  await initAuth()
   await nextTick()
   updateCurrentDate()
-  fetchEvents()
+  setTimeout(fetchEvents, 0)
 })
 
 watch(view, () => {
   handleCloseModal()
 })
 
+watch(
+  clinicId,
+  async (nextClinicId) => {
+    if (!nextClinicId) return
+    await nextTick()
+    fetchEvents()
+  },
+  { immediate: true }
+)
+
 const buildApiPayload = (payload) => {
   const apiPayload = {
-    title: payload.title,
-    start: formatDateTime(payload.start),
-    end: formatDateTime(payload.end),
+    clinic_id: clinicId.value,
+    type: 'personal_block',
+    start_at: formatDateTime(payload.start),
+    end_at: formatDateTime(payload.end),
+    note: payload.note ?? payload.title ?? '',
   }
 
   if (payload.doctor_id) {
     apiPayload.doctor_id = payload.doctor_id
+  }
+  if (payload.room_id) {
+    apiPayload.room_id = payload.room_id
+  }
+  if (payload.equipment_id) {
+    apiPayload.equipment_id = payload.equipment_id
+  }
+  if (payload.assistant_id) {
+    apiPayload.assistant_id = payload.assistant_id
   }
   if (payload.patient_id) {
     apiPayload.patient_id = payload.patient_id
@@ -287,16 +315,21 @@ const buildApiPayload = (payload) => {
   if (payload.status) {
     apiPayload.status = payload.status
   }
-  if (payload.type) {
-    apiPayload.type = payload.type
+  if (!apiPayload.doctor_id && defaultDoctorId.value) {
+    apiPayload.doctor_id = defaultDoctorId.value
   }
 
   return apiPayload
 }
 
 const saveEvent = async (payload) => {
+  if (!clinicId.value) return
   const isEdit = Boolean(payload.id)
   const apiPayload = buildApiPayload(payload)
+  if (!apiPayload.doctor_id && !apiPayload.room_id && !apiPayload.equipment_id && !apiPayload.assistant_id) {
+    toastError('Заповніть лікаря або ресурс')
+    return
+  }
 
   try {
     if (isEdit) {
@@ -317,11 +350,15 @@ const saveEvent = async (payload) => {
       calendarRef.value?.createEvents?.([createdEvent])
       toastSuccess('Запис створено')
     }
+    await nextTick()
+    fetchEvents()
     pendingUpdateInfo.value = null
     handleCloseModal()
   } catch (error) {
     if (error?.response?.status === 409) {
       toastError('Обраний час вже зайнятий. Оберіть інший слот.')
+    } else if (error?.response?.status === 422) {
+      toastError('Заповніть лікаря або ресурс')
     } else {
       toastError('Не вдалося зберегти подію. Спробуйте ще раз.')
     }
