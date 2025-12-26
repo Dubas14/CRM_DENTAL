@@ -52,7 +52,7 @@
 <script setup>
 import { ref } from 'vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
-import '../assets/css/calendar.css'
+import '../assets/css/calendar-theme.css'
 
 const calendarRef = ref(null)
 const view = ref('week')
@@ -65,9 +65,6 @@ const events = ref([
     category: 'time',
     start: '2025-12-25T09:30:00',
     end: '2025-12-25T10:00:00',
-    backgroundColor: '#2563eb',
-    borderColor: '#60a5fa',
-    color: '#ffffff',
   },
 ])
 
