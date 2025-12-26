@@ -1,8 +1,11 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
+import ToastGrid from '../components/ToastGrid.vue';
+import ToastPagination from '../components/ToastPagination.vue';
 
 const patients = ref([]);
 const clinics = ref([]);
@@ -19,6 +22,7 @@ const formError = ref(null);
 
 const { user } = useAuth();
 const { isDoctor } = usePermissions();
+const router = useRouter();
 
 const doctorProfile = computed(() => user.value?.doctor || null);
 const doctorClinicId = computed(() => doctorProfile.value?.clinic_id || '');
@@ -34,6 +38,55 @@ const initialFormState = () => ({
   note: '',
 });
 const form = ref(initialFormState());
+const pageSize = 10;
+const currentPage = ref(1);
+
+const gridData = computed(() =>
+  patients.value.map((patient) => ({
+    ...patient,
+    clinicName: patient.clinic?.name || '—',
+  }))
+);
+
+const totalItems = computed(() => gridData.value.length);
+const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)));
+const pagedPatients = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return gridData.value.slice(start, start + pageSize);
+});
+
+const gridColumns = computed(() => [
+  {
+    header: 'ПІБ',
+    name: 'full_name',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ row }) => {
+      const href = router.resolve({ name: 'patient-details', params: { id: row.id } }).href;
+      return `<a href="${href}" class="text-emerald-300 hover:text-emerald-200">${row.full_name}</a>`;
+    },
+  },
+  {
+    header: 'Клініка',
+    name: 'clinicName',
+    sortable: true,
+    filter: 'text',
+  },
+  {
+    header: 'Телефон',
+    name: 'phone',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ value }) => value || '—',
+  },
+  {
+    header: 'Email',
+    name: 'email',
+    sortable: true,
+    filter: 'text',
+    formatter: ({ value }) => value || '—',
+  },
+]);
 
 const loadClinics = async () => {
   if (isDoctor.value) {
@@ -64,6 +117,7 @@ const loadPatients = async () => {
     const { data } = await apiClient.get('/patients', { params });
     // бо ми повернули paginate, беремо data.data
     patients.value = data.data ?? data;
+    currentPage.value = 1;
   } catch (e) {
     console.error(e);
     error.value =
@@ -118,6 +172,15 @@ onMounted(async () => {
   await loadClinics();
   await loadPatients();
 });
+
+watch(
+  () => totalItems.value,
+  () => {
+    if (currentPage.value > pageCount.value) {
+      currentPage.value = pageCount.value;
+    }
+  }
+);
 </script>
 
 <template>
@@ -331,42 +394,16 @@ onMounted(async () => {
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <table class="min-w-full text-sm">
-          <thead class="bg-card/80 text-text/80">
-          <tr>
-            <th class="px-4 py-2 text-left">ПІБ</th>
-            <th class="px-4 py-2 text-left">Клініка</th>
-            <th class="px-4 py-2 text-left">Телефон</th>
-            <th class="px-4 py-2 text-left">Email</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr
-              v-for="patient in patients"
-              :key="patient.id"
-              class="border-t border-border hover:bg-card/80/40"
-          >
-            <td class="px-4 py-2 font-medium">
-              <RouterLink
-                  :to="{ name: 'patient-details', params: { id: patient.id } }"
-                  class="text-emerald-300 hover:text-emerald-200"
-              >
-                {{ patient.full_name }}
-              </RouterLink>
-            </td>
-            <td class="px-4 py-2 text-text/80">
-              {{ patient.clinic?.name || '—' }}
-            </td>
-            <td class="px-4 py-2 text-text/80">
-              {{ patient.phone || '—' }}
-            </td>
-            <td class="px-4 py-2 text-text/80">
-              {{ patient.email || '—' }}
-            </td>
-          </tr>
-          </tbody>
-        </table>
+        <ToastGrid :columns="gridColumns" :data="pagedPatients" />
       </div>
+
+      <ToastPagination
+        v-if="totalItems > pageSize"
+        v-model:currentPage="currentPage"
+        :total-items="totalItems"
+        :items-per-page="pageSize"
+        class="mt-4"
+      />
     </div>
   </div>
 </template>

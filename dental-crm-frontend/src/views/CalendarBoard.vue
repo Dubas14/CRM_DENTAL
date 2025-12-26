@@ -9,18 +9,19 @@
     </div>
 
     <!-- Навігація -->
-    <div class="px-6 flex items-center gap-4 mb-4">
-      <MonthPicker :date="currentDate" @select="selectMonth" />
-      <button @click="prev">‹</button>
-      <button @click="today">Сьогодні</button>
-      <button @click="next">›</button>
+    <div class="px-6 flex flex-wrap items-center justify-between gap-4 mb-4">
+      <CalendarHeader
+        :current-date="currentDate"
+        @prev="prev"
+        @next="next"
+        @today="today"
+        @select-date="selectMonth"
+      />
 
       <select
-          v-model="view"
-          @change="changeView"
-          class="bg-card border border-border/80 text-text/90
-         rounded-md px-3 py-1 text-sm
-         focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        v-model="view"
+        @change="changeView"
+        class="bg-card border border-border/80 text-text/90 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
       >
         <option value="day">День</option>
         <option value="week">Тиждень</option>
@@ -38,7 +39,7 @@
 
 <script setup>
 import { onMounted, nextTick, ref } from 'vue'
-import MonthPicker from '../components/MonthPicker.vue'
+import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 
 
@@ -81,8 +82,9 @@ const changeView = () => {
   updateCurrentDate()
 }
 
-const selectMonth = ({ monthIndex, year }) => {
-  calendarRef.value?.setDate?.(new Date(year, monthIndex, 1))
+const selectMonth = (date) => {
+  if (!date) return
+  calendarRef.value?.setDate?.(date)
   updateCurrentDate()
 }
 

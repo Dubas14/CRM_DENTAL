@@ -4,11 +4,10 @@
 
 <script setup>
 
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, defineExpose } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
 import '../assets/css/toast-calendar-theme.css'
-import { defineExpose } from 'vue'
 
 const DAY_NAMES = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const HOUR_FORMAT = 'HH:mm';
@@ -106,12 +105,16 @@ onMounted(() => {
     defaultView: 'week',
     height: '100%',
     locale: ukLocale,
+    isReadOnly: false,
+    usageStatistics: false,
     week: {
       startDayOfWeek: 1,
       hourStart: 8,
       hourEnd: 22,
       dayNames: DAY_NAMES,
       hourFormat: HOUR_FORMAT,
+      eventView: ['time'],
+      taskView: false,
     },
     day: {
       hourFormat: HOUR_FORMAT,
