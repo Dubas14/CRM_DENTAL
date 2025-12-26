@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import Pagination from 'tui-pagination';
 
 const props = defineProps({
@@ -61,7 +61,4 @@ watch(
   }
 );
 
-onBeforeUnmount(() => {
-  paginationInstance?.destroy();
-});
 </script>
