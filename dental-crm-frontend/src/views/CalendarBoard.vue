@@ -33,7 +33,6 @@
     <div class="px-6 pb-6 h-[calc(100vh-160px)] overflow-hidden">
       <ToastCalendar
         ref="calendarRef"
-        :events="events"
         @select-date-time="handleSelectDateTime"
         @click-event="handleClickEvent"
         @before-update-event="handleBeforeUpdateEvent"
@@ -54,6 +53,8 @@ import { onMounted, nextTick, ref, watch } from 'vue'
 import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
+import apiClient from '../services/apiClient'
+import { useToast } from '../composables/useToast'
 
 
 const calendarRef = ref(null)
@@ -62,17 +63,76 @@ const currentDate = ref(new Date())
 const isEventModalOpen = ref(false)
 const activeEvent = ref({})
 const pendingUpdateInfo = ref(null)
+const { error: toastError, success: toastSuccess } = useToast()
 
-const events = ref([
-  {
-    id: '1',
-    calendarId: 'main',
-    title: 'ТЕСТ: операція',
-    category: 'time',
-    start: '2025-12-25T09:30:00',
-    end: '2025-12-25T10:00:00',
-  },
-])
+const events = ref([])
+
+const toDate = (value) => {
+  if (!value) return null
+  if (value.toDate) return value.toDate()
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDateOnly = (date) => {
+  const normalized = toDate(date)
+  if (!normalized) return ''
+  const year = normalized.getFullYear()
+  const month = `${normalized.getMonth() + 1}`.padStart(2, '0')
+  const day = `${normalized.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDateTime = (date) => {
+  const normalized = toDate(date)
+  if (!normalized) return ''
+  const year = normalized.getFullYear()
+  const month = `${normalized.getMonth() + 1}`.padStart(2, '0')
+  const day = `${normalized.getDate()}`.padStart(2, '0')
+  const hour = `${normalized.getHours()}`.padStart(2, '0')
+  const minute = `${normalized.getMinutes()}`.padStart(2, '0')
+  return `${year}-${month}-${day}T${hour}:${minute}:00`
+}
+
+const mapApiEventToCalendar = (event) => ({
+  id: event.id,
+  calendarId: 'main',
+  title: event.title,
+  category: 'time',
+  start: event.start,
+  end: event.end,
+  doctor_id: event.doctor_id,
+  patient_id: event.patient_id,
+  status: event.status,
+  type: event.type,
+})
+
+const getRangeParams = () => {
+  const start = calendarRef.value?.getDateRangeStart?.()
+  const end = calendarRef.value?.getDateRangeEnd?.()
+  return {
+    start: formatDateOnly(start),
+    end: formatDateOnly(end),
+  }
+}
+
+const fetchEvents = async () => {
+  const { start, end } = getRangeParams()
+  if (!start || !end) return
+
+  try {
+    const { data } = await apiClient.get('/calendar/events', {
+      params: { start, end },
+    })
+    events.value = Array.isArray(data) ? data.map(mapApiEventToCalendar) : []
+    calendarRef.value?.clear?.()
+    if (events.value.length) {
+      calendarRef.value?.createEvents?.(events.value)
+    }
+  } catch (error) {
+    console.error('Не вдалося отримати події календаря', error)
+  }
+}
 
 const updateCurrentDate = () => {
   const date = calendarRef.value?.getDate?.()
@@ -83,32 +143,30 @@ const updateCurrentDate = () => {
 const next = () => {
   calendarRef.value?.next()
   updateCurrentDate()
+  fetchEvents()
 }
 const prev = () => {
   calendarRef.value?.prev()
   updateCurrentDate()
+  fetchEvents()
 }
 const today = () => {
   calendarRef.value?.today()
   updateCurrentDate()
+  fetchEvents()
 }
 
 const changeView = () => {
   calendarRef.value?.changeView(view.value)
   updateCurrentDate()
+  fetchEvents()
 }
 
 const selectMonth = (date) => {
   if (!date) return
   calendarRef.value?.setDate?.(date)
   updateCurrentDate()
-}
-
-const toDate = (value) => {
-  if (!value) return null
-  if (value.toDate) return value.toDate()
-  const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
+  fetchEvents()
 }
 
 const createDefaultEvent = ({ start, end, event }) => {
@@ -122,6 +180,10 @@ const createDefaultEvent = ({ start, end, event }) => {
     category: event?.category || 'time',
     start: startDate,
     end: endDate,
+    doctor_id: event?.doctor_id,
+    patient_id: event?.patient_id,
+    status: event?.status,
+    type: event?.type,
   }
 }
 
@@ -182,36 +244,74 @@ const generateEventId = () => {
 }
 
 const handleSaveEvent = (payload) => {
-  pendingUpdateInfo.value = null
-  const eventId = payload.id || generateEventId()
-  const updatedEvent = {
-    ...payload,
-    id: eventId,
-    calendarId: payload.calendarId || 'main',
-    category: payload.category || 'time',
-  }
-
-  const existingIndex = events.value.findIndex((event) => event.id === eventId)
-
-  if (existingIndex >= 0) {
-    const nextEvents = [...events.value]
-    nextEvents[existingIndex] = updatedEvent
-    events.value = nextEvents
-    calendarRef.value?.updateEvent?.(eventId, updatedEvent.calendarId, updatedEvent)
-  } else {
-    events.value = [...events.value, updatedEvent]
-    calendarRef.value?.createEvents?.([updatedEvent])
-  }
-
-  handleCloseModal()
+  saveEvent(payload)
 }
 
 onMounted(async () => {
   await nextTick()
   updateCurrentDate()
+  fetchEvents()
 })
 
 watch(view, () => {
   handleCloseModal()
 })
+
+const buildApiPayload = (payload) => {
+  const apiPayload = {
+    title: payload.title,
+    start: formatDateTime(payload.start),
+    end: formatDateTime(payload.end),
+  }
+
+  if (payload.doctor_id) {
+    apiPayload.doctor_id = payload.doctor_id
+  }
+  if (payload.patient_id) {
+    apiPayload.patient_id = payload.patient_id
+  }
+  if (payload.status) {
+    apiPayload.status = payload.status
+  }
+  if (payload.type) {
+    apiPayload.type = payload.type
+  }
+
+  return apiPayload
+}
+
+const saveEvent = async (payload) => {
+  const isEdit = Boolean(payload.id)
+  const apiPayload = buildApiPayload(payload)
+
+  try {
+    if (isEdit) {
+      const { data } = await apiClient.put(`/calendar/events/${payload.id}`, apiPayload)
+      const updatedEvent = mapApiEventToCalendar(data ?? { ...payload, ...apiPayload })
+      const existingIndex = events.value.findIndex((event) => event.id === payload.id)
+      if (existingIndex >= 0) {
+        const nextEvents = [...events.value]
+        nextEvents[existingIndex] = updatedEvent
+        events.value = nextEvents
+      }
+      calendarRef.value?.updateEvent?.(updatedEvent.id, updatedEvent.calendarId, updatedEvent)
+      toastSuccess('Запис оновлено')
+    } else {
+      const { data } = await apiClient.post('/calendar/events', apiPayload)
+      const createdEvent = mapApiEventToCalendar(data ?? { ...payload, ...apiPayload, id: generateEventId() })
+      events.value = [...events.value, createdEvent]
+      calendarRef.value?.createEvents?.([createdEvent])
+      toastSuccess('Запис створено')
+    }
+    pendingUpdateInfo.value = null
+    handleCloseModal()
+  } catch (error) {
+    if (error?.response?.status === 409) {
+      toastError('Обраний час вже зайнятий. Оберіть інший слот.')
+    } else {
+      toastError('Не вдалося зберегти подію. Спробуйте ще раз.')
+    }
+    console.error('Не вдалося зберегти подію', error)
+  }
+}
 </script>

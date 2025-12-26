@@ -4,7 +4,7 @@
 
 <script setup>
 
-import { ref, onMounted, onBeforeUnmount, watch, defineExpose } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
 import '../assets/css/toast-calendar-theme.css'
@@ -90,13 +90,9 @@ defineExpose({
   getDate: () => calendarInstance?.getDate?.(),
   updateEvent: (eventId, calendarId, changes) => calendarInstance?.updateEvent?.(eventId, calendarId, changes),
   createEvents: (events) => calendarInstance?.createEvents?.(events),
-})
-
-const props = defineProps({
-  events: {
-    type: Array,
-    default: () => [],
-  },
+  clear: () => calendarInstance?.clear?.(),
+  getDateRangeStart: () => calendarInstance?.getDateRangeStart?.(),
+  getDateRangeEnd: () => calendarInstance?.getDateRangeEnd?.(),
 })
 
 const emit = defineEmits(['selectDateTime', 'clickEvent', 'beforeUpdateEvent'])
@@ -152,20 +148,7 @@ onMounted(() => {
     emit('beforeUpdateEvent', info)
   })
 
-  if (props.events.length) {
-    calendarInstance.createEvents(props.events)
-  }
 })
-
-watch(
-    () => props.events,
-    (events) => {
-      if (!calendarInstance) return
-      calendarInstance.clear()
-      calendarInstance.createEvents(events)
-    },
-    { deep: true }
-)
 
 onBeforeUnmount(() => {
   calendarInstance?.destroy()
