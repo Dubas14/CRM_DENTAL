@@ -398,7 +398,7 @@ watch(
       </div>
 
       <ToastPagination
-        v-if="totalItems > pageSize"
+        v-show="totalItems > pageSize"
         v-model:currentPage="currentPage"
         :total-items="totalItems"
         :items-per-page="pageSize"
