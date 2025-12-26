@@ -79,7 +79,10 @@ const formatTime = (time) => {
   return `${hours}:${minutes}`;
 };
 
-const formatTemplateTime = ({ time }) => formatTime(time);
+const formatTemplateTime = (template) => {
+  const time = template?.time ?? template;
+  return formatTime(time);
+};
 
 defineExpose({
   next: () => calendarInstance?.next(),
@@ -131,7 +134,7 @@ onMounted(() => {
         color: '#ffffff',
       },
     ],
-    templates: {
+    template: {
       weekDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
       monthDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
       milestoneTitle: () => 'Етапи',
