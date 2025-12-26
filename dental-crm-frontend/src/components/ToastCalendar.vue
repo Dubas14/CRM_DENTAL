@@ -4,7 +4,7 @@
 
 <script setup>
 
-import { ref, onMounted, onBeforeUnmount, defineExpose } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import Calendar from '@toast-ui/calendar'
 import '@toast-ui/calendar/dist/toastui-calendar.css'
 import '../assets/css/toast-calendar-theme.css'

@@ -1,9 +1,10 @@
 <template>
   <EventEditModal
-    :model-value="open"
-    :event-data="event"
-    @update:modelValue="handleUpdate"
-    @save="handleSave"
+      v-if="open"
+      :model-value="open"
+      :event-data="event"
+      @update:modelValue="handleUpdate"
+      @save="handleSave"
   />
 </template>
 
