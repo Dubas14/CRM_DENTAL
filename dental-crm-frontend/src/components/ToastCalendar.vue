@@ -87,6 +87,7 @@ defineExpose({
   prev: () => calendarInstance?.prev(),
   today: () => calendarInstance?.today(),
   changeView: (view) => calendarInstance?.changeView(view),
+  getDate: () => calendarInstance?.getDate?.(),
 })
 
 const props = defineProps({
