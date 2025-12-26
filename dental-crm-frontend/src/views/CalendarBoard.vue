@@ -106,20 +106,26 @@ const clinicId = computed(
 
 const defaultDoctorId = computed(() => user.value?.doctor_id || user.value?.doctor?.id || null)
 
-const mapApiEventToCalendar = (event) => ({
-  id: event.id,
-  calendarId: 'main',
-  title: String(event.note || event.type || 'Запис'),
-  category: 'time',
-  start: event.start_at,
-  end: event.end_at,
-  doctor_id: event.doctor_id,
-  room_id: event.room_id,
-  equipment_id: event.equipment_id,
-  assistant_id: event.assistant_id,
-  type: event.type,
-  note: event.note,
-})
+const mapApiEventToCalendar = (event) => {
+  const start = toDate(event.start_at)
+  const end = toDate(event.end_at)
+  if (!start || !end) return null
+
+  return {
+    id: event.id,
+    calendarId: 'main',
+    title: String(event.note || event.type || 'Запис'),
+    category: 'time',
+    start,
+    end,
+    doctor_id: event.doctor_id,
+    room_id: event.room_id,
+    equipment_id: event.equipment_id,
+    assistant_id: event.assistant_id,
+    type: event.type,
+    note: event.note,
+  }
+}
 
 const getRangeParams = () => {
   const start = calendarRef.value?.getDateRangeStart?.()
@@ -142,7 +148,9 @@ const fetchEvents = async () => {
       to,
     })
     const blocks = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
-    events.value = blocks.map(mapApiEventToCalendar)
+    events.value = blocks
+      .map(mapApiEventToCalendar)
+      .filter(Boolean)
     calendarRef.value?.clear?.()
     if (events.value.length) {
       calendarRef.value?.createEvents?.(events.value)
@@ -271,7 +279,6 @@ onMounted(async () => {
   await initAuth()
   await nextTick()
   updateCurrentDate()
-  setTimeout(fetchEvents, 0)
 })
 
 watch(view, () => {
