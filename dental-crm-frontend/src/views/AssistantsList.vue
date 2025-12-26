@@ -199,7 +199,7 @@ onMounted(async () => {
 
     <section
       v-if="showForm"
-      class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
+      class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
       <h2 class="text-sm font-semibold text-text/90">Додати асистента</h2>
 
@@ -265,7 +265,7 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="rounded-xl border border-border bg-card/40 p-4">
+    <section class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
       <div v-if="loading" class="text-sm text-text/70">Завантаження...</div>
       <div v-else-if="error" class="text-sm text-red-400">{{ error }}</div>
       <div v-else-if="editError" class="text-sm text-red-400">{{ editError }}</div>

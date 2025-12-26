@@ -195,7 +195,7 @@ const validatePhone = (event) => {
       <div class="text-xs text-text/60" v-if="patient">ID: {{ patient.id }}</div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 bg-card/50 p-4 rounded-xl border border-border">
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-card/50 p-4 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40">
       <div>
         <h1 class="text-2xl font-bold text-text">{{ patient?.full_name || 'Завантаження...' }}</h1>
         <div class="flex gap-3 text-sm text-text/70 mt-1">
@@ -238,7 +238,7 @@ const validatePhone = (event) => {
       </div>
 
       <div v-show="activeTab === 'info'" class="grid gap-6 lg:grid-cols-2">
-        <section class="rounded-xl border border-border bg-card/60 p-5 space-y-4">
+        <section class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-5 space-y-4">
           <h2 class="text-lg font-semibold text-text/90 mb-4">Редагування профілю</h2>
           <form class="space-y-4" @submit.prevent="savePatient">
             <div class="grid md:grid-cols-2 gap-4">
@@ -332,7 +332,7 @@ const validatePhone = (event) => {
       </div>
 
       <div v-if="activeTab === 'history'">
-        <div class="rounded-xl border border-border bg-card/60 p-4">
+        <div class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
           <div v-if="unifiedHistory.length === 0" class="text-center py-8 text-text/60">Історія порожня</div>
           <div v-else class="space-y-4">
 

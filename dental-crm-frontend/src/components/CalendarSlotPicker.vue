@@ -102,7 +102,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-3 bg-card/60 border border-border rounded-xl p-4">
+  <div class="space-y-3 bg-card/60 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
     <div class="flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-wide text-text/70">Доступні слоти</p>
@@ -117,7 +117,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-text/70 bg-card/60 border border-border/60 rounded-lg p-3">
+    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
       <span v-if="slotRoom" class="mr-3">Кабінет: <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span>
       <span v-if="slotEquipment" class="mr-3">Обладнання: <strong class="text-amber-300">{{ slotEquipment.name || `#${slotEquipment.id}` }}</strong></span>
       <span v-if="slotAssistantId">Асистент: <strong class="text-indigo-300">{{ slotAssistantName }}</strong></span>
@@ -150,7 +150,7 @@ onMounted(() => {
 
       <div v-else-if="loading" class="text-sm text-text/70">Завантаження слотів...</div>
 
-      <div v-else class="text-sm text-text/70 bg-card/60 border border-border/60 rounded-lg p-3">
+      <div v-else class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
         <p v-if="reason" class="text-xs uppercase tracking-wide text-amber-400">Причина: {{ reason }}</p>
         <p v-else class="text-xs text-text/70">Обрати іншу дату або подивіться рекомендації нижче.</p>

@@ -178,7 +178,7 @@ onMounted(async () => {
       <p class="text-sm text-text/70">Кабінети та графік роботи клініки.</p>
     </header>
 
-    <section class="rounded-xl border border-border bg-card/40 p-4">
+    <section class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
       <label class="block text-xs uppercase tracking-wide text-text/70 mb-2">Клініка</label>
       <select v-model="selectedClinicId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm w-full md:w-72">
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -188,7 +188,7 @@ onMounted(async () => {
     </section>
 
     <section class="grid lg:grid-cols-2 gap-6">
-      <div class="rounded-xl border border-border bg-card/40 p-4 space-y-4">
+      <div class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold text-text">Кабінети</h2>
         </div>
@@ -261,7 +261,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="rounded-xl border border-border bg-card/40 p-4 space-y-4">
+      <div class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold text-text">Графік роботи</h2>
           <button

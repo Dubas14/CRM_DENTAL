@@ -96,7 +96,7 @@ const goToPage = (page) => {
       </p>
     </header>
 
-    <section class="rounded-xl border border-border bg-card/40 p-4 space-y-4">
+    <section class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-[220px]">
           <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Пошук користувача</label>

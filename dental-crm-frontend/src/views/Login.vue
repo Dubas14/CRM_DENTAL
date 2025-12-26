@@ -50,7 +50,7 @@ const handleSubmit = async () => {
     </div>
 
     <div class="relative w-full max-w-md">
-      <div class="rounded-2xl bg-card/70 border border-border/60 p-6 shadow-2xl backdrop-blur">
+      <div class="rounded-2xl bg-card/70 shadow-sm shadow-black/10 dark:shadow-black/40 p-6 shadow-2xl backdrop-blur">
         <div class="mb-6">
           <h1 class="text-2xl font-bold text-text">Dental CRM</h1>
           <p class="text-sm text-text/70 mt-1">Вхід до системи</p>

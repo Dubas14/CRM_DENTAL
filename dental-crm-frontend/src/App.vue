@@ -32,9 +32,9 @@ const isSidebarOpen = ref(true); // Стан меню на десктопі
 const isMobileMenuOpen = ref(false); // Для мобілок
 
 const themeOptions = [
-  { value: 'light', label: 'Світла' },
-  { value: 'dark', label: 'Темна' },
-  { value: 'clinic', label: 'Clinic' },
+  { value: 'light', label: 'Світла', icon: '🌞' },
+  { value: 'dark', label: 'Темна', icon: '🌙' },
+  { value: 'clinic', label: 'Clinic', icon: '🏥' },
 ];
 
 // Активний клас для меню
@@ -199,7 +199,7 @@ const isLoginPage = computed(() => route.name === 'login');
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
       <!-- Header (Верхня панель) -->
-      <header class="h-16 bg-card/50 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-40">
+      <header class="h-16 bg-bg-surface/70 backdrop-blur border-b border-border-soft flex items-center justify-between px-6 sticky top-0 z-40">
         <!-- Кнопка меню (мобільна) -->
         <button @click="isMobileMenuOpen = true" class="lg:hidden text-text/70 hover:text-text">
           <Menu size="24" />
@@ -219,13 +219,15 @@ const isLoginPage = computed(() => route.name === 'login');
                 v-for="option in themeOptions"
                 :key="option.value"
                 type="button"
-                class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+                class="group relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors"
                 :class="themeStore.theme === option.value
-                  ? 'bg-accent/20 text-accent border border-accent/40'
+                  ? 'bg-accent/20 text-accent shadow-sm shadow-black/10 dark:shadow-black/40'
                   : 'text-text/70 hover:text-text hover:bg-card/80'"
                 @click="themeStore.setTheme(option.value)"
+                :title="option.label"
               >
-                {{ option.label }}
+                <span aria-hidden="true">{{ option.icon }}</span>
+                <span class="sr-only">{{ option.label }}</span>
               </button>
             </div>
           </div>

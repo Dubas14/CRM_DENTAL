@@ -86,7 +86,7 @@ const saveRecord = async () => {
 
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-text/20 dark:bg-bg/50 backdrop-blur-sm p-4">
-    <div class="bg-card border border-border/80 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
       <!-- Заголовок -->
       <div class="bg-bg p-4 flex justify-between items-center border-b border-border">
@@ -104,19 +104,19 @@ const saveRecord = async () => {
       <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
 
         <div class="grid grid-cols-2 gap-4 text-sm text-text/80">
-          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
             <p class="text-xs uppercase tracking-wide text-text/70">Процедура</p>
             <p class="font-semibold text-text">{{ appointmentDetails.procedure || '—' }}</p>
           </div>
-          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
             <p class="text-xs uppercase tracking-wide text-text/70">Кабінет</p>
             <p class="font-semibold text-text">{{ appointmentDetails.room || '—' }}</p>
           </div>
-          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
             <p class="text-xs uppercase tracking-wide text-text/70">Обладнання</p>
             <p class="font-semibold text-text">{{ appointmentDetails.equipment || '—' }}</p>
           </div>
-          <div class="bg-card/60 border border-border/60 rounded-lg p-3">
+          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
             <p class="text-xs uppercase tracking-wide text-text/70">Асистент</p>
             <p class="font-semibold text-text">{{ appointmentDetails.assistant || '—' }}</p>
           </div>
