@@ -430,7 +430,7 @@ watch(() => user.value, (val) => {
       <button
           @click="refreshData"
           :disabled="loading"
-          class="p-4 bg-card hover:bg-card/80 border border-border/80 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+          class="p-4 bg-card hover:bg-card/80 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
           title="Оновити дані"
           aria-label="Оновити статистику"
       >
@@ -445,7 +445,7 @@ watch(() => user.value, (val) => {
     <!-- Картки статистики з skeleton loading -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Пацієнти -->
-      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-emerald-500/30 transition-all duration-300 group">
+      <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
             <p class="text-text/70 text-sm font-medium uppercase">Всього пацієнтів</p>
@@ -466,7 +466,7 @@ watch(() => user.value, (val) => {
       </div>
 
       <!-- Записи сьогодні -->
-      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 group">
+      <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
             <p class="text-text/70 text-sm font-medium uppercase">Записи сьогодні</p>
@@ -487,7 +487,7 @@ watch(() => user.value, (val) => {
       </div>
 
       <!-- Найближчий візит -->
-      <div class="bg-card border border-border p-6 rounded-xl shadow-md hover:shadow-xl hover:border-purple-500/30 transition-all duration-300 group">
+      <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
             <p class="text-text/70 text-sm font-medium uppercase">Найближчий візит</p>
@@ -521,7 +521,7 @@ watch(() => user.value, (val) => {
     </div>
 
     <!-- Найближчі візити -->
-    <div class="bg-card border border-border rounded-xl p-6 shadow-md">
+    <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-6 shadow-md">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h3 class="text-lg font-bold text-text flex items-center gap-2">
@@ -575,7 +575,7 @@ watch(() => user.value, (val) => {
 
     <!-- Секція швидких дій та графік -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-card border border-border rounded-xl p-6">
+      <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-6">
         <h3 class="text-lg font-bold text-text mb-4 flex items-center gap-2">
           <Activity size="20" class="text-emerald-400"/>
           Швидкі дії
@@ -595,7 +595,7 @@ watch(() => user.value, (val) => {
       </div>
 
       <!-- Графік з skeleton -->
-      <div class="bg-card border border-border rounded-xl p-6">
+      <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-6">
         <h3 class="text-lg font-bold text-text mb-4">Активність за тиждень</h3>
 
         <!-- Skeleton для графіка -->

@@ -127,7 +127,7 @@ onMounted(async () => {
     <!-- форма створення -->
     <div
         v-if="showForm"
-        class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
+        class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
       <h2 class="text-lg font-semibold">Новий пацієнт</h2>
 
@@ -251,7 +251,7 @@ onMounted(async () => {
 
       <div
           v-else
-          class="overflow-hidden rounded-xl border border-border bg-card/40"
+          class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
         <table class="min-w-full text-sm">
           <thead class="bg-card/80 text-text/80">

@@ -30,7 +30,7 @@ const handleSubmit = () => {
 
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-text/20 dark:bg-bg/50 p-4">
-    <div class="w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+    <div class="w-full max-w-lg bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 shadow-2xl overflow-hidden">
       <div class="p-4 bg-bg border-b border-border flex items-center justify-between">
         <div>
           <p class="text-text font-semibold">Створити запис</p>

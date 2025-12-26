@@ -772,7 +772,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card/60 p-4">
+    <div class="flex flex-wrap items-end gap-4 rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
       <div v-if="showClinicSelector" class="flex flex-col gap-1 min-w-[200px]">
         <span class="text-xs uppercase tracking-wide text-text/70">Клініка</span>
         <select v-model="selectedClinicId" class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm">
@@ -794,7 +794,7 @@ onUnmounted(() => {
       </div>
       <div v-else class="flex flex-col gap-1">
         <span class="text-xs uppercase tracking-wide text-text/70">Лікар</span>
-        <div class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm text-text/90">
+        <div class="rounded-lg bg-card shadow-sm shadow-black/10 dark:shadow-black/40 px-3 py-2 text-sm text-text/90">
           {{ doctorProfile?.full_name || selectedDoctor?.full_name || '—' }}
         </div>
       </div>
@@ -889,7 +889,7 @@ onUnmounted(() => {
             @select-slot="selectSlot"
         />
 
-        <div class="rounded-xl border border-border/80 bg-card shadow-xl p-5 space-y-4 relative">
+        <div class="rounded-xl bg-card shadow-xl shadow-black/10 dark:shadow-black/40 p-5 space-y-4 relative">
           <div class="flex justify-between items-center">
             <div>
               <h3 class="text-emerald-400 font-bold text-lg">Бронювання слота</h3>
@@ -898,7 +898,7 @@ onUnmounted(() => {
             <button @click="bookingSlot = null" class="text-text/60 hover:text-text">✕</button>
           </div>
 
-          <div v-if="!bookingSlot" class="text-sm text-text/70 bg-card/50 border border-border/60 rounded-lg p-3">
+          <div v-if="!bookingSlot" class="text-sm text-text/70 bg-card/50 shadow-sm shadow-black/10 dark:shadow-black/40 rounded-lg p-3">
             Спершу оберіть слот у календарі, щоб створити запис.
           </div>
 
@@ -1030,7 +1030,7 @@ onUnmounted(() => {
 
           <div v-if="appointments.length === 0" class="text-text/60 text-sm italic">Немає записів.</div>
 
-          <div v-else class="overflow-hidden rounded-xl border border-border bg-card/40">
+          <div v-else class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40">
             <table class="min-w-full text-sm">
               <thead class="bg-card/80 text-text/70 text-xs uppercase">
               <tr>
@@ -1112,7 +1112,7 @@ onUnmounted(() => {
       </div>
 
       <div class="space-y-4">
-        <div class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
+        <div class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3 class="text-sm font-semibold text-emerald-300">Блоки календаря</h3>
@@ -1240,7 +1240,7 @@ onUnmounted(() => {
             :default-procedure-id="selectedProcedureId"
             @created="refreshScheduleData"
         />
-        <div v-else class="bg-card/60 border border-border rounded-xl p-4 text-sm text-text/70">
+        <div v-else class="bg-card/60 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-4 text-sm text-text/70">
           Потрібен clinic_id для роботи зі списком очікування.
         </div>
       </div>

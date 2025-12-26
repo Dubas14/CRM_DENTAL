@@ -78,7 +78,7 @@ onMounted(loadMap);
 </script>
 
 <template>
-  <div class="bg-card p-6 rounded-xl shadow-sm border border-border">
+  <div class="bg-card p-6 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40">
     <h3 class="text-lg font-semibold text-text/70 mb-4">Зубна формула</h3>
 
     <div v-if="loading" class="text-center py-10 text-text/70">Завантаження карти...</div>

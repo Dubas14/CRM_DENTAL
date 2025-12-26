@@ -144,7 +144,7 @@ onMounted(loadSchedule);
       ❌ {{ error }}
     </div>
 
-    <div v-else class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
+    <div v-else class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
       <table class="min-w-full text-sm">
         <thead class="text-text/70 border-b border-border">
         <tr>

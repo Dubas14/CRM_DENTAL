@@ -70,7 +70,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-card/60 border border-border rounded-xl p-4 space-y-3">
+  <div class="bg-card/60 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-3">
     <div class="flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-wide text-text/70">Список очікування</p>

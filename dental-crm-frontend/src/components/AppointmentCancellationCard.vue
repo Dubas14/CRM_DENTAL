@@ -29,7 +29,7 @@ const cancelAppointment = async () => {
 </script>
 
 <template>
-  <div class="bg-card/60 border border-border rounded-xl p-4 space-y-3">
+  <div class="bg-card/60 rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-3">
     <div class="flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-wide text-text/70">Скасування запису</p>
@@ -63,7 +63,7 @@ const cancelAppointment = async () => {
         <div
           v-for="entry in suggestions"
           :key="entry.id"
-          class="bg-card/60 border border-border/60 rounded-lg p-3"
+          class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
         >
           <p class="text-text font-semibold">{{ entry.patient?.full_name || 'Пацієнт' }}</p>
           <p class="text-xs text-text/70">{{ entry.procedure?.name || 'Процедура не вказана' }}</p>

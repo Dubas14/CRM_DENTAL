@@ -214,7 +214,7 @@ onMounted(loadDoctorProcedures);
     <div v-else class="grid gap-6 md:grid-cols-[2fr,1fr]">
       <!-- Профіль лікаря -->
       <section
-          class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
+          class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
       >
         <h2 class="text-sm font-semibold text-text/90 mb-2">
           Анкетні дані
@@ -312,7 +312,7 @@ onMounted(loadDoctorProcedures);
 
       <!-- Інфо про акаунт -->
       <section
-          class="rounded-xl border border-border bg-card/60 p-4 space-y-3"
+          class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-3"
       >
         <h2 class="text-sm font-semibold text-text/90">
           Акаунт користувача
@@ -337,7 +337,7 @@ onMounted(loadDoctorProcedures);
       </section>
     </div>
 
-    <section class="rounded-xl border border-border bg-card/60 p-4 space-y-4">
+    <section class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
       <div class="flex items-start justify-between gap-4">
         <div>
           <h2 class="text-sm font-semibold text-text/90">Процедури лікаря</h2>

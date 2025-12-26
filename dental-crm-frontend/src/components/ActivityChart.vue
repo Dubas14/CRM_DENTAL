@@ -29,7 +29,7 @@ const normalizedData = computed(() => {
 </script>
 
 <template>
-  <div class="bg-card border border-border rounded-xl p-6 space-y-4 h-full">
+  <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 p-6 space-y-4 h-full">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2 text-text">
         <Activity size="20" class="text-emerald-400" />
@@ -46,7 +46,7 @@ const normalizedData = computed(() => {
             class="flex-1 flex flex-col items-center gap-2"
         >
           <span class="text-sm font-semibold text-text">{{ item.value }}</span>
-          <div class="w-full h-36 bg-card/60 rounded-lg overflow-hidden flex items-end border border-border/60">
+          <div class="w-full h-36 bg-card/60 rounded-lg overflow-hidden flex items-end shadow-sm shadow-black/10 dark:shadow-black/40">
             <div
                 class="w-full bg-gradient-to-t from-emerald-600 via-emerald-400 to-emerald-200 rounded-lg transition-all duration-300 shadow-lg shadow-emerald-900/30"
                 :style="{ height: item.height + '%' }"

@@ -134,7 +134,7 @@ onMounted(async () => {
     <!-- Форма створення лікаря (тільки для супер адміна) -->
     <section
         v-if="canCreateDoctor && showForm"
-        class="rounded-xl border border-border bg-card/60 p-4 space-y-4"
+        class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
       <h2 class="text-sm font-semibold text-text/90">
         Створення нового лікаря
@@ -251,7 +251,7 @@ onMounted(async () => {
     </section>
 
     <!-- Таблиця лікарів -->
-    <section class="rounded-xl border border-border bg-card/60">
+    <section class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40">
       <div class="p-4 border-b border-border flex items-center justify-between">
         <h2 class="text-sm font-semibold text-text/90">Список лікарів</h2>
         <button

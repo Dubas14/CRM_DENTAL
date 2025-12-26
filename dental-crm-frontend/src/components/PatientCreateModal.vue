@@ -93,7 +93,7 @@ const submit = async () => {
 
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-text/20 dark:bg-bg/50 backdrop-blur-sm p-4">
-    <div class="bg-card border border-border/80 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+    <div class="bg-card rounded-xl shadow-sm shadow-black/10 dark:shadow-black/40 shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
 
       <div class="bg-bg p-4 border-b border-border flex justify-between items-center">
         <h3 class="text-lg font-bold text-text">Нова анкета пацієнта</h3>
