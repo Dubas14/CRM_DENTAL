@@ -13,6 +13,7 @@ import WaitlistRequestForm from '../components/WaitlistRequestForm.vue';
 import AppointmentCancellationCard from '../components/AppointmentCancellationCard.vue';
 import assistantApi from '../services/assistantApi';
 import clinicApi from '../services/clinicApi';
+import procedureApi from '../services/procedureApi';
 
 const route = useRoute();
 const router = useRouter();
@@ -342,15 +343,24 @@ const loadLinkedPatient = async () => {
   }
 };
 
-const loadDoctors = async () => {
+const loadDoctors = async (clinicIdValue = clinicId.value) => {
   loadingDoctors.value = true;
   try {
-    const { data } = await apiClient.get('/doctors');
+    if (!clinicIdValue) {
+      doctors.value = [];
+      selectedDoctorId.value = '';
+      return;
+    }
+    const { data } = await apiClient.get('/doctors', { params: { clinic_id: clinicIdValue } });
     doctors.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
     if (isDoctor.value && doctorProfile.value?.id) {
       selectedDoctorId.value = String(doctorProfile.value.id);
-    } else if (!selectedDoctorId.value && doctors.value.length > 0) {
-      selectedDoctorId.value = String(doctors.value[0].id);
+    } else {
+      const doctorExists = selectedDoctorId.value
+        && doctors.value.some((doctor) => Number(doctor.id) === Number(selectedDoctorId.value));
+      if (!doctorExists) {
+        selectedDoctorId.value = doctors.value.length > 0 ? String(doctors.value[0].id) : '';
+      }
     }
     applyQuerySelections();
   } catch (e) {
@@ -360,11 +370,19 @@ const loadDoctors = async () => {
   }
 };
 
-const loadProcedures = async () => {
+const loadProcedures = async (clinicIdValue = clinicId.value) => {
   loadingProcedures.value = true;
   try {
-    const { data } = await apiClient.get('/procedures');
+    if (!clinicIdValue) {
+      procedures.value = [];
+      selectedProcedureId.value = '';
+      return;
+    }
+    const { data } = await procedureApi.list({ clinic_id: clinicIdValue });
     procedures.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+    if (selectedProcedureId.value && !procedures.value.some((proc) => Number(proc.id) === Number(selectedProcedureId.value))) {
+      selectedProcedureId.value = '';
+    }
   } catch (e) {
     console.error('Не вдалося завантажити процедури', e);
   } finally {
@@ -683,9 +701,9 @@ const onAppointmentCancelled = () => {
 
 // === LIFECYCLE ===
 onMounted(async () => {
-  await Promise.all([loadDoctors(), loadProcedures(), loadClinics()]);
+  await loadClinics();
+  await Promise.all([loadDoctors(), loadProcedures(), loadRooms(), loadEquipments(), loadAssistants()]);
   await loadLinkedPatient();
-  await Promise.all([loadRooms(), loadEquipments(), loadAssistants()]);
   await refreshScheduleData();
 
   autoRefreshInterval = setInterval(() => {
@@ -704,6 +722,8 @@ watch(() => [selectedDoctorId.value, selectedDate.value], () => {
 });
 
 watch(clinicId, () => {
+  loadDoctors();
+  loadProcedures();
   loadRooms();
   loadEquipments();
   loadAssistants();
@@ -713,6 +733,7 @@ watch(selectedClinicId, () => {
   selectedRoomId.value = '';
   selectedEquipmentId.value = '';
   selectedAssistantId.value = '';
+  selectedProcedureId.value = '';
 });
 
 watch(selectedProcedureId, () => {
