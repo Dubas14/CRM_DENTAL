@@ -2,8 +2,6 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
-import BaseGrid from '../components/BaseGrid.vue';
-import BasePagination from '../components/BasePagination.vue';
 
 const { user } = useAuth();
 const canManageClinics = computed(() => user.value?.global_role === 'super_admin');
@@ -17,45 +15,26 @@ const currentPage = ref(1);
 const gridData = computed(() => clinics.value);
 const totalItems = computed(() => gridData.value.length);
 const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)));
+const safeCurrentPage = computed(() =>
+  Math.min(Math.max(currentPage.value, 1), pageCount.value)
+);
 const pagedClinics = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return gridData.value.slice(start, start + pageSize);
 });
 
-const gridColumns = [
-  {
-    header: 'ID',
-    name: 'id',
-    sortable: true,
-  },
-  {
-    header: 'Назва',
-    name: 'name',
-    sortable: true,
-    filter: 'text',
-  },
-  {
-    header: 'Місто',
-    name: 'city',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ value }) => value || '—',
-  },
-  {
-    header: 'Адреса',
-    name: 'address',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ value }) => value || '—',
-  },
-  {
-    header: 'Телефон',
-    name: 'phone',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ value }) => value || '—',
-  },
-];
+const pagesToShow = computed(() => {
+  const visible = 5;
+  const half = Math.floor(visible / 2);
+  let start = Math.max(1, safeCurrentPage.value - half);
+  let end = Math.min(pageCount.value, start + visible - 1);
+
+  if (end - start + 1 < visible) {
+    start = Math.max(1, end - visible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+});
 
 // --- стан форми створення ---
 const showForm = ref(false);
@@ -131,6 +110,12 @@ const createClinic = async () => {
 };
 
 onMounted(loadClinics);
+
+const goToPage = (page) => {
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
+  if (nextPage === currentPage.value) return;
+  currentPage.value = nextPage;
+};
 
 watch(
   () => totalItems.value,
@@ -308,16 +293,83 @@ watch(
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <BaseGrid :columns="gridColumns" :data="pagedClinics" />
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-border/60 text-sm">
+            <thead class="bg-card/60 text-left text-xs uppercase tracking-wide text-text/60">
+              <tr>
+                <th class="px-4 py-3">ID</th>
+                <th class="px-4 py-3">Назва</th>
+                <th class="px-4 py-3">Місто</th>
+                <th class="px-4 py-3">Адреса</th>
+                <th class="px-4 py-3">Телефон</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/40">
+              <tr
+                v-for="clinic in pagedClinics"
+                :key="clinic.id"
+                class="transition hover:bg-card/70"
+              >
+                <td class="px-4 py-3 text-text/80">
+                  {{ clinic.id }}
+                </td>
+                <td class="px-4 py-3 font-medium text-text">
+                  {{ clinic.name }}
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ clinic.city || '—' }}
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ clinic.address || '—' }}
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ clinic.phone || '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <BasePagination
-        v-show="totalItems > pageSize"
-        v-model:currentPage="currentPage"
-        :total-items="totalItems"
-        :items-per-page="pageSize"
-        class="mt-4"
-      />
+      <div
+        v-if="pageCount > 1"
+        class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
+      >
+        <p>
+          Показано {{ (safeCurrentPage - 1) * pageSize + 1 }}–{{ Math.min(safeCurrentPage * pageSize, totalItems) }}
+          з {{ totalItems }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === 1"
+            @click="goToPage(safeCurrentPage - 1)"
+          >
+            Prev
+          </button>
+
+          <button
+            v-for="page in pagesToShow"
+            :key="page"
+            type="button"
+            class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
+            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === pageCount"
+            @click="goToPage(safeCurrentPage + 1)"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

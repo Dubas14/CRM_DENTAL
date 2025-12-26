@@ -1,11 +1,8 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../composables/useAuth';
 import { usePermissions } from '../composables/usePermissions';
-import BaseGrid from '../components/BaseGrid.vue';
-import BasePagination from '../components/BasePagination.vue';
 
 const patients = ref([]);
 const clinics = ref([]);
@@ -22,8 +19,6 @@ const formError = ref(null);
 
 const { user } = useAuth();
 const { isDoctor } = usePermissions();
-const router = useRouter();
-
 const doctorProfile = computed(() => user.value?.doctor || null);
 const doctorClinicId = computed(() => doctorProfile.value?.clinic_id || '');
 const doctorClinic = computed(() => doctorProfile.value?.clinic || null);
@@ -38,55 +33,34 @@ const initialFormState = () => ({
   note: '',
 });
 const form = ref(initialFormState());
-const pageSize = 10;
 const currentPage = ref(1);
-
-const gridData = computed(() =>
-  patients.value.map((patient) => ({
-    ...patient,
-    clinicName: patient.clinic?.name || '—',
-  }))
-);
-
-const totalItems = computed(() => gridData.value.length);
-const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)));
-const pagedPatients = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return gridData.value.slice(start, start + pageSize);
+const pagination = ref({
+  currentPage: 1,
+  lastPage: 1,
+  total: 0,
+  perPage: 20,
+  from: 0,
+  to: 0,
 });
 
-const gridColumns = computed(() => [
-  {
-    header: 'ПІБ',
-    name: 'full_name',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ row }) => {
-      const href = router.resolve({ name: 'patient-details', params: { id: row.id } }).href;
-      return `<a href="${href}" class="text-emerald-300 hover:text-emerald-200">${row.full_name}</a>`;
-    },
-  },
-  {
-    header: 'Клініка',
-    name: 'clinicName',
-    sortable: true,
-    filter: 'text',
-  },
-  {
-    header: 'Телефон',
-    name: 'phone',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ value }) => value || '—',
-  },
-  {
-    header: 'Email',
-    name: 'email',
-    sortable: true,
-    filter: 'text',
-    formatter: ({ value }) => value || '—',
-  },
-]);
+const totalItems = computed(() => pagination.value.total || patients.value.length);
+const pageCount = computed(() => pagination.value.lastPage || 1);
+const safeCurrentPage = computed(() =>
+  Math.min(Math.max(currentPage.value, 1), pageCount.value)
+);
+
+const pagesToShow = computed(() => {
+  const visible = 5;
+  const half = Math.floor(visible / 2);
+  let start = Math.max(1, safeCurrentPage.value - half);
+  let end = Math.min(pageCount.value, start + visible - 1);
+
+  if (end - start + 1 < visible) {
+    start = Math.max(1, end - visible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+});
 
 const loadClinics = async () => {
   if (isDoctor.value) {
@@ -106,7 +80,7 @@ const loadPatients = async () => {
   error.value = null;
 
   try {
-    const params = {};
+    const params = { page: currentPage.value };
     if (search.value) params.search = search.value;
     if (isDoctor.value && doctorClinicId.value) {
       params.clinic_id = doctorClinicId.value;
@@ -117,7 +91,15 @@ const loadPatients = async () => {
     const { data } = await apiClient.get('/patients', { params });
     // бо ми повернули paginate, беремо data.data
     patients.value = data.data ?? data;
-    currentPage.value = 1;
+    pagination.value = {
+      currentPage: data.current_page ?? 1,
+      lastPage: data.last_page ?? 1,
+      total: data.total ?? patients.value.length,
+      perPage: data.per_page ?? 20,
+      from: data.from ?? (patients.value.length ? 1 : 0),
+      to: data.to ?? patients.value.length,
+    };
+    currentPage.value = pagination.value.currentPage;
   } catch (e) {
     console.error(e);
     error.value =
@@ -140,8 +122,9 @@ const createPatient = async () => {
       payload.clinic_id = doctorClinicId.value;
     }
 
-    const { data } = await apiClient.post('/patients', payload);
-    patients.value.unshift(data);
+    await apiClient.post('/patients', payload);
+    currentPage.value = 1;
+    await loadPatients();
 
     form.value = initialFormState();
     showForm.value = false;
@@ -173,14 +156,17 @@ onMounted(async () => {
   await loadPatients();
 });
 
-watch(
-  () => totalItems.value,
-  () => {
-    if (currentPage.value > pageCount.value) {
-      currentPage.value = pageCount.value;
-    }
-  }
-);
+const applyFilters = async () => {
+  currentPage.value = 1;
+  await loadPatients();
+};
+
+const goToPage = async (page) => {
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
+  if (nextPage === currentPage.value) return;
+  currentPage.value = nextPage;
+  await loadPatients();
+};
 </script>
 
 <template>
@@ -219,12 +205,12 @@ watch(
             type="text"
             placeholder="Пошук (ПІБ / телефон / email)"
             class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-            @keyup.enter="loadPatients"
+            @keyup.enter="applyFilters"
         />
         <button
             type="button"
             class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-            @click="loadPatients"
+            @click="applyFilters"
         >
           Знайти
         </button>
@@ -234,7 +220,7 @@ watch(
         Клініка:
         <select
             v-model="selectedClinicFilter"
-            @change="loadPatients"
+            @change="applyFilters"
             class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
         >
           <option value="">Усі</option>
@@ -394,16 +380,83 @@ watch(
           v-else
           class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
-        <BaseGrid :columns="gridColumns" :data="pagedPatients" />
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-border/60 text-sm">
+            <thead class="bg-card/60 text-left text-xs uppercase tracking-wide text-text/60">
+              <tr>
+                <th class="px-4 py-3">ПІБ</th>
+                <th class="px-4 py-3">Клініка</th>
+                <th class="px-4 py-3">Телефон</th>
+                <th class="px-4 py-3">Email</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border/40">
+              <tr
+                v-for="patient in patients"
+                :key="patient.id"
+                class="transition hover:bg-card/70"
+              >
+                <td class="px-4 py-3 font-medium text-emerald-300">
+                  <RouterLink
+                    :to="{ name: 'patient-details', params: { id: patient.id } }"
+                    class="hover:text-emerald-200"
+                  >
+                    {{ patient.full_name }}
+                  </RouterLink>
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ patient.clinic?.name || '—' }}
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ patient.phone || '—' }}
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  {{ patient.email || '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <BasePagination
-        v-show="totalItems > pageSize"
-        v-model:currentPage="currentPage"
-        :total-items="totalItems"
-        :items-per-page="pageSize"
-        class="mt-4"
-      />
+      <div
+        v-if="pageCount > 1"
+        class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
+      >
+        <p>
+          Показано {{ pagination.from }}–{{ pagination.to }} з {{ totalItems }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === 1"
+            @click="goToPage(safeCurrentPage - 1)"
+          >
+            Prev
+          </button>
+
+          <button
+            v-for="page in pagesToShow"
+            :key="page"
+            type="button"
+            class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
+            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === pageCount"
+            @click="goToPage(safeCurrentPage + 1)"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
