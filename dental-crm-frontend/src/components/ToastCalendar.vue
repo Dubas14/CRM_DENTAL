@@ -4,13 +4,21 @@
 
 <script setup>
 
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import Calendar from '@toast-ui/calendar'
+import '@toast-ui/calendar/dist/toastui-calendar.css'
+import '../assets/css/toast-calendar-theme.css'
+import { defineExpose } from 'vue'
+
+const DAY_NAMES = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
 const ukLocale = {
   week: {
-    dayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
-    narrowDayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+    dayNames: DAY_NAMES,
+    narrowDayNames: DAY_NAMES,
   },
   month: {
-    dayNames: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+    dayNames: DAY_NAMES,
   },
   titles: {
     today: 'Сьогодні',
@@ -19,17 +27,57 @@ const ukLocale = {
     month: 'Місяць',
   },
   time: {
-    am: 'дп',
-    pm: 'пп',
+    am: '',
+    pm: '',
   },
   allDay: 'Весь день',
 };
 
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import Calendar from '@toast-ui/calendar'
-import '@toast-ui/calendar/dist/toastui-calendar.css'
-import '../assets/css/toast-calendar-theme.css'
-import { defineExpose } from 'vue'
+const getDayIndex = (dayInfo) => {
+  if (!dayInfo) return null;
+
+  const candidateDate = dayInfo.date ?? dayInfo.start;
+  if (candidateDate) {
+    const date = candidateDate instanceof Date ? candidateDate : new Date(candidateDate);
+    if (!Number.isNaN(date.getTime())) {
+      return date.getDay();
+    }
+  }
+
+  const directIndex = dayInfo.day ?? dayInfo.dayOfWeek ?? dayInfo.dayIndex;
+  if (typeof directIndex === 'number') {
+    return directIndex;
+  }
+
+  const label = dayInfo.dayName ?? dayInfo.label ?? dayInfo.name;
+  if (label) {
+    const normalized = label.toLowerCase();
+    const matchedIndex = DAY_NAMES.findIndex((name) => name.toLowerCase() === normalized);
+    return matchedIndex >= 0 ? matchedIndex : null;
+  }
+
+  return null;
+};
+
+const getDayLabel = (dayInfo) => {
+  const index = getDayIndex(dayInfo);
+  if (index !== null && index !== undefined) {
+    return DAY_NAMES[index];
+  }
+
+  return dayInfo?.dayName ?? dayInfo?.label ?? dayInfo?.name ?? '';
+};
+
+const formatTime = (time) => {
+  const date = time?.toDate ? time.toDate() : time;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const hours = `${date.getHours()}`.padStart(2, '0');
+  const minutes = `${date.getMinutes()}`.padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
 
 defineExpose({
   next: () => calendarInstance?.next(),
@@ -57,6 +105,18 @@ onMounted(() => {
       startDayOfWeek: 1,
       hourStart: 8,
       hourEnd: 22,
+      dayNames: DAY_NAMES,
+      timegridDisplayTime: formatTime,
+    },
+    day: {
+      timegridDisplayTime: formatTime,
+    },
+    month: {
+      dayNames: DAY_NAMES,
+    },
+    templates: {
+      weekDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
+      monthDayname: (dayname) => `<span>${getDayLabel(dayname)}</span>`,
     },
     useDetailPopup: false,
     useFormPopup: false,
