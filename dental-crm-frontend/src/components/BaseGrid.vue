@@ -1,5 +1,5 @@
 <template>
-  <div ref="gridRef" class="toastui-grid-container"></div>
+  <div ref="gridRef" class="base-grid"></div>
 </template>
 
 <script setup>
