@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { debounce } from 'lodash-es';
 import roleApi from '../services/roleApi';
 
@@ -11,9 +11,44 @@ const error = ref(null);
 const saving = ref({});
 const searchQuery = ref('');
 const currentPage = ref(1);
-const perPage = 15;
+const perPage = 12;
 const totalPages = ref(1);
 const totalItems = ref(0);
+const pagination = ref({
+  currentPage: 1,
+  lastPage: 1,
+  total: 0,
+  perPage,
+  from: 0,
+  to: 0,
+});
+
+const safeCurrentPage = computed(() =>
+  Math.min(Math.max(currentPage.value, 1), totalPages.value || 1)
+);
+
+const pagesToShow = computed(() => {
+  const visible = 5;
+  const half = Math.floor(visible / 2);
+  let start = Math.max(1, safeCurrentPage.value - half);
+  let end = Math.min(totalPages.value, start + visible - 1);
+
+  if (end - start + 1 < visible) {
+    start = Math.max(1, end - visible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+});
+
+const displayFrom = computed(() => {
+  if (!totalItems.value) return 0;
+  return pagination.value.from ?? (safeCurrentPage.value - 1) * perPage + 1;
+});
+
+const displayTo = computed(() => {
+  if (!totalItems.value) return 0;
+  return pagination.value.to ?? Math.min(safeCurrentPage.value * perPage, totalItems.value);
+});
 
 const fetchRoles = async () => {
   const { data } = await roleApi.listRoles();
@@ -38,6 +73,14 @@ const fetchUsers = async () => {
     totalPages.value = meta.last_page ?? 1;
     totalItems.value = meta.total ?? users.value.length;
     currentPage.value = meta.current_page ?? currentPage.value;
+    pagination.value = {
+      currentPage: currentPage.value,
+      lastPage: totalPages.value,
+      total: totalItems.value,
+      perPage,
+      from: meta.from ?? (users.value.length ? (currentPage.value - 1) * perPage + 1 : 0),
+      to: meta.to ?? (users.value.length ? Math.min(currentPage.value * perPage, totalItems.value) : 0),
+    };
   } catch (err) {
     console.error(err);
     error.value = 'Не вдалося завантажити користувачів';
@@ -81,8 +124,9 @@ const onSearchInput = () => {
 };
 
 const goToPage = (page) => {
-  if (page < 1 || page > totalPages.value || page === currentPage.value) return;
-  currentPage.value = page;
+  const nextPage = Math.min(Math.max(page, 1), totalPages.value);
+  if (nextPage === currentPage.value) return;
+  currentPage.value = nextPage;
   fetchUsers();
 };
 </script>
@@ -109,7 +153,7 @@ const goToPage = (page) => {
           />
         </div>
         <div class="text-xs text-text/60">
-          Показано {{ users.length }} із {{ totalItems }} користувачів
+          Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }} користувачів
         </div>
       </div>
       <div v-if="loading" class="text-sm text-text/70">Завантаження...</div>
@@ -159,24 +203,43 @@ const goToPage = (page) => {
           </tbody>
         </table>
       </div>
-      <div v-if="totalPages > 1" class="flex items-center justify-between gap-3">
-        <button
-          class="px-3 py-2 rounded-lg border border-border/80 text-xs text-text/90 hover:bg-card/80 disabled:opacity-50"
-          :disabled="currentPage === 1"
-          @click="goToPage(currentPage - 1)"
-        >
-          Попередня
-        </button>
-        <div class="text-xs text-text/60">
-          Сторінка {{ currentPage }} з {{ totalPages }}
+      <div
+        v-if="totalPages > 1"
+        class="flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
+      >
+        <p>
+          Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === 1"
+            @click="goToPage(safeCurrentPage - 1)"
+          >
+            Попередня
+          </button>
+
+          <button
+            v-for="page in pagesToShow"
+            :key="page"
+            type="button"
+            class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
+            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === totalPages"
+            @click="goToPage(safeCurrentPage + 1)"
+          >
+            Наступна
+          </button>
         </div>
-        <button
-          class="px-3 py-2 rounded-lg border border-border/80 text-xs text-text/90 hover:bg-card/80 disabled:opacity-50"
-          :disabled="currentPage === totalPages"
-          @click="goToPage(currentPage + 1)"
-        >
-          Наступна
-        </button>
       </div>
     </section>
   </div>

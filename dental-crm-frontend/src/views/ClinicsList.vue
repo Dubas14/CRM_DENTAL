@@ -346,7 +346,7 @@ watch(
             :disabled="safeCurrentPage === 1"
             @click="goToPage(safeCurrentPage - 1)"
           >
-            Prev
+            Попередня
           </button>
 
           <button
@@ -366,7 +366,7 @@ watch(
             :disabled="safeCurrentPage === pageCount"
             @click="goToPage(safeCurrentPage + 1)"
           >
-            Next
+            Наступна
           </button>
         </div>
       </div>

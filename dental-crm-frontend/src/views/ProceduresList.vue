@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import procedureApi from '../services/procedureApi';
 import equipmentApi from '../services/equipmentApi';
 import clinicApi from '../services/clinicApi';
@@ -29,6 +29,61 @@ const editForm = ref({
   steps: [],
 });
 const savingEdit = ref(false);
+const perPage = 12;
+const currentPage = ref(1);
+const pagination = ref({
+  currentPage: 1,
+  lastPage: 1,
+  total: 0,
+  perPage,
+  from: 0,
+  to: 0,
+});
+const isServerPaginated = ref(false);
+
+const totalItems = computed(() => pagination.value.total || procedures.value.length);
+const pageCount = computed(() => {
+  if (isServerPaginated.value) {
+    return pagination.value.lastPage || 1;
+  }
+  return Math.max(1, Math.ceil(totalItems.value / perPage));
+});
+const safeCurrentPage = computed(() =>
+  Math.min(Math.max(currentPage.value, 1), pageCount.value)
+);
+
+const pagesToShow = computed(() => {
+  const visible = 5;
+  const half = Math.floor(visible / 2);
+  let start = Math.max(1, safeCurrentPage.value - half);
+  let end = Math.min(pageCount.value, start + visible - 1);
+
+  if (end - start + 1 < visible) {
+    start = Math.max(1, end - visible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+});
+
+const pagedProcedures = computed(() => {
+  if (isServerPaginated.value) {
+    return procedures.value;
+  }
+  const start = (safeCurrentPage.value - 1) * perPage;
+  return procedures.value.slice(start, start + perPage);
+});
+
+const displayFrom = computed(() => {
+  if (!totalItems.value) return 0;
+  if (isServerPaginated.value) return pagination.value.from ?? 0;
+  return (safeCurrentPage.value - 1) * perPage + 1;
+});
+
+const displayTo = computed(() => {
+  if (!totalItems.value) return 0;
+  if (isServerPaginated.value) return pagination.value.to ?? 0;
+  return Math.min(safeCurrentPage.value * perPage, totalItems.value);
+});
 
 const form = ref({
   clinic_id: '',
@@ -99,8 +154,34 @@ const fetchProcedures = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const { data } = await procedureApi.list({ clinic_id: selectedClinicId.value });
-    procedures.value = data.data ?? data;
+    const { data } = await procedureApi.list({
+      clinic_id: selectedClinicId.value,
+      page: currentPage.value,
+      per_page: perPage,
+    });
+    const items = data.data ?? data;
+    procedures.value = items;
+    const hasPagination =
+      data?.current_page !== undefined ||
+      data?.last_page !== undefined ||
+      data?.total !== undefined;
+    isServerPaginated.value = hasPagination;
+    const fallbackTotal = data?.total ?? items.length;
+    const fallbackLastPage = Math.max(1, Math.ceil(fallbackTotal / perPage));
+    pagination.value = {
+      currentPage: data?.current_page ?? currentPage.value,
+      lastPage: data?.last_page ?? fallbackLastPage,
+      total: fallbackTotal,
+      perPage: data?.per_page ?? perPage,
+      from: data?.from ?? (items.length ? (currentPage.value - 1) * perPage + 1 : 0),
+      to: data?.to ?? (items.length ? Math.min(currentPage.value * perPage, fallbackTotal) : 0),
+    };
+
+    if (!hasPagination && currentPage.value > pagination.value.lastPage) {
+      currentPage.value = pagination.value.lastPage;
+    } else {
+      currentPage.value = pagination.value.currentPage;
+    }
   } catch (err) {
     console.error(err);
     error.value = 'Не вдалося завантажити процедури';
@@ -205,6 +286,7 @@ const deleteProcedure = async (procedure) => {
 };
 
 watch(selectedClinicId, async () => {
+  currentPage.value = 1;
   await Promise.all([fetchProcedures(), fetchEquipments()]);
 });
 
@@ -212,6 +294,13 @@ onMounted(async () => {
   await loadClinics();
   await Promise.all([fetchProcedures(), fetchEquipments()]);
 });
+
+const goToPage = async (page) => {
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
+  if (nextPage === currentPage.value) return;
+  currentPage.value = nextPage;
+  await fetchProcedures();
+};
 </script>
 
 <template>
@@ -376,7 +465,7 @@ onMounted(async () => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="procedure in procedures" :key="procedure.id" class="border-t border-border">
+            <tr v-for="procedure in pagedProcedures" :key="procedure.id" class="border-t border-border">
               <td class="py-2 px-3">
                 <input
                   v-if="editingProcedureId === procedure.id"
@@ -489,6 +578,44 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div
+        v-if="pageCount > 1"
+        class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
+      >
+        <p>
+          Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === 1"
+            @click="goToPage(safeCurrentPage - 1)"
+          >
+            Попередня
+          </button>
+
+          <button
+            v-for="page in pagesToShow"
+            :key="page"
+            type="button"
+            class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
+            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text transition hover:bg-card/70 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="safeCurrentPage === pageCount"
+            @click="goToPage(safeCurrentPage + 1)"
+          >
+            Наступна
+          </button>
+        </div>
       </div>
     </section>
   </div>
