@@ -521,6 +521,7 @@ const bookSelectedSlot = async () => {
       room_id: selectedRoomId.value || null,
       equipment_id: selectedEquipmentId.value || null,
       assistant_id: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+      clinic_id: clinicId.value ? Number(clinicId.value) : undefined,
       is_follow_up: !!isFollowUp.value,
       allow_soft_conflicts: !!allowSoftConflicts.value,
       comment: selectedPatientForBooking.value
