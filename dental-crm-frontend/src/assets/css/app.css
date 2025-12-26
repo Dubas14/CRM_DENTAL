@@ -1,24 +1,56 @@
 :root {
-  --color-bg: 248 250 252;
-  --color-card: 255 255 255;
-  --color-text: 15 23 42;
-  --color-border: 226 232 240;
+  --bg-main: 243 246 250;
+  --bg-surface: 248 250 252;
+  --bg-card: 253 254 255;
+  --border-soft: 226 232 240;
+  --border-strong: 203 213 225;
+  --text-main: 15 23 42;
+  --text-muted: 71 85 105;
+  --accent: 14 165 233;
+  color-scheme: light;
+}
+
+.light {
+  --bg-main: 243 246 250;
+  --bg-surface: 248 250 252;
+  --bg-card: 253 254 255;
+  --border-soft: 226 232 240;
+  --border-strong: 203 213 225;
+  --text-main: 15 23 42;
+  --text-muted: 71 85 105;
+  --accent: 16 185 129;
   color-scheme: light;
 }
 
 .dark {
-  --color-bg: 2 6 23;
-  --color-card: 15 23 42;
-  --color-text: 226 232 240;
-  --color-border: 30 41 59;
+  --bg-main: 8 12 20;
+  --bg-surface: 18 24 36;
+  --bg-card: 28 36 52;
+  --border-soft: 34 44 60;
+  --border-strong: 52 65 85;
+  --text-main: 226 232 240;
+  --text-muted: 148 163 184;
+  --accent: 96 165 250;
   color-scheme: dark;
+}
+
+.clinic {
+  --bg-main: 241 247 250;
+  --bg-surface: 247 251 253;
+  --bg-card: 255 255 255;
+  --border-soft: 209 225 234;
+  --border-strong: 179 205 219;
+  --text-main: 15 23 42;
+  --text-muted: 71 85 105;
+  --accent: 14 116 144;
+  color-scheme: light;
 }
 
 html,
 body,
 #app {
-  background-color: rgb(var(--color-bg));
-  color: rgb(var(--color-text));
+  background-color: rgb(var(--bg-main));
+  color: rgb(var(--text-main));
 }
 
 html,
@@ -30,38 +62,20 @@ body {
   min-height: 100%;
 }
 
-.theme-toggle-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  border: 1px solid rgb(var(--color-border) / 0.6);
-  background: rgb(var(--color-card) / 0.6);
-  color: rgb(var(--color-text));
-  transition: all 0.2s ease;
-}
-
-.theme-toggle-button:hover {
-  border-color: rgb(var(--color-border));
-  background: rgb(var(--color-card) / 0.9);
-}
-
 /* Глобальні стилі для скролбару */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgb(var(--color-bg));
+  background: rgb(var(--bg-main));
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgb(var(--color-border));
+  background: rgb(var(--border-soft));
   border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--color-text) / 0.4);
+  background: rgb(var(--text-main) / 0.4);
 }
 
 /* Анімація переходу сторінок */
