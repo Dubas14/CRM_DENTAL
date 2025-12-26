@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuth } from './composables/useAuth';
 import { usePermissions } from './composables/usePermissions';
 import ToastContainer from './components/ToastContainer.vue';
+import { useThemeStore } from './stores/theme';
 import {
   LayoutDashboard,
   Calendar,
@@ -18,32 +19,23 @@ import {
   Settings,
   LogOut,
   Menu,
-  X,
-  Sun,
-  Moon
+  X
 } from 'lucide-vue-next';
 
 const { user, logout } = useAuth();
 const { isSuperAdmin, isDoctor, canManageCatalog, canManageRoles } = usePermissions();
 const router = useRouter();
 const route = useRoute();
+const themeStore = useThemeStore();
 
 const isSidebarOpen = ref(true); // Стан меню на десктопі
 const isMobileMenuOpen = ref(false); // Для мобілок
 
-const defaultTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
-const theme = ref(defaultTheme || 'dark');
-const isDarkTheme = computed(() => theme.value === 'dark');
-
-const applyThemeClass = (value) => {
-  if (typeof document !== 'undefined') {
-    document.documentElement.classList.toggle('dark', value === 'dark');
-  }
-};
-
-watch(theme, (value) => {
-  applyThemeClass(value);
-}, { immediate: true });
+const themeOptions = [
+  { value: 'light', label: 'Світла' },
+  { value: 'dark', label: 'Темна' },
+  { value: 'clinic', label: 'Clinic' },
+];
 
 // Активний клас для меню
 const activeClass = "bg-emerald-600 text-text shadow-lg shadow-emerald-500/30";
@@ -52,13 +44,6 @@ const inactiveClass = "text-text/70 hover:bg-card/80 hover:text-text";
 const handleLogout = async () => {
   await logout();
   router.push({ name: 'login' });
-};
-
-const toggleTheme = () => {
-  theme.value = isDarkTheme.value ? 'light' : 'dark';
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('theme', theme.value);
-  }
 };
 
 // Якщо ми на сторінці логіна - не показуємо лейаут
@@ -227,15 +212,23 @@ const isLoginPage = computed(() => route.name === 'login');
 
         <!-- Профіль користувача -->
         <div class="flex items-center gap-4">
-          <button
-            type="button"
-            class="theme-toggle-button"
-            :aria-label="isDarkTheme ? 'Увімкнути світлу тему' : 'Увімкнути темну тему'"
-            @click="toggleTheme"
-          >
-            <Sun v-if="!isDarkTheme" size="18" />
-            <Moon v-else size="18" />
-          </button>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-text/60 hidden md:inline">Тема</span>
+            <div class="flex items-center gap-2 rounded-full border border-border bg-card/70 px-2 py-1">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                type="button"
+                class="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+                :class="themeStore.theme === option.value
+                  ? 'bg-accent/20 text-accent border border-accent/40'
+                  : 'text-text/70 hover:text-text hover:bg-card/80'"
+                @click="themeStore.setTheme(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
           <div class="text-right hidden sm:block">
             <p class="text-sm font-bold text-text leading-none">{{ user?.first_name }} {{ user?.last_name }}</p>
             <p class="text-xs text-text/60 mt-1">{{ isDoctor ? 'Лікар' : (isSuperAdmin ? 'Адміністратор' : 'Користувач') }}</p>
