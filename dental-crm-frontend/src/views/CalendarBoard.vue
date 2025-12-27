@@ -63,6 +63,8 @@
           @select-date-time="handleSelectDateTime"
           @click-event="handleClickEvent"
           @before-update-event="handleBeforeUpdateEvent"
+          @event-drag-start="handleEventDragStart"
+          @event-drag-end="handleEventDragEnd"
       />
     </div>
 
@@ -104,6 +106,7 @@ const isAppointmentModalOpen = ref(false)
 const selectedAppointment = ref(null)
 
 const events = ref([])
+const availabilityEvents = ref([])
 const clinics = ref([])
 const selectedClinicId = ref(null)
 
@@ -113,6 +116,9 @@ const { user, initAuth } = useAuth()
 const SNAP_MINUTES = 15
 const DRAG_VALID_COLOR = '#16a34a'
 const DRAG_INVALID_COLOR = '#ef4444'
+const AVAILABILITY_BG_COLOR = 'rgba(16, 185, 129, 0.18)'
+const AVAILABILITY_BORDER_COLOR = 'rgba(16, 185, 129, 0.45)'
+let availabilityRequestId = 0
 
 // --- COMPUTED ---
 const currentClinicId = computed(() => {
@@ -163,6 +169,57 @@ const snapToMinutes = (date, stepMinutes = SNAP_MINUTES) => {
   if (!normalized) return null
   const stepMs = stepMinutes * 60000
   return new Date(Math.round(normalized.getTime() / stepMs) * stepMs)
+}
+
+const addMinutesToTime = (time, minutes) => {
+  if (!time || typeof time !== 'string') return null
+  const [hourStr, minuteStr] = time.split(':')
+  const hour = Number.parseInt(hourStr, 10)
+  const minute = Number.parseInt(minuteStr, 10)
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null
+  const totalMinutes = hour * 60 + minute + minutes
+  const nextHour = Math.floor((totalMinutes % (24 * 60)) / 60)
+  const nextMinute = totalMinutes % 60
+  return `${String(nextHour).padStart(2, '0')}:${String(nextMinute).padStart(2, '0')}`
+}
+
+const getAppointmentDurationMinutes = (appt) => {
+  const start = toDate(appt?.start_at)
+  const end = toDate(appt?.end_at)
+  if (!start || !end) return 30
+  const diff = Math.round((end.getTime() - start.getTime()) / 60000)
+  return diff > 0 ? diff : 30
+}
+
+const mergeSlotsToIntervals = (slots, durationMinutes = 30) => {
+  if (!slots?.length) return []
+  const normalized = slots
+    .map((slot) => {
+      const start = slot.start
+      const end = slot.end || addMinutesToTime(slot.start, durationMinutes)
+      if (!start || !end) return null
+      return { start, end }
+    })
+    .filter(Boolean)
+  if (!normalized.length) return []
+
+  const sorted = [...normalized].sort((a, b) => a.start.localeCompare(b.start))
+  const merged = []
+
+  for (const slot of sorted) {
+    const last = merged[merged.length - 1]
+    if (!last) {
+      merged.push({ ...slot })
+      continue
+    }
+    if (last.end === slot.start) {
+      last.end = slot.end
+    } else {
+      merged.push({ ...slot })
+    }
+  }
+
+  return merged
 }
 
 const mapBlockToEvent = (block) => {
@@ -281,6 +338,93 @@ const flashInvalidDrop = (eventId, calendarId) => {
   }, 180)
 }
 
+const removeAvailabilityEvents = () => {
+  availabilityEvents.value.forEach((event) => {
+    calendarRef.value?.deleteEvent?.(event.id, event.calendarId)
+  })
+  availabilityEvents.value = []
+}
+
+const applyAvailabilityEvents = (nextEvents) => {
+  removeAvailabilityEvents()
+  if (!nextEvents?.length) return
+  availabilityEvents.value = nextEvents
+  calendarRef.value?.createEvents?.(availabilityEvents.value)
+}
+
+const loadAvailabilitySlots = async (appointment) => {
+  if (!appointment || view.value === 'month') {
+    removeAvailabilityEvents()
+    return
+  }
+
+  const doctorId = getAppointmentDoctorId(appointment)
+  if (!doctorId) {
+    removeAvailabilityEvents()
+    return
+  }
+
+  const rangeStart = calendarRef.value?.getDateRangeStart?.()
+  const rangeEnd = calendarRef.value?.getDateRangeEnd?.()
+  if (!rangeStart || !rangeEnd) {
+    removeAvailabilityEvents()
+    return
+  }
+
+  const startDate = new Date(rangeStart)
+  const endDate = new Date(rangeEnd)
+  startDate.setHours(0, 0, 0, 0)
+  endDate.setHours(0, 0, 0, 0)
+  const endExclusive = new Date(endDate)
+  endExclusive.setDate(endExclusive.getDate() + 1)
+
+  const durationMinutes = getAppointmentDurationMinutes(appointment)
+  const requestId = ++availabilityRequestId
+  const eventsBuffer = []
+
+  const cursor = new Date(startDate)
+  while (cursor < endExclusive) {
+    const date = formatDateOnly(cursor)
+    try {
+      const { data } = await calendarApi.getDoctorSlots(doctorId, {
+        date,
+        procedure_id: appointment.procedure_id || appointment.procedure?.id || undefined,
+        room_id: appointment.room_id || appointment.room?.id || undefined,
+        equipment_id: appointment.equipment_id || appointment.equipment?.id || undefined,
+        assistant_id: appointment.assistant_id || appointment.assistant?.id || undefined,
+        duration_minutes: durationMinutes,
+      })
+      const slots = Array.isArray(data?.slots) ? data.slots : []
+      const intervals = mergeSlotsToIntervals(slots, durationMinutes)
+      intervals.forEach((interval) => {
+        const start = new Date(`${date}T${interval.start}:00`)
+        const end = new Date(`${date}T${interval.end}:00`)
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return
+        eventsBuffer.push({
+          id: `availability-${doctorId}-${date}-${interval.start}`,
+          calendarId: 'main',
+          title: '',
+          category: 'time',
+          start,
+          end,
+          isReadOnly: true,
+          backgroundColor: AVAILABILITY_BG_COLOR,
+          borderColor: AVAILABILITY_BORDER_COLOR,
+          dragBackgroundColor: AVAILABILITY_BG_COLOR,
+          color: 'transparent',
+          classNames: ['calendar-availability-slot'],
+        })
+      })
+    } catch (error) {
+      console.error(`Помилка завантаження слотів на ${date}`, error)
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  if (requestId !== availabilityRequestId) return
+  applyAvailabilityEvents(eventsBuffer)
+}
+
 // --- API ACTIONS ---
 
 // 1. Завантаження клінік
@@ -333,6 +477,9 @@ const fetchEvents = async () => {
     calendarRef.value?.clear?.();
     if (events.value.length) {
       calendarRef.value?.createEvents?.(events.value);
+    }
+    if (availabilityEvents.value.length) {
+      calendarRef.value?.createEvents?.(availabilityEvents.value);
     }
 
   } catch (error) {
@@ -391,6 +538,7 @@ const handleSaveEvent = (payload) => {
 }
 
 const handleClinicChange = () => {
+  removeAvailabilityEvents()
   nextTick(() => fetchEvents())
 }
 
@@ -399,14 +547,30 @@ const updateCurrentDate = () => {
   if (date) currentDate.value = new Date(date)
 }
 
-const next = () => { calendarRef.value?.next(); updateCurrentDate(); fetchEvents(); }
-const prev = () => { calendarRef.value?.prev(); updateCurrentDate(); fetchEvents(); }
-const today = () => { calendarRef.value?.today(); updateCurrentDate(); fetchEvents(); }
+const next = () => {
+  calendarRef.value?.next()
+  updateCurrentDate()
+  fetchEvents()
+  removeAvailabilityEvents()
+}
+const prev = () => {
+  calendarRef.value?.prev()
+  updateCurrentDate()
+  fetchEvents()
+  removeAvailabilityEvents()
+}
+const today = () => {
+  calendarRef.value?.today()
+  updateCurrentDate()
+  fetchEvents()
+  removeAvailabilityEvents()
+}
 
 const changeView = () => {
   calendarRef.value?.changeView(view.value)
   updateCurrentDate()
   fetchEvents()
+  removeAvailabilityEvents()
 }
 
 const selectMonth = (date) => {
@@ -414,6 +578,7 @@ const selectMonth = (date) => {
   calendarRef.value?.setDate?.(date)
   updateCurrentDate()
   fetchEvents()
+  removeAvailabilityEvents()
 }
 
 const createDefaultEvent = ({ start, end, event }) => {
@@ -453,6 +618,7 @@ const handleAppointmentSaved = () => {
 const handleSelectDateTime = (info) => {
   const start = toDate(info?.start)
   const end = toDate(info?.end)
+  removeAvailabilityEvents()
   openEventModal(createDefaultEvent({ start, end }))
 }
 
@@ -461,11 +627,22 @@ const handleClickEvent = (info) => {
   if (!event) return
 
   if (event.raw && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) {
+    removeAvailabilityEvents()
     selectedAppointment.value = event.raw
     isAppointmentModalOpen.value = true
     return;
   }
+  removeAvailabilityEvents()
   openEventModal(createDefaultEvent({ event, start: event.start, end: event.end }))
+}
+
+const handleEventDragStart = ({ event }) => {
+  if (!event?.raw || !Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) return
+  loadAvailabilitySlots(event.raw)
+}
+
+const handleEventDragEnd = () => {
+  removeAvailabilityEvents()
 }
 
 const handleBeforeUpdateEvent = async (info) => {
@@ -516,6 +693,7 @@ const handleBeforeUpdateEvent = async (info) => {
           start: originalStart,
           end: originalEnd,
         })
+        removeAvailabilityEvents()
         return
       }
 
@@ -536,6 +714,7 @@ const handleBeforeUpdateEvent = async (info) => {
       }
 
       toastSuccess('Запис перенесено')
+      removeAvailabilityEvents()
     } catch (error) {
       console.error(error)
       toastError('Не вдалося перенести запис')
@@ -544,10 +723,12 @@ const handleBeforeUpdateEvent = async (info) => {
         start: originalStart,
         end: originalEnd,
       })
+      removeAvailabilityEvents()
     }
     return
   }
 
+  removeAvailabilityEvents()
   openEventModal(createDefaultEvent({ event, start: snappedStart, end: snappedEnd }))
 }
 

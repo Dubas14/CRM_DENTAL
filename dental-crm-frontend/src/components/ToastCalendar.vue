@@ -93,15 +93,18 @@ defineExpose({
   getDate: () => calendarInstance?.getDate?.(),
   updateEvent: (eventId, calendarId, changes) => calendarInstance?.updateEvent?.(eventId, calendarId, changes),
   createEvents: (events) => calendarInstance?.createEvents?.(events),
+  deleteEvent: (eventId, calendarId) => calendarInstance?.deleteEvent?.(eventId, calendarId),
   clear: () => calendarInstance?.clear?.(),
   getDateRangeStart: () => calendarInstance?.getDateRangeStart?.(),
   getDateRangeEnd: () => calendarInstance?.getDateRangeEnd?.(),
 })
 
-const emit = defineEmits(['selectDateTime', 'clickEvent', 'beforeUpdateEvent'])
+const emit = defineEmits(['selectDateTime', 'clickEvent', 'beforeUpdateEvent', 'eventDragStart', 'eventDragEnd'])
 
 const calendarEl = ref(null)
 let calendarInstance = null
+let handleMouseDown = null
+let handleMouseUp = null
 
 onMounted(() => {
   calendarInstance = new Calendar(calendarEl.value, {
@@ -159,9 +162,36 @@ onMounted(() => {
     emit('beforeUpdateEvent', info)
   })
 
+  handleMouseDown = (event) => {
+    if (!calendarInstance || !calendarEl.value) return
+    const target = event.target?.closest?.('[data-event-id][data-calendar-id]')
+    if (!target || !calendarEl.value.contains(target)) return
+
+    const eventId = target.getAttribute('data-event-id')
+    const calendarId = target.getAttribute('data-calendar-id')
+    if (!eventId || !calendarId) return
+
+    const foundEvent = calendarInstance.getEvent?.(eventId, calendarId)
+    if (foundEvent) {
+      emit('eventDragStart', { event: foundEvent })
+    }
+  }
+
+  handleMouseUp = () => {
+    emit('eventDragEnd')
+  }
+
+  calendarEl.value?.addEventListener('mousedown', handleMouseDown)
+  window.addEventListener('mouseup', handleMouseUp)
 })
 
 onBeforeUnmount(() => {
+  if (handleMouseDown && calendarEl.value) {
+    calendarEl.value.removeEventListener('mousedown', handleMouseDown)
+  }
+  if (handleMouseUp) {
+    window.removeEventListener('mouseup', handleMouseUp)
+  }
   calendarInstance?.destroy()
 })
 </script>
