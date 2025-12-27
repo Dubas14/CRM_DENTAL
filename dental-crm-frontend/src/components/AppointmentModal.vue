@@ -5,6 +5,7 @@ import calendarApi from '../services/calendarApi';
 import procedureApi from '../services/procedureApi';
 import equipmentApi from '../services/equipmentApi';
 import assistantApi from '../services/assistantApi';
+import CalendarSlotPicker from './CalendarSlotPicker.vue';
 
 const props = defineProps({
   appointment: Object,
@@ -73,6 +74,23 @@ const formatDateTimeApi = (value) => {
   return `${year}-${month}-${day} ${hour}:${minute}:00`;
 };
 
+const formatDateOnly = (value) => {
+  const parsed = toDate(value);
+  if (!parsed) return '';
+  const year = parsed.getFullYear();
+  const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+  const day = `${parsed.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeHM = (value) => {
+  const parsed = toDate(value);
+  if (!parsed) return '';
+  const hour = `${parsed.getHours()}`.padStart(2, '0');
+  const minute = `${parsed.getMinutes()}`.padStart(2, '0');
+  return `${hour}:${minute}`;
+};
+
 const patientName = computed(() => getProp('patient_name') || getProp('comment') || 'Пацієнт');
 const patientId = computed(() => getProp('patient_id'));
 const appointmentId = computed(() => props.appointment?.id);
@@ -113,6 +131,13 @@ const followUpForm = ref({
   start_at: '',
   end_at: ''
 });
+
+const slotPickerDoctorId = computed(() => appointmentForm.value.doctor_id || getProp('doctor_id') || getProp('doctor')?.id || null);
+const slotPickerProcedureId = computed(() => appointmentForm.value.procedure_id || getProp('procedure_id') || getProp('procedure')?.id || null);
+const slotPickerRoomId = computed(() => appointmentForm.value.room_id || getProp('room_id') || getProp('room')?.id || null);
+const slotPickerEquipmentId = computed(() => appointmentForm.value.equipment_id || getProp('equipment_id') || getProp('equipment')?.id || null);
+const slotPickerAssistantId = computed(() => appointmentForm.value.assistant_id || getProp('assistant_id') || getProp('assistant')?.id || null);
+const slotPickerDate = computed(() => formatDateOnly(appointmentForm.value.start_at || appointmentDetails.value.start));
 
 const normalizeId = (value) => (value === null || value === undefined ? '' : value);
 
@@ -160,12 +185,52 @@ const loadLookupData = async () => {
   }
 };
 
+const applySlotToForm = (slot) => {
+  const date = slot?.date || slotPickerDate.value;
+  if (!date || !slot?.start || !slot?.end) return;
+  appointmentForm.value.start_at = `${date}T${slot.start}`;
+  appointmentForm.value.end_at = `${date}T${slot.end}`;
+};
+
+const ensureSlotAvailable = async () => {
+  const doctorId = slotPickerDoctorId.value;
+  if (!doctorId) return true;
+
+  const date = slotPickerDate.value;
+  const startTime = formatTimeHM(appointmentForm.value.start_at);
+  if (!date || !startTime) return true;
+
+  try {
+    const { data } = await calendarApi.getDoctorSlots(doctorId, {
+      date,
+      procedure_id: slotPickerProcedureId.value || undefined,
+      room_id: slotPickerRoomId.value || undefined,
+      equipment_id: slotPickerEquipmentId.value || undefined,
+      assistant_id: slotPickerAssistantId.value || undefined,
+    });
+    const slots = Array.isArray(data?.slots) ? data.slots : [];
+    const allowed = new Set(slots.map((slot) => slot.start));
+    if (!allowed.has(startTime)) {
+      alert('Неможливо змінити запис: вибраний час недоступний. Оберіть вільний слот.');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    alert('Не вдалося перевірити доступні слоти. Спробуйте ще раз.');
+    return false;
+  }
+};
+
 const updateAppointment = async () => {
   if (!appointmentId.value) return;
   if (!appointmentForm.value.start_at || !appointmentForm.value.end_at) {
     alert('Вкажіть час початку та завершення прийому.');
     return;
   }
+
+  const slotAllowed = await ensureSlotAvailable();
+  if (!slotAllowed) return;
+
   appointmentSaving.value = true;
   try {
     await calendarApi.updateAppointment(appointmentId.value, {
@@ -398,6 +463,28 @@ watch(
               />
             </div>
           </div>
+        </div>
+
+        <div class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-text">Вільні слоти для переносу</p>
+            <span class="text-xs text-text/60">Покажемо тільки доступні варіанти</span>
+          </div>
+          <p v-if="!slotPickerDoctorId || !slotPickerDate" class="text-xs text-text/60">
+            Оберіть лікаря та дату, щоб побачити доступні слоти.
+          </p>
+          <CalendarSlotPicker
+            v-else
+            :doctor-id="slotPickerDoctorId"
+            :procedure-id="slotPickerProcedureId"
+            :room-id="slotPickerRoomId"
+            :equipment-id="slotPickerEquipmentId"
+            :assistant-id="slotPickerAssistantId"
+            :assistants="assistants"
+            :date="slotPickerDate"
+            :disabled="isReadOnly"
+            @select-slot="applySlotToForm"
+          />
         </div>
 
         <div v-if="appointmentDetails.isFollowUp" class="bg-emerald-900/40 text-emerald-200 border border-emerald-600/40 px-3 py-2 rounded-md text-sm flex items-center gap-2">
