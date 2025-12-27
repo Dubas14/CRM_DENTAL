@@ -214,3 +214,21 @@
 .toastui-calendar-holiday-sun {
   color: rgb(var(--text-muted));
 }
+
+/* ===============================
+   AVAILABILITY SLOTS
+   =============================== */
+
+.toastui-calendar-event-time.calendar-availability-slot,
+.toastui-calendar-weekday-event.calendar-availability-slot {
+  background-color: rgba(16, 185, 129, 0.18);
+  border: 1px dashed rgba(16, 185, 129, 0.45);
+  box-shadow: none;
+  pointer-events: none;
+  color: transparent;
+}
+
+.toastui-calendar-event-time.calendar-availability-slot .toastui-calendar-event-title,
+.toastui-calendar-event-time.calendar-availability-slot .toastui-calendar-event-time {
+  display: none;
+}
