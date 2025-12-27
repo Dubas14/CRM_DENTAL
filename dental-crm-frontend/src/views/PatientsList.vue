@@ -38,7 +38,7 @@ const pagination = ref({
   currentPage: 1,
   lastPage: 1,
   total: 0,
-  perPage: 20,
+  perPage: 12,
   from: 0,
   to: 0,
 });
@@ -80,7 +80,7 @@ const loadPatients = async () => {
   error.value = null;
 
   try {
-    const params = { page: currentPage.value };
+    const params = { page: currentPage.value, per_page: 12 };
     if (search.value) params.search = search.value;
     if (isDoctor.value && doctorClinicId.value) {
       params.clinic_id = doctorClinicId.value;
@@ -95,7 +95,7 @@ const loadPatients = async () => {
       currentPage: data.current_page ?? 1,
       lastPage: data.last_page ?? 1,
       total: data.total ?? patients.value.length,
-      perPage: data.per_page ?? 20,
+      perPage: data.per_page ?? 12,
       from: data.from ?? (patients.value.length ? 1 : 0),
       to: data.to ?? patients.value.length,
     };
