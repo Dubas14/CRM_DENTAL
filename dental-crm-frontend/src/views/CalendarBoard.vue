@@ -76,6 +76,7 @@
     <AppointmentModal
         :is-open="isAppointmentModalOpen"
         :appointment="selectedAppointment"
+        :clinic-id="currentClinicId"
         @close="handleCloseAppointmentModal"
         @saved="handleAppointmentSaved"
     />
