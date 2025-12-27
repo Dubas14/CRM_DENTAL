@@ -245,19 +245,46 @@ const mapAppointmentToEvent = (appt) => {
   const s = toDate(appt.start_at)
   const e = toDate(appt.end_at)
   if (!s || !e) return null
+
   const isDone = appt.status === 'done'
+  // Перевіряємо, чи подія в минулому (порівнюємо з поточним часом)
+  const isPast = e < new Date()
+
+  // Кольори
+  // Завершений: Насичений синій (Royal Blue)
+  // Активний: Смарагдовий (Emerald)
+  // Прострочений/Минулий: Сірий або тьмяний смарагд
+  let bgColor = '#10b981' // Default Green
+  let borderColor = '#059669'
+
+  if (isDone) {
+    bgColor = '#2563eb' // 🔥 Vibrant Blue (замість блідого)
+    borderColor = '#1e40af'
+  } else if (isPast) {
+    bgColor = '#64748b' // Slate (сірий для минулих незавершених)
+    borderColor = '#475569'
+  }
+
   return {
     id: String(appt.id),
     calendarId: 'main',
-    title: appt.patient?.full_name || 'Запис',
+    title: (isDone ? '✅ ' : '') + (appt.patient?.full_name || 'Запис'), // Додаємо галочку для краси
     category: 'time',
     start: s,
     end: e,
-    isReadOnly: isDone,
-    backgroundColor: isDone ? '#dbeafe' : '#10b981',
-    borderColor: isDone ? '#93c5fd' : '#059669',
-    dragBackgroundColor: isDone ? '#93c5fd' : DRAG_VALID_COLOR,
-    color: isDone ? '#1e3a8a' : '#fff',
+    isReadOnly: isDone, // Завершені не рухаємо
+
+    backgroundColor: bgColor,
+    borderColor: borderColor,
+    dragBackgroundColor: bgColor,
+    color: '#ffffff', // Завжди білий текст для контрасту
+
+    // 👇 ВАЖЛИВО: Додаємо класи для CSS стилізації
+    classNames: [
+      isPast ? 'event-past' : 'event-future',
+      isDone ? 'event-done' : 'event-active'
+    ],
+
     raw: appt
   }
 }
