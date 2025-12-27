@@ -1,158 +1,233 @@
 /* =====================================================
    Toast UI Calendar — Theme Overrides
-   Updated: High Contrast Grid & Drag Guides
+   Final Polish: Contrast Fix for Both Light & Dark
    ===================================================== */
 
 /* ===============================
-   1. Root Layout & Variables
+   1. ROOT VARIABLES (Кольори теми)
    =============================== */
 .toastui-calendar-layout {
-  /* Світла тема */
+  /* --- СВІТЛА ТЕМА (Light) --- */
   --calendar-bg: #ffffff;
-  --calendar-grid-line: #e2e8f0; /* Slate-200 (чіткі лінії) */
-  --calendar-grid-line-half: #f1f5f9; /* Slate-100 (півгодини) */
-  --calendar-slot-bg-even: #ffffff;
-  --calendar-slot-bg-odd: #fafafa; /* Легке "зебра" чергування */
+  --calendar-text: #0f172a;        /* Slate-900 (Майже чорний) */
+  --calendar-text-muted: #64748b;  /* Slate-500 */
 
-  --calendar-text: #334155;
-  --calendar-text-muted: #94a3b8;
+  /* Сітка */
+  --calendar-grid-line: rgba(0, 0, 0, 0.15);
+  --calendar-grid-line-half: rgba(0, 0, 0, 0.08);
 
-  /* Колір "привида" при перетягуванні */
-  --drag-guide-bg: rgba(16, 185, 129, 0.2);
-  --drag-guide-border: #10b981;
+  /* Слоти доступності */
+  --avail-stripe-1: rgba(16, 185, 129, 0.1);
+  --avail-stripe-2: rgba(16, 185, 129, 0.25);
+  --avail-border: #10b981;
+
+  --now-indicator: #ef4444;
 
   background-color: var(--calendar-bg);
   color: var(--calendar-text);
   font-family: inherit;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid var(--calendar-grid-line);
   overflow: hidden;
 }
 
-/* Темна тема */
+/* --- ТЕМНА ТЕМА (Dark) --- */
 .dark .toastui-calendar-layout {
-  --calendar-bg: #1e293b; /* Slate-800 */
-  --calendar-grid-line: #334155; /* Slate-700 (світліші лінії) */
-  --calendar-grid-line-half: #334155; /* Робимо однаковими для чистоти */
-  --calendar-slot-bg-even: #1e293b;
-  --calendar-slot-bg-odd: #1e293b; /* У темній темі зебру краще вимкнути або зробити дуже слабкою */
+  --calendar-bg: #111827;          /* Gray-900 (Глибокий темний) */
+  --calendar-text: #f8fafc;        /* Slate-50 (Майже білий) */
+  --calendar-text-muted: #9ca3af;  /* Gray-400 */
 
-  --calendar-text: #f1f5f9;
-  --calendar-text-muted: #94a3b8;
+  /* Сітка (біла напівпрозора) */
+  --calendar-grid-line: rgba(255, 255, 255, 0.15);
+  --calendar-grid-line-half: rgba(255, 255, 255, 0.05);
 
-  --drag-guide-bg: rgba(52, 211, 153, 0.25);
-  --drag-guide-border: #34d399;
+  --avail-stripe-1: rgba(5, 150, 105, 0.15);
+  --avail-stripe-2: rgba(5, 150, 105, 0.3);
+  --avail-border: #34d399;
 }
 
 /* ===============================
-   2. Grid Lines & Slots (СІТКА)
+   2. TEXT COLORS & DATES (Критично для видимості)
    =============================== */
 
-/* Фон колонок */
-.toastui-calendar-timegrid,
-.toastui-calendar-timegrid-time-column {
-  background-color: var(--calendar-bg);
+/* Загальний текст (дати, дні тижня) */
+.toastui-calendar-day-name__date,
+.toastui-calendar-day-name__name,
+.toastui-calendar-month-daygrid-date,
+.toastui-calendar-weekday-grid-date {
+  color: var(--calendar-text) !important; /* Автоматично змінюється від теми */
+  font-weight: 700;
 }
 
-/* Горизонтальна лінія (година) */
+/* Додатково для темної теми, щоб текст "світився" */
+.dark .toastui-calendar-day-name__date,
+.dark .toastui-calendar-day-name__name {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Текст всередині подій (ЗАВЖДИ БІЛИЙ) */
+.toastui-calendar-event-title,
+.toastui-calendar-event-time-content,
+.toastui-calendar-weekday-event-title {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+  font-weight: 600;
+}
+
+/* ===============================
+   3. GRID & BACKGROUNDS
+   =============================== */
+
+/* Фони */
+.toastui-calendar-timegrid,
+.toastui-calendar-timegrid-time-column,
+.toastui-calendar-month,
+.toastui-calendar-daygrid-cell,
+.toastui-calendar-month-daygrid {
+  background-color: var(--calendar-bg) !important;
+}
+
+/* Лінії */
 .toastui-calendar-timegrid-gridline {
   border-top: 1px solid var(--calendar-grid-line) !important;
-  height: 48px; /* Фіксуємо висоту, якщо треба, але зазвичай авто */
+  height: 48px;
 }
-
-/* "Зебра" для годин (опціонально, покращує читаність) */
-.toastui-calendar-timegrid-gridline:nth-child(odd) {
-  background-color: var(--calendar-slot-bg-odd);
-}
-.toastui-calendar-timegrid-gridline:nth-child(even) {
-  background-color: var(--calendar-slot-bg-even);
-}
-
-/* Півгодинна лінія */
 .toastui-calendar-timegrid-gridline-half {
   border-top: 1px dotted var(--calendar-grid-line-half) !important;
-  opacity: 1; /* Робимо видимою */
 }
 
-/* Вертикальні лінії (розділювачі днів) */
 .toastui-calendar-daygrid-cell + .toastui-calendar-daygrid-cell,
-.toastui-calendar-columns .toastui-calendar-timegrid-column + .toastui-calendar-timegrid-column {
+.toastui-calendar-columns .toastui-calendar-timegrid-column + .toastui-calendar-timegrid-column,
+.toastui-calendar-month-daygrid-cell {
   border-left: 1px solid var(--calendar-grid-line) !important;
+  border-top: 1px solid var(--calendar-grid-line) !important;
 }
 
-/* ===============================
-   3. Drag & Drop Guides (ПРИВИД)
-   =============================== */
-
-/* Це блок, який показує, куди впаде подія при створенні або перетягуванні */
-.toastui-calendar-timegrid-guide-creation,
-.toastui-calendar-timegrid-guide-move {
-  background-color: var(--drag-guide-bg) !important;
-  border: 1px dashed var(--drag-guide-border) !important;
-  z-index: 50;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-radius: 4px;
-}
-
-/* Текст всередині гайда (час) */
-.toastui-calendar-guide-creation-label,
-.toastui-calendar-guide-move-label {
-  color: var(--drag-guide-border);
-  font-weight: bold;
-  font-size: 11px;
-  background: var(--calendar-bg);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-/* ===============================
-   4. Events Styling
-   =============================== */
-
-.toastui-calendar-event-time,
-.toastui-calendar-weekday-event-block {
-  border-radius: 4px;
-  padding: 1px 6px;
-  border-left: 3px solid rgba(0,0,0,0.2) !important;
-  color: #fff !important;
-  font-weight: 600;
-  font-size: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.dark .toastui-calendar-event-time {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-  opacity: 1 !important; /* Важливо для темної теми */
-}
-
-/* ===============================
-   5. Header & Time Column
-   =============================== */
-
-/* Шапка днів */
-.toastui-calendar-day-view-day-names {
-  border-bottom: 1px solid var(--calendar-grid-line);
-}
-.toastui-calendar-day-name-item {
-  color: var(--calendar-text);
-  font-weight: bold !important;
-}
-
-/* Колонка часу зліва */
 .toastui-calendar-timegrid-time-column {
-  border-right: 1px solid var(--calendar-grid-line);
+  border-right: 1px solid var(--calendar-grid-line) !important;
 }
 .toastui-calendar-timegrid-time-label {
   color: var(--calendar-text-muted);
   font-size: 11px;
+  font-weight: 600;
 }
 
-/* Індикатор поточного часу (червона лінія) */
+/* ===============================
+   4. EVENTS STYLE (ЗАПИСИ)
+   =============================== */
+
+/* Базовий блок */
+.toastui-calendar-event-time,
+.toastui-calendar-weekday-event-block {
+  border-radius: 6px;
+  padding: 3px 6px;
+  border: none !important;
+  /* Акцент зліва (легка тінь) */
+  border-left: 4px solid rgba(0,0,0,0.15) !important;
+
+  font-size: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+}
+
+/* Hover ефект */
+.toastui-calendar-event-time:hover {
+  transform: translateY(-2px);
+  z-index: 50;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+/* --- 🕒 PAST (МИНУЛЕ) - РІЗНА ЛОГІКА ДЛЯ ТЕМ --- */
+
+/* Світла тема: Робимо сірим (Grayscale), але не прозорим! */
+.event-past {
+  filter: grayscale(0.8); /* Знебарвлюємо колір */
+  opacity: 0.85 !important; /* Ледь-ледь прозорі, щоб текст читався */
+  border: 1px solid rgba(0,0,0,0.1) !important; /* Рамка для чіткості */
+  box-shadow: none !important;
+}
+
+/* Темна тема: Робимо темнішим (Opacity) */
+.dark .toastui-calendar-event-time.event-past {
+  filter: grayscale(0.6);
+  opacity: 0.6 !important; /* Тут можна прозорість, бо фон темний */
+  border-left-color: rgba(255,255,255,0.1) !important;
+}
+
+/* При наведенні повертаємо колір */
+.event-past:hover,
+.dark .toastui-calendar-event-time.event-past:hover {
+  filter: grayscale(0);
+  opacity: 1 !important;
+}
+
+/* --- 🚀 FUTURE (МАЙБУТНЄ) --- */
+.event-future.event-active {
+  opacity: 1 !important;
+  /* Легкий блиск зверху */
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 100%);
+}
+
+/* --- ✅ DONE (ЗАВЕРШЕНІ) --- */
+.event-done {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  opacity: 1 !important;
+  filter: none !important; /* Ніколи не сіріють */
+}
+.dark .event-done {
+  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* ===============================
+   5. DRAG & AVAILABILITY
+   =============================== */
+.calendar-availability-slot {
+  background-image: repeating-linear-gradient(
+          45deg,
+          var(--avail-stripe-1),
+          var(--avail-stripe-1) 10px,
+          var(--avail-stripe-2) 10px,
+          var(--avail-stripe-2) 20px
+  ) !important;
+  border: 2px dashed var(--avail-border) !important;
+  border-radius: 6px;
+  opacity: 1 !important;
+  pointer-events: none;
+  z-index: 1 !important;
+}
+
+.toastui-calendar-timegrid-guide-move {
+  background-color: rgba(59, 130, 246, 0.4) !important;
+  border: 2px dashed #2563eb !important;
+  border-radius: 6px;
+  z-index: 50;
+}
+.toastui-calendar-guide-move-label {
+  color: #fff !important;
+  background-color: #2563eb !important;
+}
+
+/* ===============================
+   6. HEADER & INDICATORS
+   =============================== */
+.toastui-calendar-day-view-day-names,
+.toastui-calendar-month-day-names {
+  border-bottom: 1px solid var(--calendar-grid-line) !important;
+  background-color: var(--calendar-bg) !important;
+}
+.toastui-calendar-day-name-item {
+  color: var(--calendar-text) !important;
+}
+
 .toastui-calendar-timegrid-now-indicator-marker {
-  background-color: #f43f5e;
+  background-color: var(--now-indicator);
 }
 .toastui-calendar-timegrid-now-indicator-left,
 .toastui-calendar-timegrid-now-indicator-right {
-  border-top: 1px solid #f43f5e;
-  opacity: 0.8;
+  border-top: 2px solid var(--now-indicator);
+  opacity: 1;
+  z-index: 100;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
 }
