@@ -35,7 +35,7 @@ class PatientController extends Controller
                     return response()->json([
                         'data' => [],
                         'total' => 0,
-                        'per_page' => 20,
+                        'per_page' => 12,
                         'current_page' => 1,
                     ]);
                 }
@@ -65,7 +65,7 @@ class PatientController extends Controller
 
         return $query
             ->orderBy('full_name')
-            ->paginate(20);
+            ->paginate($request->integer('per_page', 15));
     }
 
     public function store(Request $request)

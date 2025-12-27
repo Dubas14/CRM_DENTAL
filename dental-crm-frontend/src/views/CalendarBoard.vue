@@ -194,13 +194,13 @@ const getAppointmentDurationMinutes = (appt) => {
 const mergeSlotsToIntervals = (slots, durationMinutes = 30) => {
   if (!slots?.length) return []
   const normalized = slots
-    .map((slot) => {
-      const start = slot.start
-      const end = slot.end || addMinutesToTime(slot.start, durationMinutes)
-      if (!start || !end) return null
-      return { start, end }
-    })
-    .filter(Boolean)
+      .map((slot) => {
+        const start = slot.start
+        const end = slot.end || addMinutesToTime(slot.start, durationMinutes)
+        if (!start || !end) return null
+        return { start, end }
+      })
+      .filter(Boolean)
   if (!normalized.length) return []
 
   const sorted = [...normalized].sort((a, b) => a.start.localeCompare(b.start))
@@ -301,9 +301,9 @@ const replaceAppointmentEvent = (updatedAppointment, fallbackStart, fallbackEnd)
   }
 
   events.value = events.value.map((event) => (
-    event.id === String(updatedAppointment.id)
-      ? { ...event, ...mapped }
-      : event
+      event.id === String(updatedAppointment.id)
+          ? { ...event, ...mapped }
+          : event
   ))
 
   calendarRef.value?.updateEvent?.(String(updatedAppointment.id), mapped.calendarId, {
