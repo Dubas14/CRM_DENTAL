@@ -391,7 +391,11 @@ const handleBeforeUpdateEvent = async (info) => {
         end_at: formatDateTime(nextEnd),
       })
       toastSuccess('Запис перенесено')
-      fetchEvents()
+      calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
+        start: nextStart,
+        end: nextEnd,
+      })
+      await fetchEvents()
     } catch (error) {
       console.error(error)
       toastError('Не вдалося перенести запис')
