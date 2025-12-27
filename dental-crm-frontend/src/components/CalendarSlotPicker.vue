@@ -28,6 +28,8 @@ const slotEquipment = ref(null);
 const slotAssistantId = ref(null);
 
 const hasNoSlots = computed(() => !loading.value && slots.value.length === 0);
+const normalizedReason = computed(() => (reason.value ? String(reason.value).toLowerCase() : null));
+const isNoSchedule = computed(() => normalizedReason.value === 'no_schedule');
 const slotAssistantName = computed(() => {
   if (!slotAssistantId.value) return null;
   const match = props.assistants.find((assistant) => Number(assistant.id) === Number(slotAssistantId.value));
@@ -152,7 +154,8 @@ onMounted(() => {
 
       <div v-else class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
-        <p v-if="reason" class="text-xs uppercase tracking-wide text-amber-400">Причина: {{ reason }}</p>
+        <p v-if="isNoSchedule" class="text-xs text-amber-400">Лікар вихідний. Налаштуйте графік лікаря.</p>
+        <p v-else-if="reason" class="text-xs uppercase tracking-wide text-amber-400">Причина: {{ reason }}</p>
         <p v-else class="text-xs text-text/70">Обрати іншу дату або подивіться рекомендації нижче.</p>
       </div>
 
