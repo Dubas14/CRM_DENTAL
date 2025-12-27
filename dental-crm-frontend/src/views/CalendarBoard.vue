@@ -110,6 +110,10 @@ const selectedClinicId = ref(null)
 const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
 
+const SNAP_MINUTES = 15
+const DRAG_VALID_COLOR = '#16a34a'
+const DRAG_INVALID_COLOR = '#ef4444'
+
 // --- COMPUTED ---
 const currentClinicId = computed(() => {
   if (selectedClinicId.value) return selectedClinicId.value
@@ -144,6 +148,137 @@ const formatDateTime = (date) => {
   const hour = `${normalized.getHours()}`.padStart(2, '0')
   const minute = `${normalized.getMinutes()}`.padStart(2, '0')
   return `${year}-${month}-${day} ${hour}:${minute}:00`
+}
+
+const formatTimeHM = (date) => {
+  const normalized = toDate(date)
+  if (!normalized) return ''
+  const hour = `${normalized.getHours()}`.padStart(2, '0')
+  const minute = `${normalized.getMinutes()}`.padStart(2, '0')
+  return `${hour}:${minute}`
+}
+
+const snapToMinutes = (date, stepMinutes = SNAP_MINUTES) => {
+  const normalized = toDate(date)
+  if (!normalized) return null
+  const stepMs = stepMinutes * 60000
+  return new Date(Math.round(normalized.getTime() / stepMs) * stepMs)
+}
+
+const mapBlockToEvent = (block) => {
+  const s = toDate(block.start_at)
+  const e = toDate(block.end_at)
+  if (!s || !e) return null
+  return {
+    id: String(block.id),
+    calendarId: 'main',
+    title: block.note || 'Блок',
+    category: 'time',
+    start: s,
+    end: e,
+    isReadOnly: false,
+    backgroundColor: '#6b7280',
+    dragBackgroundColor: '#9ca3af',
+    color: '#fff',
+    raw: block
+  }
+}
+
+const mapAppointmentToEvent = (appt) => {
+  const s = toDate(appt.start_at)
+  const e = toDate(appt.end_at)
+  if (!s || !e) return null
+  const isDone = appt.status === 'done'
+  return {
+    id: String(appt.id),
+    calendarId: 'main',
+    title: appt.patient?.full_name || 'Запис',
+    category: 'time',
+    start: s,
+    end: e,
+    isReadOnly: isDone,
+    backgroundColor: isDone ? '#dbeafe' : '#10b981',
+    borderColor: isDone ? '#93c5fd' : '#059669',
+    dragBackgroundColor: isDone ? '#93c5fd' : DRAG_VALID_COLOR,
+    color: isDone ? '#1e3a8a' : '#fff',
+    raw: appt
+  }
+}
+
+const getAppointmentDoctorId = (appt) => appt?.doctor_id || appt?.doctor?.id || null
+
+const isDropAllowed = async (appt, start, end) => {
+  const doctorId = getAppointmentDoctorId(appt)
+  if (!doctorId) {
+    toastError('Неможливо визначити лікаря для запису')
+    return false
+  }
+
+  try {
+    const date = formatDateOnly(start)
+    const startTime = formatTimeHM(start)
+    const { data } = await calendarApi.getDoctorSlots(doctorId, {
+      date,
+      procedure_id: appt.procedure_id || appt.procedure?.id || undefined,
+      room_id: appt.room_id || appt.room?.id || undefined,
+      equipment_id: appt.equipment_id || appt.equipment?.id || undefined,
+      assistant_id: appt.assistant_id || appt.assistant?.id || undefined,
+    })
+    const slots = Array.isArray(data?.slots) ? data.slots : []
+    const allowed = new Set(slots.map((slot) => slot.start))
+    return allowed.has(startTime)
+  } catch (error) {
+    console.error(error)
+    toastError('Не вдалося перевірити доступний час лікаря')
+    return false
+  }
+}
+
+const replaceAppointmentEvent = (updatedAppointment, fallbackStart, fallbackEnd) => {
+  const mapped = mapAppointmentToEvent(updatedAppointment) ?? {
+    id: String(updatedAppointment.id),
+    calendarId: 'main',
+    start: fallbackStart,
+    end: fallbackEnd,
+    raw: updatedAppointment
+  }
+
+  events.value = events.value.map((event) => (
+    event.id === String(updatedAppointment.id)
+      ? { ...event, ...mapped }
+      : event
+  ))
+
+  calendarRef.value?.updateEvent?.(String(updatedAppointment.id), mapped.calendarId, {
+    title: mapped.title,
+    start: mapped.start,
+    end: mapped.end,
+    isReadOnly: mapped.isReadOnly,
+    backgroundColor: mapped.backgroundColor,
+    borderColor: mapped.borderColor,
+    dragBackgroundColor: mapped.dragBackgroundColor,
+    color: mapped.color,
+    raw: mapped.raw
+  })
+}
+
+const flashInvalidDrop = (eventId, calendarId) => {
+  const existing = events.value.find((entry) => entry.id === String(eventId))
+  if (!existing) return
+
+  calendarRef.value?.updateEvent?.(String(eventId), calendarId, {
+    backgroundColor: DRAG_INVALID_COLOR,
+    borderColor: DRAG_INVALID_COLOR,
+    dragBackgroundColor: DRAG_INVALID_COLOR
+  })
+
+  setTimeout(() => {
+    calendarRef.value?.updateEvent?.(String(eventId), calendarId, {
+      backgroundColor: existing.backgroundColor,
+      borderColor: existing.borderColor,
+      dragBackgroundColor: existing.dragBackgroundColor
+    })
+  }, 180)
 }
 
 // --- API ACTIONS ---
@@ -187,45 +322,11 @@ const fetchEvents = async () => {
 
     // Обробка Блоків
     const blocksData = blocksResponse.data?.data || blocksResponse.data || [];
-    const mappedBlocks = blocksData.map(event => {
-      const s = toDate(event.start_at);
-      const e = toDate(event.end_at);
-      if (!s || !e) return null;
-      return {
-        id: String(event.id),
-        calendarId: 'main',
-        title: event.note || 'Блок',
-        category: 'time',
-        start: s,
-        end: e,
-        isReadOnly: false,
-        backgroundColor: '#6b7280',
-        color: '#fff',
-        raw: event
-      }
-    }).filter(Boolean);
+    const mappedBlocks = blocksData.map(mapBlockToEvent).filter(Boolean)
 
     // Обробка Записів
     const appointmentsData = appointmentsResponse.data?.data || appointmentsResponse.data || [];
-    const mappedAppointments = appointmentsData.map(appt => {
-      const s = toDate(appt.start_at);
-      const e = toDate(appt.end_at);
-      if (!s || !e) return null;
-      const isDone = appt.status === 'done';
-      return {
-        id: String(appt.id),
-        calendarId: 'main',
-        title: appt.patient?.full_name || 'Запис',
-        category: 'time',
-        start: s,
-        end: e,
-        isReadOnly: isDone,
-        backgroundColor: isDone ? '#dbeafe' : '#10b981',
-        borderColor: isDone ? '#93c5fd' : '#059669',
-        color: isDone ? '#1e3a8a' : '#fff',
-        raw: appt
-      }
-    }).filter(Boolean);
+    const mappedAppointments = appointmentsData.map(mapAppointmentToEvent).filter(Boolean)
 
     events.value = [...mappedBlocks, ...mappedAppointments];
 
@@ -371,39 +472,83 @@ const handleBeforeUpdateEvent = async (info) => {
   const event = info?.event
   if (!event) return
 
-  const nextStart = toDate(info?.changes?.start ?? event.start)
-  const nextEnd = toDate(info?.changes?.end ?? event.end)
-
-  if (!nextStart || !nextEnd) {
+  const originalStart = toDate(event.start)
+  const originalEnd = toDate(event.end)
+  if (!originalStart || !originalEnd) {
     toastError('Не вдалося оновити час запису');
     return
   }
 
-  if (event.raw && event.raw.patient_id) {
+  const nextStartRaw = toDate(info?.changes?.start ?? event.start)
+  const nextEndRaw = toDate(info?.changes?.end ?? event.end)
+
+  if (!nextStartRaw || !nextEndRaw) {
+    toastError('Не вдалося оновити час запису');
+    return
+  }
+
+  const snappedStart = snapToMinutes(nextStartRaw)
+  if (!snappedStart) {
+    toastError('Не вдалося обчислити новий час запису')
+    return
+  }
+
+  const durationMs = nextEndRaw.getTime() - nextStartRaw.getTime()
+  if (durationMs <= 0) {
+    toastError('Некоректна тривалість запису')
+    return
+  }
+
+  const snappedEnd = new Date(snappedStart.getTime() + durationMs)
+
+  if (event.raw && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) {
     if (event.raw.status === 'done') {
       toastError('Завершений запис не можна переносити');
       return
     }
 
     try {
-      await calendarApi.updateAppointment(event.id, {
-        start_at: formatDateTime(nextStart),
-        end_at: formatDateTime(nextEnd),
+      const slotAllowed = await isDropAllowed(event.raw, snappedStart, snappedEnd)
+      if (!slotAllowed) {
+        toastError('Лікар недоступний у вибраний час')
+        flashInvalidDrop(event.id, event.calendarId)
+        calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
+          start: originalStart,
+          end: originalEnd,
+        })
+        return
+      }
+
+      const { data } = await calendarApi.updateAppointment(event.id, {
+        doctor_id: getAppointmentDoctorId(event.raw),
+        start_at: formatDateTime(snappedStart),
+        end_at: formatDateTime(snappedEnd),
       })
+
+      const updatedAppointment = data?.data || data?.appointment || data
+      if (updatedAppointment) {
+        replaceAppointmentEvent(updatedAppointment, snappedStart, snappedEnd)
+      } else {
+        calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
+          start: snappedStart,
+          end: snappedEnd,
+        })
+      }
+
       toastSuccess('Запис перенесено')
-      calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
-        start: nextStart,
-        end: nextEnd,
-      })
-      await fetchEvents()
     } catch (error) {
       console.error(error)
       toastError('Не вдалося перенести запис')
+      flashInvalidDrop(event.id, event.calendarId)
+      calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
+        start: originalStart,
+        end: originalEnd,
+      })
     }
     return
   }
 
-  openEventModal(createDefaultEvent({ event, start: nextStart, end: nextEnd }))
+  openEventModal(createDefaultEvent({ event, start: snappedStart, end: snappedEnd }))
 }
 
 // --- LIFECYCLE ---

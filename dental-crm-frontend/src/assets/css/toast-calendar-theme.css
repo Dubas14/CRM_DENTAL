@@ -124,6 +124,16 @@
   font-weight: 500;
 }
 
+.toastui-calendar-event-time {
+  transition: top 180ms ease, height 180ms ease, left 180ms ease, width 180ms ease;
+}
+
+.toastui-calendar-layout.toastui-calendar-dragging--move-event .toastui-calendar-event-time,
+.toastui-calendar-layout.toastui-calendar-dragging--resize-vertical-event .toastui-calendar-event-time,
+.toastui-calendar-layout.toastui-calendar-dragging--resize-horizontal-event .toastui-calendar-event-time {
+  transition: none;
+}
+
 /* ===============================
    MONTH VIEW — SIMPLE & CLEAN
    =============================== */
