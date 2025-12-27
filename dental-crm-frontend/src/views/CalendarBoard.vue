@@ -87,6 +87,7 @@
 
 <script setup>
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import CalendarHeader from '../components/CalendarHeader.vue'
 import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
@@ -112,6 +113,7 @@ const selectedClinicId = ref(null)
 
 const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
+const route = useRoute()
 
 const SNAP_MINUTES = 15
 const DRAG_VALID_COLOR = '#16a34a'
@@ -119,6 +121,7 @@ const DRAG_INVALID_COLOR = '#ef4444'
 const AVAILABILITY_BG_COLOR = 'rgba(16, 185, 129, 0.18)'
 const AVAILABILITY_BORDER_COLOR = 'rgba(16, 185, 129, 0.45)'
 let availabilityRequestId = 0
+const pendingAppointmentId = ref(null)
 
 // --- COMPUTED ---
 const currentClinicId = computed(() => {
@@ -290,6 +293,48 @@ const mapAppointmentToEvent = (appt) => {
 }
 
 const getAppointmentDoctorId = (appt) => appt?.doctor_id || appt?.doctor?.id || null
+
+const parseQueryDate = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const parsed = new Date(`${value}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const parseQueryView = (value) => {
+  if (value === 'day' || value === 'week' || value === 'month') return value
+  return null
+}
+
+const parseQueryNumber = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : null
+}
+
+const applyRouteSelection = () => {
+  if (!calendarRef.value) return
+
+  const nextView = parseQueryView(route.query.view)
+  if (nextView && view.value !== nextView) {
+    view.value = nextView
+    calendarRef.value?.changeView?.(nextView)
+  }
+
+  const nextDate = parseQueryDate(route.query.date)
+  if (nextDate) {
+    calendarRef.value?.setDate?.(nextDate)
+    currentDate.value = new Date(nextDate)
+  }
+
+  const clinicId = parseQueryNumber(route.query.clinic || route.query.clinic_id)
+  if (clinicId) {
+    selectedClinicId.value = clinicId
+  }
+
+  const appointmentId = route.query.appointment_id || route.query.appointment
+  if (appointmentId) {
+    pendingAppointmentId.value = String(appointmentId)
+  }
+}
 
 const isDropAllowed = async (appt, start, end) => {
   const doctorId = getAppointmentDoctorId(appt)
@@ -512,6 +557,19 @@ const fetchEvents = async () => {
   } catch (error) {
     console.error(error);
     toastError('Помилка завантаження даних');
+  }
+
+  if (pendingAppointmentId.value) {
+    const target = events.value.find((event) => (
+      event.id === pendingAppointmentId.value
+      && event.raw
+      && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')
+    ))
+    if (target) {
+      selectedAppointment.value = target.raw
+      isAppointmentModalOpen.value = true
+      pendingAppointmentId.value = null
+    }
   }
 }
 
@@ -766,6 +824,7 @@ onMounted(async () => {
 
   await nextTick()
   setTimeout(() => {
+    applyRouteSelection()
     updateCurrentDate()
     fetchEvents()
   }, 100)
@@ -776,6 +835,14 @@ watch(view, () => {
   handleCloseAppointmentModal()
 })
 watch(currentClinicId, () => {
+  fetchEvents()
+})
+
+watch(() => route.query, () => {
+  handleCloseModal()
+  handleCloseAppointmentModal()
+  applyRouteSelection()
+  updateCurrentDate()
   fetchEvents()
 })
 </script>

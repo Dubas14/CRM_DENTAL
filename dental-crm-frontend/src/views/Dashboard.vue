@@ -108,6 +108,7 @@ const normalizeCollection = (payload) => {
 const formatTime = (date) => date?.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) || '—';
 const formatDayMonth = (date) => date?.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) || '';
 const formatDateParam = (date) => (date ? formatDateYMD(date) : '');
+const todayParam = computed(() => formatDateYMD(new Date()));
 
 const resolveDoctorLabel = (appt) => {
   const doctor = appt.doctor;
@@ -445,7 +446,11 @@ watch(() => user.value, (val) => {
     <!-- Картки статистики з skeleton loading -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Пацієнти -->
-      <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
+      <router-link
+        :to="{ name: 'patients' }"
+        class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group block"
+        aria-label="Перейти до сторінки пацієнтів"
+      >
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
             <p class="text-text/70 text-sm font-medium uppercase">Всього пацієнтів</p>
@@ -463,10 +468,14 @@ watch(() => user.value, (val) => {
             <Users size="24" />
           </div>
         </div>
-      </div>
+      </router-link>
 
       <!-- Записи сьогодні -->
-      <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
+      <router-link
+        :to="{ name: 'calendar-board', query: { date: todayParam, view: 'day' } }"
+        class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group block"
+        aria-label="Перейти до календаря на сьогодні"
+      >
         <div class="flex justify-between items-start">
           <div class="min-w-0 flex-1">
             <p class="text-text/70 text-sm font-medium uppercase">Записи сьогодні</p>
@@ -484,7 +493,7 @@ watch(() => user.value, (val) => {
             <Calendar size="24" />
           </div>
         </div>
-      </div>
+      </router-link>
 
       <!-- Найближчий візит -->
       <div class="bg-card shadow-sm shadow-black/10 dark:shadow-black/40 p-6 rounded-xl hover:shadow-xl transition-all duration-300 group">
@@ -530,8 +539,8 @@ watch(() => user.value, (val) => {
           </h3>
           <p class="text-text/60 text-sm">Перші 5 записів з найближчим часом</p>
         </div>
-        <router-link :to="{ name: 'schedule' }" class="text-sm text-emerald-400 hover:text-emerald-300 whitespace-nowrap">
-          Перейти до розкладу →
+        <router-link :to="{ name: 'calendar-board' }" class="text-sm text-emerald-400 hover:text-emerald-300 whitespace-nowrap">
+          Перейти до календаря →
         </router-link>
       </div>
 
@@ -548,7 +557,15 @@ watch(() => user.value, (val) => {
       <ul v-else class="space-y-3">
         <li v-for="appt in upcomingAppointments" :key="appt.id">
           <router-link
-              :to="{ name: 'schedule', query: { date: appt.dateParam, doctor: appt.doctorId || undefined, clinic: appt.clinicId || undefined } }"
+              :to="{
+                name: 'calendar-board',
+                query: {
+                  date: appt.dateParam,
+                  view: 'day',
+                  appointment_id: appt.id,
+                  clinic: appt.clinicId || undefined
+                }
+              }"
               class="flex items-start justify-between bg-bg border border-border rounded-lg px-4 py-3 hover:border-emerald-500/40 transition-colors group"
           >
             <div class="min-w-0 flex-1">
