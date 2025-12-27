@@ -401,6 +401,8 @@ class AppointmentController extends Controller
             'doctor_id' => ['sometimes', 'exists:doctors,id'],
             'date' => ['sometimes', 'date'],
             'time' => ['sometimes', 'date_format:H:i'],
+            'start_at' => ['sometimes', 'date'],
+            'end_at' => ['sometimes', 'date', 'after:start_at'],
 
             'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
             'procedure_step_id' => ['sometimes', 'nullable', 'exists:procedure_steps,id'],
@@ -455,11 +457,18 @@ class AppointmentController extends Controller
             ? $validated['assistant_id']
             : $appointment->assistant_id;
 
-        $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
-        $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
+        $startAtInput = $validated['start_at'] ?? null;
+        $endAtInput = $validated['end_at'] ?? null;
 
-        $date = Carbon::parse($dateValue)->startOfDay();
-        $startAt = Carbon::parse($dateValue . ' ' . $timeValue);
+        if ($startAtInput) {
+            $startAt = Carbon::parse($startAtInput);
+            $date = $startAt->copy()->startOfDay();
+        } else {
+            $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
+            $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
+            $date = Carbon::parse($dateValue)->startOfDay();
+            $startAt = Carbon::parse($dateValue . ' ' . $timeValue);
+        }
 
         $availability = new AvailabilityService();
         $plan = $availability->getDailyPlan($doctor, $date);
@@ -478,7 +487,18 @@ class AppointmentController extends Controller
                 $procedure,
                 $plan['slot_duration'] ?? 30
             );
-        $endAt = $startAt->copy()->addMinutes($duration);
+
+        if ($endAtInput) {
+            $endAt = Carbon::parse($endAtInput);
+            if ($endAt->lessThanOrEqualTo($startAt)) {
+                return response()->json([
+                    'message' => 'Час завершення має бути пізніше за час початку',
+                ], 422);
+            }
+            $duration = $startAt->diffInMinutes($endAt);
+        } else {
+            $endAt = $startAt->copy()->addMinutes($duration);
+        }
 
         if ($procedure && $procedure->requires_room) {
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
