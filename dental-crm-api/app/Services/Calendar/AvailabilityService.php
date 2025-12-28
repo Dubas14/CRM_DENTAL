@@ -124,7 +124,11 @@ class AvailabilityService
 
             $candidateRooms = $this->resolveCompatibleRooms($doctor, $procedure, $room);
 
-            if ($procedure?->requires_room && $candidateRooms->isEmpty()) {
+            if (! $candidateRooms instanceof Collection) {
+                $candidateRooms = collect();
+            }
+
+            if ($procedure && $procedure->requires_room && $candidateRooms->isEmpty()) {
                 return ['slots' => [], 'reason' => 'no_room_compatibility'];
             }
 
