@@ -1,6 +1,7 @@
 /* =====================================================
    Toast UI Calendar — Theme Overrides
    Final Polish: Contrast Fix for Both Light & Dark
+   Version: 2.0 (Enhanced)
    ===================================================== */
 
 /* ===============================
@@ -11,11 +12,18 @@
   --calendar-bg: #ffffff;
   --calendar-text: #0f172a;        /* Slate-900 (Майже чорний) */
   --calendar-text-muted: #64748b;  /* Slate-500 */
+  --calendar-text-disabled: #94a3b8; /* Slate-400 для неактивних */
   --calendar-event-text: #0f172a;  /* Темний текст для подій у світлій темі */
+
+  /* Акцентні кольори */
+  --calendar-accent-primary: #3b82f6;
+  --calendar-accent-secondary: #10b981;
+  --calendar-accent-danger: #ef4444;
 
   /* Сітка */
   --calendar-grid-line: rgba(0, 0, 0, 0.15);
   --calendar-grid-line-half: rgba(0, 0, 0, 0.08);
+  --calendar-grid-border: rgba(0, 0, 0, 0.2);
 
   /* Слоти доступності */
   --avail-stripe-1: rgba(16, 185, 129, 0.1);
@@ -23,29 +31,67 @@
   --avail-border: #10b981;
 
   --now-indicator: #ef4444;
+  --now-indicator-glow: rgba(239, 68, 68, 0.4);
+
+  /* Тіні */
+  --calendar-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --calendar-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  --calendar-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 
   background-color: var(--calendar-bg);
   color: var(--calendar-text);
-  font-family: inherit;
+  font-family: system-ui, -apple-system, sans-serif;
   border-radius: 16px;
-  border: 1px solid var(--calendar-grid-line);
+  border: 1px solid var(--calendar-grid-border);
   overflow: hidden;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 /* --- ТЕМНА ТЕМА (Dark) --- */
-.dark .toastui-calendar-layout {
+.dark .toastui-calendar-layout,
+.toastui-calendar-layout.dark-theme {
   --calendar-bg: #111827;          /* Gray-900 (Глибокий темний) */
   --calendar-text: #f8fafc;        /* Slate-50 (Майже білий) */
   --calendar-text-muted: #9ca3af;  /* Gray-400 */
+  --calendar-text-disabled: #6b7280; /* Gray-500 для неактивних */
   --calendar-event-text: #ffffff;  /* Світлий текст для подій у темній темі */
+
+  /* Акцентні кольори (трохи яскравіші для темної теми) */
+  --calendar-accent-primary: #60a5fa;
+  --calendar-accent-secondary: #34d399;
+  --calendar-accent-danger: #f87171;
 
   /* Сітка (біла напівпрозора) */
   --calendar-grid-line: rgba(255, 255, 255, 0.15);
   --calendar-grid-line-half: rgba(255, 255, 255, 0.05);
+  --calendar-grid-border: rgba(255, 255, 255, 0.2);
 
   --avail-stripe-1: rgba(5, 150, 105, 0.15);
   --avail-stripe-2: rgba(5, 150, 105, 0.3);
   --avail-border: #34d399;
+
+  --now-indicator-glow: rgba(239, 68, 68, 0.6);
+}
+
+/* Автовизначення темної теми системи */
+@media (prefers-color-scheme: dark) {
+  .toastui-calendar-layout.auto-theme:not(.light-theme) {
+    --calendar-bg: #111827;
+    --calendar-text: #f8fafc;
+    --calendar-text-muted: #9ca3af;
+    --calendar-text-disabled: #6b7280;
+    --calendar-event-text: #ffffff;
+    --calendar-accent-primary: #60a5fa;
+    --calendar-accent-secondary: #34d399;
+    --calendar-accent-danger: #f87171;
+    --calendar-grid-line: rgba(255, 255, 255, 0.15);
+    --calendar-grid-line-half: rgba(255, 255, 255, 0.05);
+    --calendar-grid-border: rgba(255, 255, 255, 0.2);
+    --avail-stripe-1: rgba(5, 150, 105, 0.15);
+    --avail-stripe-2: rgba(5, 150, 105, 0.3);
+    --avail-border: #34d399;
+    --now-indicator-glow: rgba(239, 68, 68, 0.6);
+  }
 }
 
 /* ===============================
@@ -53,28 +99,54 @@
    =============================== */
 
 /* Загальний текст (дати, дні тижня) */
-.toastui-calendar-day-name__date,
-.toastui-calendar-day-name__name,
-.toastui-calendar-month-daygrid-date,
-.toastui-calendar-weekday-grid-date {
-  color: var(--calendar-text) !important; /* Автоматично змінюється від теми */
+.toastui-calendar-layout .toastui-calendar-day-name__date,
+.toastui-calendar-layout .toastui-calendar-day-name__name,
+.toastui-calendar-layout .toastui-calendar-month-daygrid-date,
+.toastui-calendar-layout .toastui-calendar-weekday-grid-date {
+  color: var(--calendar-text);
   font-weight: 700;
+  transition: color 0.3s ease;
 }
 
 /* Додатково для темної теми, щоб текст "світився" */
 .dark .toastui-calendar-day-name__date,
-.dark .toastui-calendar-day-name__name {
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+.dark .toastui-calendar-day-name__name,
+.toastui-calendar-layout.dark-theme .toastui-calendar-day-name__date,
+.toastui-calendar-layout.dark-theme .toastui-calendar-day-name__name {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Текст всередині подій (адаптується до теми) */
-.toastui-calendar-event-title,
-.toastui-calendar-event-time-content,
-.toastui-calendar-weekday-event-title {
-  color: var(--calendar-event-text) !important;
-  -webkit-text-fill-color: var(--calendar-event-text) !important;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+.toastui-calendar-layout .toastui-calendar-event-title,
+.toastui-calendar-layout .toastui-calendar-event-time-content,
+.toastui-calendar-layout .toastui-calendar-weekday-event-title {
+  color: var(--calendar-event-text);
+  -webkit-text-fill-color: var(--calendar-event-text);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
   font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Текст для неактивних/минулих подій */
+.toastui-calendar-event-time.event-past .toastui-calendar-event-title,
+.toastui-calendar-event-time.event-past .toastui-calendar-event-time-content {
+  color: var(--calendar-text-muted);
+  -webkit-text-fill-color: var(--calendar-text-muted);
+}
+
+.dark .toastui-calendar-event-time.event-past .toastui-calendar-event-title,
+.dark .toastui-calendar-event-time.event-past .toastui-calendar-event-time-content,
+.toastui-calendar-layout.dark-theme .toastui-calendar-event-time.event-past .toastui-calendar-event-title,
+.toastui-calendar-layout.dark-theme .toastui-calendar-event-time.event-past .toastui-calendar-event-time-content {
+  color: var(--calendar-text-disabled);
+  -webkit-text-fill-color: var(--calendar-text-disabled);
+}
+
+/* Текст для поточного дня (акцент) */
+.toastui-calendar-month-today-date,
+.toastui-calendar-weekday-today-date {
+  color: var(--calendar-accent-primary) !important;
+  font-weight: 800;
 }
 
 /* ===============================
@@ -82,154 +154,359 @@
    =============================== */
 
 /* Фони */
-.toastui-calendar-timegrid,
-.toastui-calendar-timegrid-time-column,
-.toastui-calendar-month,
-.toastui-calendar-daygrid-cell,
-.toastui-calendar-month-daygrid {
-  background-color: var(--calendar-bg) !important;
+.toastui-calendar-layout .toastui-calendar-timegrid,
+.toastui-calendar-layout .toastui-calendar-timegrid-time-column,
+.toastui-calendar-layout .toastui-calendar-month,
+.toastui-calendar-layout .toastui-calendar-daygrid-cell,
+.toastui-calendar-layout .toastui-calendar-month-daygrid {
+  background-color: var(--calendar-bg);
+  transition: background-color 0.3s ease;
 }
 
-/* Лінії */
-.toastui-calendar-timegrid-gridline {
-  border-top: 1px solid var(--calendar-grid-line) !important;
+/* Лінії сітки */
+.toastui-calendar-layout .toastui-calendar-timegrid-gridline {
+  border-top: 1px solid var(--calendar-grid-line);
   height: 48px;
 }
-.toastui-calendar-timegrid-gridline-half {
-  border-top: 1px dotted var(--calendar-grid-line-half) !important;
+
+.toastui-calendar-layout .toastui-calendar-timegrid-gridline-half {
+  border-top: 1px dotted var(--calendar-grid-line-half);
 }
 
-.toastui-calendar-daygrid-cell + .toastui-calendar-daygrid-cell,
-.toastui-calendar-columns .toastui-calendar-timegrid-column + .toastui-calendar-timegrid-column,
-.toastui-calendar-month-daygrid-cell {
-  border-left: 1px solid var(--calendar-grid-line) !important;
-  border-top: 1px solid var(--calendar-grid-line) !important;
+/* Межі між колонками та рядками */
+.toastui-calendar-layout .toastui-calendar-daygrid-cell + .toastui-calendar-daygrid-cell,
+.toastui-calendar-layout .toastui-calendar-columns .toastui-calendar-timegrid-column + .toastui-calendar-timegrid-column,
+.toastui-calendar-layout .toastui-calendar-month-daygrid-cell {
+  border-left: 1px solid var(--calendar-grid-line);
+  border-top: 1px solid var(--calendar-grid-line);
 }
 
-.toastui-calendar-timegrid-time-column {
-  border-right: 1px solid var(--calendar-grid-line) !important;
+/* Часова колонка */
+.toastui-calendar-layout .toastui-calendar-timegrid-time-column {
+  border-right: 1px solid var(--calendar-grid-line);
 }
-.toastui-calendar-timegrid-time-label {
+
+/* Мітки часу */
+.toastui-calendar-layout .toastui-calendar-timegrid-time-label {
   color: var(--calendar-text-muted);
   font-size: 11px;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+/* Виділення поточного часу */
+.toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-marker {
+  background-color: var(--now-indicator);
+}
+
+.toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-left,
+.toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-right {
+  border-top: 2px solid var(--now-indicator);
+  opacity: 1;
+  z-index: 100;
+  box-shadow: 0 0 4px var(--now-indicator-glow);
 }
 
 /* ===============================
    4. EVENTS STYLE (ЗАПИСИ)
    =============================== */
 
-/* Базовий блок */
-.toastui-calendar-event-time,
-.toastui-calendar-weekday-event-block {
+/* Базовий блок події */
+.toastui-calendar-layout .toastui-calendar-event-time,
+.toastui-calendar-layout .toastui-calendar-weekday-event-block {
   border-radius: 6px;
-  padding: 3px 6px;
-  border: none !important;
-  /* Акцент зліва (легка тінь) */
-  border-left: 4px solid rgba(0,0,0,0.15) !important;
-
+  padding: 4px 8px;
+  border: none;
+  border-left: 4px solid rgba(0, 0, 0, 0.15);
   font-size: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+  line-height: 1.3;
+  box-shadow: var(--calendar-shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s, filter 0.2s ease;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+/* Акцентна лінія зліва */
+.toastui-calendar-layout .toastui-calendar-event-time::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--calendar-accent-primary), var(--calendar-accent-secondary));
+  border-radius: 3px 0 0 3px;
 }
 
 /* Hover ефект */
-.toastui-calendar-event-time:hover {
+.toastui-calendar-layout .toastui-calendar-event-time:hover,
+.toastui-calendar-layout .toastui-calendar-weekday-event-block:hover {
   transform: translateY(-2px);
   z-index: 50;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--calendar-shadow-lg);
 }
 
-/* --- 🕒 PAST (МИНУЛЕ) - РІЗНА ЛОГІКА ДЛЯ ТЕМ --- */
+.toastui-calendar-layout .toastui-calendar-event-time:hover .toastui-calendar-event-title,
+.toastui-calendar-layout .toastui-calendar-event-time:hover .toastui-calendar-event-time-content {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* --- 🕒 PAST (МИНУЛЕ) --- */
 
 /* Світла тема: Робимо сірим (Grayscale), але не прозорим! */
-.event-past {
-  filter: grayscale(0.8); /* Знебарвлюємо колір */
-  opacity: 0.85 !important; /* Ледь-ледь прозорі, щоб текст читався */
-  border: 1px solid rgba(0,0,0,0.1) !important; /* Рамка для чіткості */
-  box-shadow: none !important;
+.toastui-calendar-layout .toastui-calendar-event-time.event-past {
+  filter: grayscale(0.8);
+  opacity: 0.85;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: var(--calendar-shadow-sm);
 }
 
 /* Темна тема: Робимо темнішим (Opacity) */
-.dark .toastui-calendar-event-time.event-past {
-  filter: grayscale(0.6);
-  opacity: 0.6 !important; /* Тут можна прозорість, бо фон темний */
-  border-left-color: rgba(255,255,255,0.1) !important;
+.dark .toastui-calendar-layout .toastui-calendar-event-time.event-past,
+.toastui-calendar-layout.dark-theme .toastui-calendar-event-time.event-past {
+  filter: grayscale(0.6) brightness(0.8);
+  opacity: 0.6;
+  border-left-color: rgba(255, 255, 255, 0.1);
 }
 
 /* При наведенні повертаємо колір */
-.event-past:hover,
-.dark .toastui-calendar-event-time.event-past:hover {
-  filter: grayscale(0);
-  opacity: 1 !important;
+.toastui-calendar-layout .toastui-calendar-event-time.event-past:hover,
+.dark .toastui-calendar-layout .toastui-calendar-event-time.event-past:hover,
+.toastui-calendar-layout.dark-theme .toastui-calendar-event-time.event-past:hover {
+  filter: grayscale(0) brightness(1);
+  opacity: 1;
 }
 
 /* --- 🚀 FUTURE (МАЙБУТНЄ) --- */
-.event-future.event-active {
-  opacity: 1 !important;
-  /* Легкий блиск зверху */
-  background-image: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 100%);
+.toastui-calendar-layout .toastui-calendar-event-time.event-future.event-active {
+  opacity: 1;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 /* --- ✅ DONE (ЗАВЕРШЕНІ) --- */
-.event-done {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-  opacity: 1 !important;
-  filter: none !important; /* Ніколи не сіріють */
+.toastui-calendar-layout .toastui-calendar-event-time.event-done {
+  background: linear-gradient(135deg, var(--calendar-accent-primary) 0%, #1d4ed8 100%);
+  opacity: 1;
+  filter: none;
+  border-left-color: rgba(255, 255, 255, 0.5);
 }
-.dark .event-done {
-  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%) !important;
+
+.dark .toastui-calendar-layout .toastui-calendar-event-time.event-done,
+.toastui-calendar-layout.dark-theme .toastui-calendar-event-time.event-done {
+  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* Текст у завершених подіях */
+.toastui-calendar-layout .toastui-calendar-event-time.event-done .toastui-calendar-event-title,
+.toastui-calendar-layout .toastui-calendar-event-time.event-done .toastui-calendar-event-time-content {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* ===============================
    5. DRAG & AVAILABILITY
    =============================== */
-.calendar-availability-slot {
+
+/* Слоти доступності */
+.toastui-calendar-layout .calendar-availability-slot {
   background-image: repeating-linear-gradient(
           45deg,
           var(--avail-stripe-1),
           var(--avail-stripe-1) 10px,
           var(--avail-stripe-2) 10px,
           var(--avail-stripe-2) 20px
-  ) !important;
-  border: 2px dashed var(--avail-border) !important;
+  );
+  border: 2px dashed var(--avail-border);
   border-radius: 6px;
-  opacity: 1 !important;
+  opacity: 1;
   pointer-events: none;
-  z-index: 1 !important;
+  z-index: 1;
 }
 
-.toastui-calendar-timegrid-guide-move {
-  background-color: rgba(59, 130, 246, 0.4) !important;
-  border: 2px dashed #2563eb !important;
+/* Драг-енд-дроп */
+.toastui-calendar-layout .toastui-calendar-timegrid-guide-move {
+  background-color: rgba(59, 130, 246, 0.4);
+  border: 2px dashed var(--calendar-accent-primary);
   border-radius: 6px;
   z-index: 50;
 }
-.toastui-calendar-guide-move-label {
-  color: #fff !important;
-  background-color: #2563eb !important;
+
+.toastui-calendar-layout .toastui-calendar-guide-move-label {
+  color: #ffffff;
+  background-color: var(--calendar-accent-primary);
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 /* ===============================
    6. HEADER & INDICATORS
    =============================== */
-.toastui-calendar-day-view-day-names,
-.toastui-calendar-month-day-names {
-  border-bottom: 1px solid var(--calendar-grid-line) !important;
-  background-color: var(--calendar-bg) !important;
-}
-.toastui-calendar-day-name-item {
-  color: var(--calendar-text) !important;
+
+/* Заголовок календаря */
+.toastui-calendar-layout .toastui-calendar-day-view-day-names,
+.toastui-calendar-layout .toastui-calendar-month-day-names {
+  border-bottom: 1px solid var(--calendar-grid-line);
+  background-color: var(--calendar-bg);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.toastui-calendar-timegrid-now-indicator-marker {
-  background-color: var(--now-indicator);
+.toastui-calendar-layout .toastui-calendar-day-name-item {
+  color: var(--calendar-text);
+  font-weight: 600;
+  transition: color 0.3s ease;
 }
-.toastui-calendar-timegrid-now-indicator-left,
-.toastui-calendar-timegrid-now-indicator-right {
-  border-top: 2px solid var(--now-indicator);
-  opacity: 1;
+
+/* Поточний день у заголовку */
+.toastui-calendar-layout .toastui-calendar-day-name-today .toastui-calendar-day-name__date {
+  background-color: var(--calendar-accent-primary);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===============================
+   7. МОБІЛЬНА АДАПТАЦІЯ
+   =============================== */
+
+@media (max-width: 768px) {
+  .toastui-calendar-layout {
+    border-radius: 12px;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-event-title,
+  .toastui-calendar-layout .toastui-calendar-event-time-content {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-event-time,
+  .toastui-calendar-layout .toastui-calendar-weekday-event-block {
+    padding: 2px 4px;
+    font-size: 11px;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-timegrid-time-label {
+    font-size: 10px;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-day-name__date,
+  .toastui-calendar-layout .toastui-calendar-day-name__name {
+    font-size: 13px;
+  }
+}
+
+/* ===============================
+   8. ДРУК (PRINT STYLES)
+   =============================== */
+
+@media print {
+  .toastui-calendar-layout {
+    border: 1px solid #000000;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-event-time,
+  .toastui-calendar-layout .toastui-calendar-weekday-event-block {
+    border: 1px solid #000000;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .toastui-calendar-layout .toastui-calendar-timegrid-gridline,
+  .toastui-calendar-layout .toastui-calendar-daygrid-cell + .toastui-calendar-daygrid-cell {
+    border-color: #cccccc;
+  }
+
+  /* Приховати непотрібні елементи */
+  .toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-marker,
+  .toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-left,
+  .toastui-calendar-layout .toastui-calendar-timegrid-now-indicator-right {
+    display: none;
+  }
+}
+
+/* ===============================
+   9. ДОДАТКОВІ ПОКРАЩЕННЯ
+   =============================== */
+
+/* Плавна анімація для всіх переходів */
+.toastui-calendar-layout * {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Поліпшення видимості фокусу для доступності */
+.toastui-calendar-layout .toastui-calendar-event-time:focus-visible,
+.toastui-calendar-layout .toastui-calendar-weekday-event-block:focus-visible {
+  outline: 2px solid var(--calendar-accent-primary);
+  outline-offset: 2px;
   z-index: 100;
-  box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
+}
+
+/* Стилі для скроллбара (WebKit) */
+.toastui-calendar-layout::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.toastui-calendar-layout::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.toastui-calendar-layout::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dark .toastui-calendar-layout::-webkit-scrollbar-track,
+.toastui-calendar-layout.dark-theme::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .toastui-calendar-layout::-webkit-scrollbar-thumb,
+.toastui-calendar-layout.dark-theme::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Покращення для кастомних класів календаря */
+.toastui-calendar-layout .calendar-custom-holiday {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left-color: var(--calendar-accent-danger);
+}
+
+.dark .toastui-calendar-layout .calendar-custom-holiday,
+.toastui-calendar-layout.dark-theme .calendar-custom-holiday {
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Анімація завантаження (опційно) */
+.toastui-calendar-layout.calendar-loading {
+  position: relative;
+}
+
+.toastui-calendar-layout.calendar-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--calendar-bg);
+  opacity: 0.8;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--calendar-text);
+  font-weight: 600;
 }

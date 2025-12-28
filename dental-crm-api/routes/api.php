@@ -133,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('doctors/{doctor}/appointments', [AppointmentController::class, 'doctorAppointments']);
     Route::get('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'index']);
     Route::put('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'update']);
+    Route::get('booking-suggestions', [BookingSuggestionController::class, 'index']);
 
     Route::apiResource('calendar-blocks', CalendarBlockController::class);
 
