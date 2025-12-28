@@ -131,7 +131,7 @@ class DoctorScheduleController extends Controller
     public function slots(Request $request, Doctor $doctor)
     {
         $validated = $request->validate([
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date_format:Y-m-d'],
             'procedure_id' => ['nullable', 'exists:procedures,id'],
             'room_id' => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
@@ -144,7 +144,7 @@ class DoctorScheduleController extends Controller
             abort(403, 'У вас немає доступу до перегляду слотів цього лікаря');
         }
 
-        $date = Carbon::parse($validated['date'])->startOfDay();
+        $date = Carbon::createFromFormat('Y-m-d', $validated['date'])->startOfDay();
 
         $procedure = isset($validated['procedure_id']) ? Procedure::find($validated['procedure_id']) : null;
         $room = isset($validated['room_id']) ? Room::find($validated['room_id']) : null;
