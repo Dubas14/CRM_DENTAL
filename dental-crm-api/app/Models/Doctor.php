@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 
 class Doctor extends Model
 {
@@ -72,6 +73,24 @@ class Doctor extends Model
         return $this->calendarBlocks();
     }
 
+    public function getAppointmentsAttribute($value): Collection
+    {
+        return $this->loadRelationCollection('appointments', fn () => $this->appointments()->get());
+    }
+
+    public function getCalendarBlocksAttribute($value): Collection
+    {
+        return $this->loadRelationCollection('calendarBlocks', fn () => $this->calendarBlocks()->get());
+    }
+
+    public function getBlocksAttribute($value): Collection
+    {
+        $blocks = $this->loadRelationCollection('calendarBlocks', fn () => $this->calendarBlocks()->get());
+        $this->setRelation('blocks', $blocks);
+
+        return $blocks;
+    }
+
     /* =======================
      | Helpers
      ======================= */
@@ -79,5 +98,18 @@ class Doctor extends Model
     public function isActive(): bool
     {
         return $this->is_active === true && $this->status === 'active';
+    }
+
+    private function loadRelationCollection(string $relation, callable $loader): Collection
+    {
+        $loaded = $this->getRelation($relation);
+        if ($loaded instanceof Collection) {
+            return $loaded;
+        }
+
+        $collection = $loader();
+        $this->setRelation($relation, $collection);
+
+        return $collection;
     }
 }

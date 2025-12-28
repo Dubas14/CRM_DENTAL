@@ -18,6 +18,7 @@ use App\Services\Calendar\ConflictChecker;
 use App\Services\Calendar\WaitlistService;
 use App\Events\AppointmentCancelled;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -186,6 +187,8 @@ class AppointmentController extends Controller
             'room:id,name',
             'equipment:id,name',
         ]);
+
+        $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
 
         return (new AppointmentResource($appointment))
             ->response()
@@ -364,6 +367,10 @@ class AppointmentController extends Controller
             });
         });
 
+        $appointments->each(function (Appointment $appointment) {
+            $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+        });
+
         $appointments = $appointments->map(fn ($appointment) => $appointment->load([
             'clinic:id,name',
             'doctor:id,full_name,clinic_id',
@@ -413,6 +420,10 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
+        $previousDoctorId = $appointment->doctor_id;
+        $previousStartAt = $appointment->start_at;
+        $previousEndAt = $appointment->end_at;
+
         $validated = $request->validate([
             'doctor_id' => ['sometimes', 'exists:doctors,id'],
             'date' => ['sometimes', 'date'],
@@ -607,6 +618,9 @@ class AppointmentController extends Controller
             'equipment:id,name',
         ]);
 
+        $this->invalidateSlotsCache($previousDoctorId, $previousStartAt, $previousEndAt);
+        $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+
         return new AppointmentResource($appointment);
     }
 
@@ -687,6 +701,8 @@ class AppointmentController extends Controller
             'comment' => $data['comment'] ?? $appointment->comment,
         ]);
 
+        $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+
         $startDate = $appointment->start_at instanceof Carbon
             ? $appointment->start_at->copy()->startOfDay()
             : Carbon::parse($appointment->start_at)->startOfDay();
@@ -707,5 +723,17 @@ class AppointmentController extends Controller
             ),
             'waitlist_suggestions' => $waitlistSuggestions,
         ]);
+    }
+
+    private function invalidateSlotsCache(int $doctorId, $startAt, $endAt): void
+    {
+        $start = $startAt instanceof Carbon ? $startAt->copy()->startOfDay() : Carbon::parse($startAt)->startOfDay();
+        $end = $endAt instanceof Carbon ? $endAt->copy()->startOfDay() : Carbon::parse($endAt)->startOfDay();
+
+        $period = CarbonPeriod::create($start, '1 day', $end);
+
+        foreach ($period as $date) {
+            AvailabilityService::bumpSlotsCacheVersion($doctorId, $date);
+        }
     }
 }
