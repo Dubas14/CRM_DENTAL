@@ -16,6 +16,7 @@ use App\Services\Access\DoctorAccessService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\ConflictChecker;
 use App\Services\Calendar\WaitlistService;
+use App\Events\AppointmentCancelled;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,8 +91,23 @@ class AppointmentController extends Controller
             );
         $endAt = $startAt->copy()->addMinutes($duration);
 
+        if ($procedure && $room && $procedure->rooms()->exists()) {
+            $isCompatible = $procedure->rooms()->where('rooms.id', $room->id)->exists();
+            if (! $isCompatible) {
+                return response()->json([
+                    'message' => 'Вибраний кабінет несумісний із процедурою',
+                ], 422);
+            }
+        }
+
         if ($procedure && $procedure->requires_room) {
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+
+        if ($procedure && $procedure->requires_room && ! $room) {
+            return response()->json([
+                'message' => 'Потрібен сумісний кабінет для процедури',
+            ], 422);
         }
 
         if ($procedure?->equipment_id) {
@@ -500,8 +516,23 @@ class AppointmentController extends Controller
             $endAt = $startAt->copy()->addMinutes($duration);
         }
 
+        if ($procedure && $room && $procedure->rooms()->exists()) {
+            $isCompatible = $procedure->rooms()->where('rooms.id', $room->id)->exists();
+            if (! $isCompatible) {
+                return response()->json([
+                    'message' => 'Вибраний кабінет несумісний із процедурою',
+                ], 422);
+            }
+        }
+
         if ($procedure && $procedure->requires_room) {
             $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+        }
+
+        if ($procedure && $procedure->requires_room && ! $room) {
+            return response()->json([
+                'message' => 'Потрібен сумісний кабінет для процедури',
+            ], 422);
         }
 
         if ($procedure?->equipment_id) {
@@ -666,6 +697,8 @@ class AppointmentController extends Controller
             $appointment->procedure_id,
             $startDate->toDateString()
         );
+
+        AppointmentCancelled::dispatch($appointment);
 
         return response()->json([
             'status' => 'cancelled',

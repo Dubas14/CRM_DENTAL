@@ -79,15 +79,17 @@ class AvailabilityService
         Doctor $doctor,
         Carbon $date,
         int $durationMinutes,
+        ?Procedure $procedure = null,
         ?Room $room = null,
         ?Equipment $equipment = null,
         ?int $assistantId = null
     ): array {
         $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_room_%s_eq_%s_asst_%s_v%s',
+            'calendar_slots_doctor_%d_%s_%d_proc_%s_room_%s_eq_%s_asst_%s_v%s',
             $doctor->id,
             $date->toDateString(),
             $durationMinutes,
+            $procedure?->id ?? 'any',
             $room?->id ?? 'any',
             $equipment?->id ?? 'any',
             $assistantId ?? 'any',
@@ -98,6 +100,7 @@ class AvailabilityService
             $doctor,
             $date,
             $durationMinutes,
+            $procedure,
             $room,
             $equipment,
             $assistantId
@@ -106,6 +109,16 @@ class AvailabilityService
 
             if (isset($plan['reason'])) {
                 return ['slots' => [], 'reason' => $plan['reason']];
+            }
+
+            if ($room && ! $this->isRoomCompatible($room, $procedure)) {
+                return ['slots' => [], 'reason' => 'room_incompatible'];
+            }
+
+            $candidateRooms = $this->resolveCompatibleRooms($doctor, $procedure, $room);
+
+            if ($procedure?->requires_room && $candidateRooms->isEmpty()) {
+                return ['slots' => [], 'reason' => 'no_room_compatibility'];
             }
 
             $appointments = Appointment::where('doctor_id', $doctor->id)
@@ -121,18 +134,20 @@ class AvailabilityService
                 ->where('end_at', '>', $dayStart)
                 ->get();
 
-            $roomAppointments = $room
-                ? Appointment::where('room_id', $room->id)
+            $roomAppointmentsByRoom = $candidateRooms->isNotEmpty()
+                ? Appointment::whereIn('room_id', $candidateRooms->pluck('id'))
                     ->whereDate('start_at', $date)
                     ->whereNotIn('status', ['cancelled', 'no_show'])
                     ->get()
+                    ->groupBy('room_id')
                 : collect();
 
-            $roomBlocks = $room
-                ? CalendarBlock::where('room_id', $room->id)
+            $roomBlocksByRoom = $candidateRooms->isNotEmpty()
+                ? CalendarBlock::whereIn('room_id', $candidateRooms->pluck('id'))
                     ->where('start_at', '<', $dayEnd)
                     ->where('end_at', '>', $dayStart)
                     ->get()
+                    ->groupBy('room_id')
                 : collect();
 
             $equipmentAppointments = $equipment
@@ -193,12 +208,25 @@ class AvailabilityService
                     continue;
                 }
 
-                if ($room && $this->hasConflict($roomAppointments, $start, $end)) {
-                    continue;
-                }
+                if ($candidateRooms->isNotEmpty()) {
+                    $hasFreeRoom = $candidateRooms->contains(function (Room $candidate) use ($roomAppointmentsByRoom, $roomBlocksByRoom, $start, $end) {
+                        $appointments = $roomAppointmentsByRoom->get($candidate->id, collect());
+                        $blocks = $roomBlocksByRoom->get($candidate->id, collect());
 
-                if ($room && $this->hasConflict($roomBlocks, $start, $end)) {
-                    continue;
+                        if ($this->hasConflict($appointments, $start, $end)) {
+                            return false;
+                        }
+
+                        if ($this->hasConflict($blocks, $start, $end)) {
+                            return false;
+                        }
+
+                        return true;
+                    });
+
+                    if (! $hasFreeRoom) {
+                        continue;
+                    }
                 }
 
                 if ($equipment && $this->hasConflict($equipmentAppointments, $start, $end)) {
@@ -258,6 +286,10 @@ class AvailabilityService
 
     public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Room
     {
+        if ($room && ! $this->isRoomCompatible($room, $procedure)) {
+            return null;
+        }
+
         if ($room) return $room;
 
         if (!$procedure->requires_room && !$procedure->default_room_id) {
@@ -270,6 +302,8 @@ class AvailabilityService
 
         if ($procedure->default_room_id) {
             $candidateQuery->where('id', $procedure->default_room_id);
+        } elseif ($procedure->rooms()->exists()) {
+            $candidateQuery->whereIn('id', $procedure->rooms()->pluck('rooms.id'));
         }
 
         foreach ($candidateQuery->get() as $candidate) {
@@ -320,6 +354,7 @@ class AvailabilityService
         Doctor $doctor,
         Carbon $fromDate,
         int $durationMinutes,
+        ?Procedure $procedure = null,
         ?Room $room = null,
         ?Equipment $equipment = null,
         int $limit = 5,
@@ -331,7 +366,7 @@ class AvailabilityService
         $safetyCounter = 0;
 
         while (count($slots) < $limit && $safetyCounter < 60) {
-            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $room, $equipment, $assistantId);
+            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $procedure, $room, $equipment, $assistantId);
 
             foreach ($daily['slots'] as $slot) {
                 $slotStart = Carbon::createFromFormat('H:i', $slot['start']);
@@ -368,5 +403,41 @@ class AvailabilityService
             'start' => $slot['start'],
             'end' => $slot['end'],
         ], $topSlots);
+    }
+
+    private function resolveCompatibleRooms(Doctor $doctor, ?Procedure $procedure, ?Room $room): Collection
+    {
+        if ($room) {
+            return collect([$room]);
+        }
+
+        if (! $procedure || (! $procedure->requires_room && ! $procedure->default_room_id && ! $procedure->rooms()->exists())) {
+            return collect();
+        }
+
+        $query = Room::query()
+            ->where('clinic_id', $doctor->clinic_id)
+            ->where('is_active', true);
+
+        if ($procedure->default_room_id) {
+            $query->where('id', $procedure->default_room_id);
+        } elseif ($procedure->rooms()->exists()) {
+            $query->whereIn('id', $procedure->rooms()->pluck('rooms.id'));
+        }
+
+        return $query->get();
+    }
+
+    private function isRoomCompatible(Room $room, ?Procedure $procedure): bool
+    {
+        if (! $procedure) {
+            return true;
+        }
+
+        if (! $procedure->rooms()->exists()) {
+            return true;
+        }
+
+        return $procedure->rooms()->where('rooms.id', $room->id)->exists();
     }
 }

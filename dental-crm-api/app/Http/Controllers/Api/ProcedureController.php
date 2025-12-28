@@ -14,7 +14,7 @@ class ProcedureController extends Controller
         $clinicId = $request->query('clinic_id');
 
         return Procedure::query()
-            ->with('steps')
+            ->with(['steps', 'rooms'])
             ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId))
             ->orderBy('name')
             ->get();
@@ -36,6 +36,8 @@ class ProcedureController extends Controller
             'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
             'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
             'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
+            'room_ids'           => ['nullable', 'array'],
+            'room_ids.*'         => ['integer', 'exists:rooms,id'],
         ]);
 
         $procedure = DB::transaction(function () use ($data) {
@@ -49,15 +51,19 @@ class ProcedureController extends Controller
                 $procedure->steps()->createMany($steps->toArray());
             }
 
+            if (array_key_exists('room_ids', $data)) {
+                $procedure->rooms()->sync($data['room_ids'] ?? []);
+            }
+
             return $procedure;
         });
 
-        return response()->json($procedure->load('steps'), 201);
+        return response()->json($procedure->load(['steps', 'rooms']), 201);
     }
 
     public function show(Procedure $procedure)
     {
-        return $procedure->load(['defaultRoom', 'steps']);
+        return $procedure->load(['defaultRoom', 'steps', 'rooms']);
     }
 
     public function update(Request $request, Procedure $procedure)
@@ -75,6 +81,8 @@ class ProcedureController extends Controller
             'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
             'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
             'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
+            'room_ids'           => ['sometimes', 'nullable', 'array'],
+            'room_ids.*'         => ['integer', 'exists:rooms,id'],
         ]);
 
         DB::transaction(function () use ($procedure, $data) {
@@ -91,9 +99,13 @@ class ProcedureController extends Controller
                     $procedure->steps()->createMany($steps->toArray());
                 }
             }
+
+            if (array_key_exists('room_ids', $data)) {
+                $procedure->rooms()->sync($data['room_ids'] ?? []);
+            }
         });
 
-        return $procedure->load(['defaultRoom', 'steps']);
+        return $procedure->load(['defaultRoom', 'steps', 'rooms']);
     }
 
     public function destroy(Procedure $procedure)

@@ -4,6 +4,7 @@ namespace App\Services\Calendar;
 
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\RescheduleCandidate;
 use Carbon\Carbon;
 
 class RescheduleService
@@ -43,6 +44,7 @@ class RescheduleService
                 $doctor,
                 $searchFrom,
                 $duration,
+                $procedure,
                 $appointment->room,
                 $appointment->equipment ?? $procedure?->equipment,
                 5
@@ -51,10 +53,34 @@ class RescheduleService
             $queue[] = [
                 'appointment_id' => $appointment->id,
                 'old_start_at' => $appointment->start_at,
+                'old_end_at' => $appointment->end_at,
+                'patient_id' => $appointment->patient_id,
                 'suggested_slots' => $suggestedSlots,
             ];
         }
 
         return $queue;
+    }
+
+    public function storeRescheduleCandidates(Doctor $doctor, array $queue): array
+    {
+        $createdIds = [];
+
+        foreach ($queue as $item) {
+            $candidate = RescheduleCandidate::create([
+                'clinic_id' => $doctor->clinic_id,
+                'doctor_id' => $doctor->id,
+                'appointment_id' => $item['appointment_id'],
+                'patient_id' => $item['patient_id'] ?? null,
+                'old_start_at' => $item['old_start_at'],
+                'old_end_at' => $item['old_end_at'] ?? null,
+                'suggested_slots' => $item['suggested_slots'] ?? [],
+                'status' => 'pending',
+            ]);
+
+            $createdIds[] = $candidate->id;
+        }
+
+        return $createdIds;
     }
 }

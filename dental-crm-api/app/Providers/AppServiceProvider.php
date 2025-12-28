@@ -4,7 +4,14 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate; // 👈 Важливий імпорт
+use Illuminate\Support\Facades\Event;
 use App\Models\User;
+use App\Events\AppointmentCancelled;
+use App\Events\ScheduleChanged;
+use App\Listeners\ProcessReschedulingQueue;
+use App\Listeners\SendWaitlistOffers;
+use App\Services\Notifications\LogSmsGateway;
+use App\Services\Notifications\SmsGateway;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(SmsGateway::class, LogSmsGateway::class);
     }
 
     /**
@@ -30,5 +37,8 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
         });
+
+        Event::listen(ScheduleChanged::class, ProcessReschedulingQueue::class);
+        Event::listen(AppointmentCancelled::class, SendWaitlistOffers::class);
     }
 }
