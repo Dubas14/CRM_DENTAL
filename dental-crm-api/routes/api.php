@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\CalendarBlockController;
 use App\Http\Controllers\Api\ClinicWorkingHoursController;
 use App\Http\Controllers\Api\DoctorProcedureController;
+use App\Http\Controllers\Api\BookingSuggestionController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -125,6 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'updateSchedule']);
     Route::get('doctors/{doctor}/slots', [DoctorScheduleController::class, 'slots']);
     Route::get('doctors/{doctor}/recommended-slots', [DoctorScheduleController::class, 'recommended']);
+    Route::get('booking-suggestions', [BookingSuggestionController::class, 'index']);
 
     Route::get('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'show']);
     Route::put('doctors/{doctor}/weekly-schedule', [DoctorScheduleSettingsController::class, 'update']);
