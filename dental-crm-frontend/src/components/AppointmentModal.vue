@@ -6,6 +6,7 @@ import procedureApi from '../services/procedureApi';
 import equipmentApi from '../services/equipmentApi';
 import assistantApi from '../services/assistantApi';
 import CalendarSlotPicker from './CalendarSlotPicker.vue';
+import SmartSlotPicker from './SmartSlotPicker.vue';
 
 const props = defineProps({
   appointment: Object,
@@ -463,6 +464,16 @@ watch(
               />
             </div>
           </div>
+        </div>
+
+        <div class="bg-card/60 rounded-lg border border-border/40 p-4">
+          <p class="text-sm font-semibold text-text mb-2">Рекомендований підбір часу</p>
+          <SmartSlotPicker
+            :doctor-id="slotPickerDoctorId"
+            :procedure-id="slotPickerProcedureId"
+            :from-date="slotPickerDate || undefined"
+            @select="applySlotToForm"
+          />
         </div>
 
         <div class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3">

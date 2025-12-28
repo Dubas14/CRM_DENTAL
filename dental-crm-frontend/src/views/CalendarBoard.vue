@@ -71,6 +71,8 @@
     <EventModal
         :open="isEventModalOpen"
         :event="activeEvent"
+        :doctors="doctors"
+        :default-doctor-id="defaultDoctorId"
         @save="handleSaveEvent"
         @close="handleCloseModal"
     />
@@ -93,6 +95,7 @@ import ToastCalendar from '../components/ToastCalendar.vue'
 import EventModal from '../components/EventModal.vue'
 import AppointmentModal from '../components/AppointmentModal.vue'
 import calendarApi from '../services/calendarApi'
+import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
@@ -110,6 +113,7 @@ const events = ref([])
 const availabilityEvents = ref([])
 const clinics = ref([])
 const selectedClinicId = ref(null)
+const doctors = ref([])
 
 const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
@@ -681,6 +685,21 @@ const createDefaultEvent = ({ start, end, event }) => {
   }
 }
 
+const loadDoctors = async () => {
+  if (!currentClinicId.value) {
+    doctors.value = []
+    return
+  }
+
+  try {
+    const { data } = await apiClient.get('/doctors', { params: { clinic_id: currentClinicId.value } })
+    doctors.value = (data?.data || data || []).filter(Boolean)
+  } catch (error) {
+    console.error(error)
+    doctors.value = []
+  }
+}
+
 const openEventModal = (data) => {
   activeEvent.value = data
   isEventModalOpen.value = true
@@ -827,6 +846,7 @@ onMounted(async () => {
     applyRouteSelection()
     updateCurrentDate()
     fetchEvents()
+    loadDoctors()
   }, 100)
 })
 
@@ -836,6 +856,7 @@ watch(view, () => {
 })
 watch(currentClinicId, () => {
   fetchEvents()
+  loadDoctors()
 })
 
 watch(() => route.query, () => {
