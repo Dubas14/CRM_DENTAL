@@ -3,6 +3,8 @@
       v-if="open"
       :model-value="open"
       :event-data="event"
+      :doctors="doctors"
+      :default-doctor-id="defaultDoctorId"
       @update:modelValue="handleUpdate"
       @save="handleSave"
   />
@@ -19,6 +21,14 @@ const props = defineProps({
   event: {
     type: Object,
     default: () => ({}),
+  },
+  doctors: {
+    type: Array,
+    default: () => [],
+  },
+  defaultDoctorId: {
+    type: [Number, String],
+    default: null,
   },
 });
 

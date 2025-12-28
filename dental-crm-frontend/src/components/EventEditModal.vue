@@ -26,6 +26,19 @@
           />
         </div>
 
+        <div>
+          <label class="text-sm text-text/70">Лікар</label>
+          <select
+            v-model="form.doctor_id"
+            class="mt-2 w-full rounded-lg border border-border/80 bg-bg px-3 py-2 text-sm text-text"
+          >
+            <option :value="''">-- Оберіть лікаря --</option>
+            <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
+              {{ doctor.full_name || doctor.name || doctor.email }}
+            </option>
+          </select>
+        </div>
+
         <div class="grid gap-6 md:grid-cols-2">
           <div>
             <label class="text-sm text-text/70">Дата</label>
@@ -80,6 +93,14 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  doctors: {
+    type: Array,
+    default: () => [],
+  },
+  defaultDoctorId: {
+    type: [Number, String],
+    default: null,
+  },
   minuteStep: {
     type: Number,
     default: 10,
@@ -103,6 +124,7 @@ const form = ref({
   date: new Date(),
   startTime: { hour: 9, minute: 0 },
   endTime: { hour: 10, minute: 0 },
+  doctor_id: '',
 });
 
 const isEditMode = computed(() => Boolean(props.eventData?.id));
@@ -116,6 +138,7 @@ const syncFromProps = () => {
     date: new Date(start.getFullYear(), start.getMonth(), start.getDate()),
     startTime: { hour: start.getHours(), minute: start.getMinutes() },
     endTime: { hour: end.getHours(), minute: end.getMinutes() },
+    doctor_id: props.eventData?.doctor_id ?? props.defaultDoctorId ?? '',
   };
 
   datePickerInstance?.setDate(form.value.date);
@@ -139,6 +162,7 @@ const save = () => {
     title,
     start: startDate,
     end: endDate,
+    doctor_id: form.value.doctor_id || null,
   });
 };
 
