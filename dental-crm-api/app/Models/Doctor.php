@@ -77,7 +77,7 @@ class Doctor extends Model
 
     public function isActive(): bool
     {
-        return $this->is_active === true && $this->status === 'active';
+        return $this->is_active === true;
     }
 
 }

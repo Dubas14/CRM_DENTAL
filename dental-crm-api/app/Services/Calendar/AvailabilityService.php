@@ -19,6 +19,13 @@ class AvailabilityService
 {
     public function getDailyPlan(Doctor $doctor, Carbon $date): array
     {
+        if (! $doctor->isActive()) {
+            return [
+                'reason' => 'doctor_inactive',
+                'slot_duration' => null,
+            ];
+        }
+
         $weekday = (int) $date->isoWeekday();
 
         $exception = ScheduleException::where('doctor_id', $doctor->id)
