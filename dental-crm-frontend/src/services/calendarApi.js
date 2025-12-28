@@ -16,6 +16,9 @@ const calendarApi = {
   getRecommendedSlots(doctorId, params) {
     return apiClient.get(`/doctors/${doctorId}/recommended-slots`, { params });
   },
+  getBookingSuggestions(params) {
+    return apiClient.get('/booking-suggestions', { params });
+  },
 
   // Appointments
   getDoctorAppointments(doctorId, params) {
