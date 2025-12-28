@@ -121,7 +121,7 @@ class AvailabilityService
                 return ['slots' => [], 'reason' => 'no_room_compatibility'];
             }
 
-            $appointments = Appointment::where('doctor_id', $doctor->id)
+            $appointments = $doctor->appointments()
                 ->whereDate('start_at', $date)
                 // Planned записи можуть бути без patient_id або з source=crm — все одно блокують час.
                 ->whereNotIn('status', ['cancelled', 'no_show'])
@@ -130,7 +130,7 @@ class AvailabilityService
             $dayStart = $date->copy()->startOfDay();
             $dayEnd = $date->copy()->endOfDay();
 
-            $blocks = CalendarBlock::where('doctor_id', $doctor->id)
+            $blocks = $doctor->calendarBlocks()
                 ->where('start_at', '<', $dayEnd)
                 ->where('end_at', '>', $dayStart)
                 ->get();
