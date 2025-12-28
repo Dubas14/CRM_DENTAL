@@ -14,6 +14,7 @@ use App\Models\Room;
 use App\Models\Equipment;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\RescheduleService;
+use App\Events\ScheduleChanged;
 
 class DoctorScheduleController extends Controller
 {
@@ -78,6 +79,11 @@ class DoctorScheduleController extends Controller
                         $rescheduleService->buildRescheduleQueue($doctor, $from, $to)
                     );
                 }
+            }
+
+            if (! empty($rescheduleQueue)) {
+                $candidateIds = $rescheduleService->storeRescheduleCandidates($doctor, $rescheduleQueue);
+                ScheduleChanged::dispatch($doctor->id, $candidateIds);
             }
         }
 
@@ -157,6 +163,7 @@ class DoctorScheduleController extends Controller
             $doctor,
             $date,
             $duration,
+            $procedure,
             $room,
             $resolvedEquipment,
             $assistantId
@@ -211,6 +218,7 @@ class DoctorScheduleController extends Controller
             $doctor,
             $fromDate,
             $duration,
+            $procedure,
             $room,
             $resolvedEquipment,
             $validated['limit'] ?? 5,

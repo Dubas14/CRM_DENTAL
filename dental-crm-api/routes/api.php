@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('waitlist/candidates', [WaitlistController::class, 'candidates']);
     Route::post('waitlist/{waitlistEntry}/book', [WaitlistController::class, 'markBooked']);
     Route::post('waitlist/{waitlistEntry}/cancel', [WaitlistController::class, 'cancel']);
+    Route::post('waitlist/offers/{token}/claim', [WaitlistController::class, 'claim']);
 
     Route::get('/me/clinics', function (Request $request) {
         $user = $request->user()->load('clinics');

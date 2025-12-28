@@ -57,4 +57,9 @@ class Procedure extends Model
         return $this->belongsToMany(Doctor::class)
             ->withPivot('custom_duration_minutes');
     }
+
+    public function rooms()
+    {
+        return $this->belongsToMany(Room::class, 'procedure_room');
+    }
 }
