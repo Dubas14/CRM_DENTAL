@@ -26,7 +26,7 @@ class AvailabilityService
             ->first();
 
         if ($exception && $exception->type === 'day_off') {
-            return ['reason' => 'day_off'];
+            return ['slots' => [], 'reason' => 'day_off'];
         }
 
         $schedule = Schedule::where('doctor_id', $doctor->id)
@@ -34,7 +34,7 @@ class AvailabilityService
             ->first();
 
         if (!$schedule && !$exception) {
-            return ['reason' => 'no_schedule'];
+            return ['slots' => [], 'reason' => 'no_schedule'];
         }
 
         $startTime = $exception && $exception->type === 'override'
@@ -46,7 +46,7 @@ class AvailabilityService
             : ($schedule?->end_time ?? $exception?->end_time);
 
         if (!$startTime || !$endTime) {
-            return ['reason' => 'invalid_schedule'];
+            return ['slots' => [], 'reason' => 'invalid_schedule'];
         }
 
         return [
@@ -123,6 +123,7 @@ class AvailabilityService
 
             $appointments = Appointment::where('doctor_id', $doctor->id)
                 ->whereDate('start_at', $date)
+                // Planned записи можуть бути без patient_id або з source=crm — все одно блокують час.
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->get();
 
@@ -258,7 +259,18 @@ class AvailabilityService
     public function hasConflict(Collection $appointments, Carbon $start, Carbon $end): bool
     {
         return $appointments->contains(function ($entry) use ($start, $end) {
-            return $start < $entry->end_at && $end > $entry->start_at;
+            if (empty($entry->start_at) || empty($entry->end_at)) {
+                return false;
+            }
+
+            $entryStart = $entry->start_at instanceof Carbon
+                ? $entry->start_at
+                : Carbon::parse($entry->start_at);
+            $entryEnd = $entry->end_at instanceof Carbon
+                ? $entry->end_at
+                : Carbon::parse($entry->end_at);
+
+            return $start < $entryEnd && $end > $entryStart;
         });
     }
 

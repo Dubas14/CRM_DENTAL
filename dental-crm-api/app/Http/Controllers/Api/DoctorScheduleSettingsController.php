@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
 use App\Models\Schedule;
+use App\Services\Calendar\AvailabilityService;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -113,6 +116,18 @@ class DoctorScheduleSettingsController extends Controller
             }
         });
 
+        // Інвалідовуємо кеш слотів на найближчий період після змін розкладу.
+        $this->invalidateSlotsCache($doctor->id, Carbon::today(), Carbon::today()->addDays(30));
+
         return response()->json(['status' => 'ok']);
+    }
+
+    private function invalidateSlotsCache(int $doctorId, Carbon $startAt, Carbon $endAt): void
+    {
+        $period = CarbonPeriod::create($startAt->copy()->startOfDay(), '1 day', $endAt->copy()->startOfDay());
+
+        foreach ($period as $date) {
+            AvailabilityService::bumpSlotsCacheVersion($doctorId, $date);
+        }
     }
 }

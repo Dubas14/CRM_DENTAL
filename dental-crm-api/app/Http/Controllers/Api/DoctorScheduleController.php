@@ -15,6 +15,7 @@ use App\Models\Equipment;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\RescheduleService;
 use App\Events\ScheduleChanged;
+use Carbon\CarbonPeriod;
 
 class DoctorScheduleController extends Controller
 {
@@ -84,6 +85,16 @@ class DoctorScheduleController extends Controller
             if (! empty($rescheduleQueue)) {
                 $candidateIds = $rescheduleService->storeRescheduleCandidates($doctor, $rescheduleQueue);
                 ScheduleChanged::dispatch($doctor->id, $candidateIds);
+            }
+        }
+
+        // Оновлення розкладу має інвалідовувати кеш слотів на найближчий період.
+        $this->invalidateSlotsCache($doctor->id, Carbon::today(), Carbon::today()->addDays(30));
+
+        if (! empty($validated['exceptions'])) {
+            foreach ($validated['exceptions'] as $exception) {
+                $date = Carbon::parse($exception['date'])->startOfDay();
+                AvailabilityService::bumpSlotsCacheVersion($doctor->id, $date);
             }
         }
 
@@ -234,5 +245,14 @@ class DoctorScheduleController extends Controller
             'equipment' => $resolvedEquipment,
             'assistant_id' => $assistantId,
         ]);
+    }
+
+    private function invalidateSlotsCache(int $doctorId, Carbon $startAt, Carbon $endAt): void
+    {
+        $period = CarbonPeriod::create($startAt->copy()->startOfDay(), '1 day', $endAt->copy()->startOfDay());
+
+        foreach ($period as $date) {
+            AvailabilityService::bumpSlotsCacheVersion($doctorId, $date);
+        }
     }
 }
