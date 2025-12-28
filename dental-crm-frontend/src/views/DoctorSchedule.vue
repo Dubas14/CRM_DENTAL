@@ -66,17 +66,18 @@ const calendarBlockFormError = ref(null);
 const editingCalendarBlockId = ref(null);
 
 const calendarBlockForm = ref({
-  type: 'break',
+  type: 'personal_block',
   start: '',
   end: '',
   note: '',
 });
 
 const calendarBlockTypes = [
-  { value: 'break', label: 'Перерва', badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
-  { value: 'meeting', label: 'Зустріч', badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30' },
+  { value: 'personal_block', label: 'Особистий блок', badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
+  { value: 'work', label: 'Робочий час', badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30' },
   { value: 'vacation', label: 'Відпустка', badge: 'bg-rose-500/10 text-rose-300 border-rose-500/30' },
-  { value: 'other', label: 'Інше', badge: 'bg-card/20 text-text/80 border-border/30' },
+  { value: 'room_block', label: 'Блок кабінету', badge: 'bg-card/20 text-text/80 border-border/30' },
+  { value: 'equipment_booking', label: 'Бронювання обладнання', badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30' },
 ];
 
 // ---- Бронювання ----
@@ -604,7 +605,7 @@ const buildDateTime = (date, time) => {
 
 const resetCalendarBlockForm = () => {
   calendarBlockForm.value = {
-    type: 'break',
+    type: 'personal_block',
     start: '',
     end: '',
     note: '',
@@ -617,7 +618,7 @@ const applyCalendarBlockToForm = (block) => {
   if (!block) return;
   editingCalendarBlockId.value = block.id;
   calendarBlockForm.value = {
-    type: block.type || 'break',
+    type: block.type || 'personal_block',
     start: fmtTimeInput(block.start_at),
     end: fmtTimeInput(block.end_at),
     note: block.note || '',
@@ -646,6 +647,7 @@ const saveCalendarBlock = async () => {
   try {
     const payload = {
       doctor_id: Number(selectedDoctorId.value),
+      clinic_id: clinicId.value ? Number(clinicId.value) : undefined,
       type: calendarBlockForm.value.type,
       start_at: startAt,
       end_at: endAt,

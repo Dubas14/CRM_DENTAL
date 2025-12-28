@@ -56,6 +56,15 @@
             </div>
           </div>
         </div>
+
+        <div class="rounded-lg border border-border/60 bg-bg/40 p-3">
+          <p class="text-sm text-text/70 mb-2">Підібрати час</p>
+          <SmartSlotPicker
+            :doctor-id="form.doctor_id"
+            :from-date="slotPickerDate || undefined"
+            @select="applySlotToForm"
+          />
+        </div>
       </div>
 
       <div class="mt-6 flex items-center justify-end gap-3">
@@ -83,6 +92,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import DatePicker from 'tui-date-picker';
 import TimePicker from 'tui-time-picker';
 import { ensureUkLocale } from '../utils/toastUiLocale';
+import SmartSlotPicker from './SmartSlotPicker.vue';
 
 const props = defineProps({
   modelValue: {
@@ -127,6 +137,11 @@ const form = ref({
   doctor_id: '',
 });
 
+const slotPickerDate = computed(() => {
+  if (!form.value.date) return null;
+  return new Date(form.value.date).toISOString().split('T')[0];
+});
+
 const isEditMode = computed(() => Boolean(props.eventData?.id));
 
 const syncFromProps = () => {
@@ -164,6 +179,21 @@ const save = () => {
     end: endDate,
     doctor_id: form.value.doctor_id || null,
   });
+};
+
+const applySlotToForm = (slot) => {
+  if (!slot?.date || !slot?.start || !slot?.end) return;
+  const [startHour, startMinute] = slot.start.split(':').map(Number);
+  const [endHour, endMinute] = slot.end.split(':').map(Number);
+  const selectedDate = new Date(slot.date);
+
+  form.value.date = selectedDate;
+  form.value.startTime = { hour: startHour, minute: startMinute };
+  form.value.endTime = { hour: endHour, minute: endMinute };
+
+  datePickerInstance?.setDate(selectedDate);
+  startTimePicker?.setTime(startHour, startMinute);
+  endTimePicker?.setTime(endHour, endMinute);
 };
 
 onMounted(() => {

@@ -240,6 +240,7 @@ const mapBlockToEvent = (block) => {
     category: 'time',
     start: s,
     end: e,
+    type: block.type,
     isReadOnly: false,
     backgroundColor: '#6b7280',
     dragBackgroundColor: '#9ca3af',
@@ -598,7 +599,7 @@ const saveEvent = async (payload) => {
 
   const apiPayload = {
     clinic_id: currentClinicId.value,
-    type: payload.type || 'break',
+    type: payload.type || 'personal_block',
     start_at: formatDateTime(payload.start),
     end_at: formatDateTime(payload.end),
     note: payload.note ?? payload.title ?? '',
@@ -680,7 +681,7 @@ const createDefaultEvent = ({ start, end, event }) => {
     start: s,
     end: e,
     doctor_id: event?.doctor_id || defaultDoctorId.value,
-    type: event?.type || 'break',
+    type: event?.type || event?.raw?.type || 'personal_block',
     note: event?.note || '',
   }
 }
