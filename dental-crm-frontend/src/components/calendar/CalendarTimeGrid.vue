@@ -9,7 +9,7 @@
       <div class="w-14 pr-2 text-right text-xs text-text/60">
         {{ formatHour(hour) }}
       </div>
-      <div class="flex-1 border-t calendar-grid-medium"></div>
+      <div class="flex-1 border-t calendar-grid-strong"></div>
     </div>
   </div>
 </template>
