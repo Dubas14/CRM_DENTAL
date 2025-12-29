@@ -29,17 +29,16 @@
 
     <div class="flex flex-wrap items-center gap-3">
       <span class="text-sm text-text/70">{{ formattedLabel }}</span>
-      <div class="flex items-center rounded-md border border-border/60 bg-card/60 p-1 text-xs text-text/70">
-        <button
-          v-for="option in viewOptions"
-          :key="option.value"
-          type="button"
-          class="rounded-md px-2.5 py-1 transition"
-          :class="option.value === viewMode ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-card/80'"
-          @click="$emit('view-change', option.value)"
+      <div class="flex items-center">
+        <select
+          :value="viewMode"
+          class="rounded-md border border-border/60 bg-card/60 px-3 py-1.5 text-xs text-text/80 transition hover:border-border/80 focus:outline-none"
+          @change="$emit('view-change', $event.target.value)"
         >
-          {{ option.label }}
-        </button>
+          <option v-for="option in viewOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
       </div>
     </div>
   </div>
@@ -78,9 +77,9 @@ const normalizeDate = (value) => {
 const normalizedDate = computed(() => normalizeDate(props.currentDate))
 
 const viewOptions = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
+  { value: 'day', label: 'День' },
+  { value: 'week', label: 'Тиждень' },
+  { value: 'month', label: 'Місяць' },
 ]
 
 const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')
