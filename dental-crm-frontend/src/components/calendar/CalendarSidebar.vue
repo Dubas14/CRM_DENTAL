@@ -10,42 +10,7 @@
     </button>
 
     <div v-if="isCalendarOpen" class="mt-3 rounded-lg border border-border/60 bg-bg/40 p-3">
-      <div class="mb-2 flex items-center justify-between text-sm text-text/80">
-        <button
-          type="button"
-          class="rounded-md border border-border/50 px-2 py-1 hover:bg-card/60"
-          @click="goPrevMonth"
-        >
-          ‹
-        </button>
-        <span class="font-semibold text-text">{{ monthLabel }}</span>
-        <button
-          type="button"
-          class="rounded-md border border-border/50 px-2 py-1 hover:bg-card/60"
-          @click="goNextMonth"
-        >
-          ›
-        </button>
-      </div>
-
-      <div class="grid grid-cols-7 gap-1 text-center text-[10px] uppercase text-text/50">
-        <span v-for="day in weekDays" :key="day">{{ day }}</span>
-      </div>
-      <div class="mt-2 grid grid-cols-7 gap-1 text-center text-xs">
-        <button
-          v-for="day in calendarDays"
-          :key="day.key"
-          type="button"
-          class="rounded-md px-1.5 py-1 transition"
-          :class="[
-            day.isCurrentMonth ? 'text-text/90' : 'text-text/40',
-            day.isSelected ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-card/70',
-          ]"
-          @click="selectDate(day.date)"
-        >
-          {{ day.label }}
-        </button>
-      </div>
+      <CalendarMiniMonth :current-date="currentDate" @select-date="selectDate" />
     </div>
 
     <div class="mt-6">
@@ -100,7 +65,8 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import CalendarMiniMonth from './CalendarMiniMonth.vue'
 
 const props = defineProps({
   currentDate: {
@@ -144,73 +110,24 @@ const props = defineProps({
 const emit = defineEmits(['clinic-change', 'doctor-change', 'procedure-change', 'date-change', 'select-date'])
 
 const isCalendarOpen = ref(false)
-const viewDate = ref(props.currentDate ? new Date(props.currentDate) : new Date())
-
-const weekDays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'НД']
-
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
 
-const monthLabel = computed(() => monthFormatter.format(viewDate.value))
-
-const normalizedSelectedDate = computed(() => {
+const normalizedCurrentDate = computed(() => {
   const value = props.currentDate
-  if (!value) return null
+  if (!value) return new Date()
   const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
+  return Number.isNaN(date.getTime()) ? new Date() : date
 })
 
-const calendarDays = computed(() => {
-  const base = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth(), 1)
-  const dayOfWeek = base.getDay() || 7
-  const offset = dayOfWeek - 1
-  const start = new Date(base)
-  start.setDate(base.getDate() - offset)
-
-  const days = []
-  for (let i = 0; i < 42; i += 1) {
-    const date = new Date(start)
-    date.setDate(start.getDate() + i)
-    const isCurrentMonth = date.getMonth() === base.getMonth()
-    const selected = normalizedSelectedDate.value
-    const isSelected = selected
-      ? date.getFullYear() === selected.getFullYear()
-        && date.getMonth() === selected.getMonth()
-        && date.getDate() === selected.getDate()
-      : false
-
-    days.push({
-      key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
-      label: date.getDate(),
-      date,
-      isCurrentMonth,
-      isSelected,
-    })
-  }
-  return days
-})
+const monthLabel = computed(() => monthFormatter.format(normalizedCurrentDate.value))
 
 const toggleCalendar = () => {
   isCalendarOpen.value = !isCalendarOpen.value
 }
 
-const goPrevMonth = () => {
-  const next = new Date(viewDate.value)
-  next.setMonth(next.getMonth() - 1)
-  viewDate.value = next
-}
-
-const goNextMonth = () => {
-  const next = new Date(viewDate.value)
-  next.setMonth(next.getMonth() + 1)
-  viewDate.value = next
-}
-
 const selectDate = (date) => {
   emit('date-change', date)
   emit('select-date', date)
-  if (date?.getMonth() !== viewDate.value.getMonth() || date?.getFullYear() !== viewDate.value.getFullYear()) {
-    viewDate.value = new Date(date)
-  }
 }
 
 const onClinicChange = (event) => {
@@ -228,14 +145,4 @@ const onProcedureChange = (event) => {
   emit('procedure-change', value && value !== 'null' ? Number(value) : null)
 }
 
-watch(
-  () => props.currentDate,
-  (value) => {
-    if (!value) return
-    const next = value instanceof Date ? value : new Date(value)
-    if (!Number.isNaN(next.getTime())) {
-      viewDate.value = new Date(next.getFullYear(), next.getMonth(), 1)
-    }
-  }
-)
 </script>
