@@ -22,6 +22,7 @@
             :key="doctor.id"
             :ref="(el) => setColumnRef(doctor.id, el)"
             :doctor="doctor"
+            :show-header="showDoctorHeader"
             :items="itemsByDoctor[doctor.id] || []"
             :start-hour="startHour"
             :end-hour="endHour"
@@ -78,6 +79,10 @@ const props = defineProps({
   snapMinutes: {
     type: Number,
     default: 15,
+  },
+  showDoctorHeader: {
+    type: Boolean,
+    default: true,
   },
 })
 

@@ -8,8 +8,20 @@
             Управління розкладом лікарів, бронювання та перегляд записів
           </p>
         </div>
+      </div>
+    </div>
 
-        <div v-if="clinics.length > 1 || !user?.clinic_id" class="w-64">
+    <div class="px-6 flex flex-wrap items-center gap-4 mb-4">
+      <CalendarHeader
+        :current-date="currentDate"
+        @prev="prev"
+        @next="next"
+        @today="today"
+        @select-date="selectDate"
+      />
+
+      <div class="flex flex-wrap items-end gap-3">
+        <div v-if="showClinicSelector" class="min-w-[220px]">
           <label class="text-xs text-text/60 uppercase font-bold block mb-1">Оберіть клініку</label>
           <select
             v-model="selectedClinicId"
@@ -22,19 +34,22 @@
             </option>
           </select>
         </div>
+        <div class="min-w-[220px]">
+          <label class="text-xs text-text/60 uppercase font-bold block mb-1">Оберіть лікаря</label>
+          <select
+            v-model="selectedDoctorId"
+            class="w-full bg-card border border-border/80 rounded px-3 py-2 text-text text-sm"
+            :disabled="loadingDoctors || !doctors.length || isDoctor"
+          >
+            <option :value="null" disabled>-- Оберіть лікаря --</option>
+            <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
+              {{ doctor.full_name || doctor.name }}
+            </option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <div class="px-6 flex flex-wrap items-center justify-between gap-4 mb-4">
-      <CalendarHeader
-        :current-date="currentDate"
-        @prev="prev"
-        @next="next"
-        @today="today"
-        @select-date="selectDate"
-      />
-
-      <div class="flex items-center gap-2">
+      <div class="ml-auto flex items-center gap-2">
         <button
           @click="fetchEvents"
           class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
@@ -57,14 +72,18 @@
       <div v-if="!currentClinicId" class="flex h-full items-center justify-center text-text/60">
         ⬅ Будь ласка, оберіть клініку зі списку зверху
       </div>
+      <div v-else-if="!selectedDoctorId" class="flex h-full items-center justify-center text-text/60">
+        ⬅ Оберіть лікаря зі списку зверху
+      </div>
       <div v-else-if="view !== 'day'" class="flex h-full items-center justify-center text-text/60">
         Week та Month View будуть додані наступним етапом.
       </div>
       <CalendarBoard
         v-else
         :date="currentDate"
-        :doctors="doctors"
-        :items="calendarItems"
+        :doctors="filteredDoctors"
+        :items="filteredCalendarItems"
+        :show-doctor-header="false"
         :start-hour="START_HOUR"
         :end-hour="END_HOUR"
         :snap-minutes="SNAP_MINUTES"
@@ -79,8 +98,8 @@
     <EventModal
       :open="isEventModalOpen"
       :event="activeEvent"
-      :doctors="doctors"
-      :default-doctor-id="defaultDoctorId"
+      :doctors="filteredDoctors"
+      :default-doctor-id="selectedDoctorId || defaultDoctorId"
       @save="handleSaveEvent"
       @close="handleCloseModal"
     />
@@ -107,6 +126,7 @@ import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
+import { usePermissions } from '../composables/usePermissions'
 
 const START_HOUR = 8
 const END_HOUR = 22
@@ -123,9 +143,12 @@ const calendarItems = ref([])
 const clinics = ref([])
 const selectedClinicId = ref(null)
 const doctors = ref([])
+const selectedDoctorId = ref(null)
+const loadingDoctors = ref(false)
 
 const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
+const { isDoctor } = usePermissions()
 const route = useRoute()
 
 const pendingAppointmentId = ref(null)
@@ -137,6 +160,17 @@ const currentClinicId = computed(() => {
 })
 
 const defaultDoctorId = computed(() => user.value?.doctor_id || user.value?.doctor?.id || null)
+const showClinicSelector = computed(() => clinics.value.length > 1 || !user.value?.clinic_id)
+
+const selectedDoctor = computed(() =>
+  doctors.value.find((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
+)
+
+const filteredDoctors = computed(() => (selectedDoctor.value ? [selectedDoctor.value] : []))
+const filteredCalendarItems = computed(() => {
+  if (!selectedDoctorId.value) return []
+  return calendarItems.value.filter((item) => Number(item.doctorId) === Number(selectedDoctorId.value))
+})
 
 const toDate = (value) => {
   if (!value) return null
@@ -355,8 +389,8 @@ const saveEvent = async (payload) => {
   }
 
   const payloadToSave = { ...payload }
-  if (!payloadToSave.doctor_id && defaultDoctorId.value) {
-    payloadToSave.doctor_id = defaultDoctorId.value
+  if (!payloadToSave.doctor_id && (selectedDoctorId.value || defaultDoctorId.value)) {
+    payloadToSave.doctor_id = selectedDoctorId.value || defaultDoctorId.value
   }
 
   if (!payloadToSave.doctor_id) {
@@ -444,7 +478,7 @@ const createDefaultEvent = ({ start, end, doctorId }) => {
     title: '',
     start: s,
     end: e,
-    doctor_id: doctorId || defaultDoctorId.value,
+    doctor_id: doctorId || selectedDoctorId.value || defaultDoctorId.value,
     type: 'personal_block',
     note: '',
   }
@@ -453,15 +487,35 @@ const createDefaultEvent = ({ start, end, doctorId }) => {
 const loadDoctors = async () => {
   if (!currentClinicId.value) {
     doctors.value = []
+    selectedDoctorId.value = null
     return
   }
 
   try {
+    loadingDoctors.value = true
     const { data } = await apiClient.get('/doctors', { params: { clinic_id: currentClinicId.value } })
     doctors.value = (data?.data || data || []).filter(Boolean)
+    if (!doctors.value.length) {
+      selectedDoctorId.value = null
+      return
+    }
+
+    if (isDoctor.value && defaultDoctorId.value) {
+      selectedDoctorId.value = defaultDoctorId.value
+      return
+    }
+
+    const hasSelected = selectedDoctorId.value
+      && doctors.value.some((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
+    if (!hasSelected) {
+      selectedDoctorId.value = selectedDoctorId.value || defaultDoctorId.value || doctors.value[0].id
+    }
   } catch (error) {
     console.error(error)
     doctors.value = []
+    selectedDoctorId.value = null
+  } finally {
+    loadingDoctors.value = false
   }
 }
 

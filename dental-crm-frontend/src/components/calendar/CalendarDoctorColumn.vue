@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full flex-col border-r border-border/30">
-    <div class="flex h-12 flex-col justify-center border-b border-border/30 px-3">
+    <div v-if="showHeader" class="flex h-12 flex-col justify-center border-b border-border/30 px-3">
       <span
         class="text-sm font-semibold text-text"
         :title="doctorLabel"
@@ -46,6 +46,10 @@ const props = defineProps({
   doctor: {
     type: Object,
     required: true,
+  },
+  showHeader: {
+    type: Boolean,
+    default: true,
   },
   items: {
     type: Array,
