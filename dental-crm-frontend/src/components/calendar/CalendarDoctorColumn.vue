@@ -1,6 +1,6 @@
 <template>
-  <div class="flex h-full flex-1 min-w-0 flex-col border-r border-border/70 dark:border-border/40">
-    <div v-if="showHeader" class="flex h-12 flex-col justify-center border-b border-border/70 px-3 dark:border-border/40">
+  <div class="flex h-full flex-1 min-w-0 flex-col border-r calendar-grid-strong">
+    <div v-if="showHeader" class="flex h-12 flex-col justify-center border-b calendar-grid-strong px-3">
       <span
         class="text-sm font-semibold text-text"
         :title="doctorLabel"
