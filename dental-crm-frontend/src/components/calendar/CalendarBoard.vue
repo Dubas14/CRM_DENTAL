@@ -10,7 +10,8 @@
           <div
             v-for="line in gridLines"
             :key="line.index"
-            class="absolute left-0 right-0 border-t border-border/30"
+            class="absolute left-0 right-0 border-t"
+            :class="line.isMajor ? 'border-border/30' : 'border-border/20'"
             :style="{ top: `${line.top}px` }"
           ></div>
         </div>
@@ -94,7 +95,11 @@ const gridLines = computed(() => {
   const lines = []
   const totalMinutes = (props.endHour - props.startHour) * 60
   for (let minutes = 0; minutes <= totalMinutes; minutes += props.snapMinutes) {
-    lines.push({ index: minutes, top: minutes * pixelsPerMinute.value })
+    lines.push({
+      index: minutes,
+      top: minutes * pixelsPerMinute.value,
+      isMajor: minutes % 60 === 0,
+    })
   }
   return lines
 })
@@ -120,6 +125,15 @@ const itemsByDoctor = computed(() => {
       top: startMinutes * pixelsPerMinute.value,
       height,
       isDragging,
+    })
+  })
+
+  Object.values(map).forEach((entries) => {
+    const overlapCounts = new Map()
+    entries.forEach((entry) => {
+      const index = overlapCounts.get(entry.top) || 0
+      entry.stackOffset = index * 3
+      overlapCounts.set(entry.top, index + 1)
     })
   })
 

@@ -34,6 +34,10 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  stackOffset: {
+    type: Number,
+    default: 0,
+  },
   isDragging: {
     type: Boolean,
     default: false,
@@ -87,7 +91,7 @@ const cursorClass = computed(() => {
 const showResizeHandles = computed(() => !props.readOnly && props.item.type === 'appointment')
 
 const styleObject = computed(() => ({
-  top: `${props.top}px`,
+  top: `${props.top + props.stackOffset}px`,
   height: `${props.height}px`,
 }))
 
