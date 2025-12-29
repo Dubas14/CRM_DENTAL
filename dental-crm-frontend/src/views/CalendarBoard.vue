@@ -30,43 +30,45 @@
           @select-date="selectDate"
         />
 
-        <div class="flex min-w-0 flex-1 flex-col gap-4">
-          <div class="flex items-center justify-end">
-            <button
-              @click="fetchEvents"
-              class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
-            >
-              🔄 Оновити
-            </button>
-          </div>
-
-          <div class="h-[calc(100vh-220px)] overflow-hidden bg-card/30 rounded-xl border border-border/40">
-            <div v-if="!currentClinicId" class="flex h-full items-center justify-center text-text/60">
-              ⬅ Будь ласка, оберіть клініку зі списку зліва
+        <div class="flex min-w-0 flex-1 flex-col">
+          <div class="flex h-[calc(100vh-220px)] flex-col overflow-hidden rounded-xl border border-border/40 bg-card/30">
+            <div class="border-b border-border/40 px-4 py-3">
+              <CalendarHeader
+                :current-date="currentDate"
+                @select-date="selectDate"
+                @prev="handlePrevDay"
+                @next="handleNextDay"
+                @today="handleToday"
+              />
             </div>
-            <div v-else-if="!selectedDoctorId" class="flex h-full items-center justify-center text-text/60">
-              ⬅ Оберіть лікаря зі списку зліва
+            <div class="flex min-h-0 flex-1 overflow-hidden">
+              <div v-if="!currentClinicId" class="flex h-full flex-1 items-center justify-center text-text/60">
+                ⬅ Будь ласка, оберіть клініку зі списку зліва
+              </div>
+              <div v-else-if="!selectedDoctorId" class="flex h-full flex-1 items-center justify-center text-text/60">
+                ⬅ Оберіть лікаря зі списку зліва
+              </div>
+              <div v-else-if="view !== 'day'" class="flex h-full flex-1 items-center justify-center text-text/60">
+                Week та Month View будуть додані наступним етапом.
+              </div>
+              <CalendarBoard
+                v-else
+                :date="currentDate"
+                :doctors="filteredDoctors"
+                :items="filteredCalendarItems"
+                :show-doctor-header="false"
+                :start-hour="DISPLAY_START_HOUR"
+                :end-hour="DISPLAY_END_HOUR"
+                :active-start-hour="CLINIC_START_HOUR"
+                :active-end-hour="CLINIC_END_HOUR"
+                :snap-minutes="SNAP_MINUTES"
+                @select-slot="handleSelectSlot"
+                @appointment-click="handleAppointmentClick"
+                @appointment-update="handleAppointmentUpdate"
+                @appointment-drag-start="handleAppointmentDragStart"
+                @appointment-drag-end="handleAppointmentDragEnd"
+              />
             </div>
-            <div v-else-if="view !== 'day'" class="flex h-full items-center justify-center text-text/60">
-              Week та Month View будуть додані наступним етапом.
-            </div>
-            <CalendarBoard
-              v-else
-              :date="currentDate"
-              :doctors="filteredDoctors"
-              :items="filteredCalendarItems"
-              :show-doctor-header="false"
-              :start-hour="DISPLAY_START_HOUR"
-              :end-hour="DISPLAY_END_HOUR"
-              :active-start-hour="CLINIC_START_HOUR"
-              :active-end-hour="CLINIC_END_HOUR"
-              :snap-minutes="SNAP_MINUTES"
-              @select-slot="handleSelectSlot"
-              @appointment-click="handleAppointmentClick"
-              @appointment-update="handleAppointmentUpdate"
-              @appointment-drag-start="handleAppointmentDragStart"
-              @appointment-drag-end="handleAppointmentDragEnd"
-            />
           </div>
         </div>
       </div>
@@ -96,6 +98,7 @@ import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CalendarBoard from '../components/calendar/CalendarBoard.vue'
 import CalendarSidebar from '../components/calendar/CalendarSidebar.vue'
+import CalendarHeader from '../components/calendar/CalendarHeader.vue'
 import EventModal from '../components/EventModal.vue'
 import AppointmentModal from '../components/AppointmentModal.vue'
 import calendarApi from '../services/calendarApi'
@@ -134,7 +137,6 @@ const { isDoctor } = usePermissions()
 const route = useRoute()
 
 const pendingAppointmentId = ref(null)
-const currentDateDebounce = ref(null)
 
 const currentClinicId = computed(() => {
   if (selectedClinicId.value) return selectedClinicId.value
@@ -418,6 +420,22 @@ const selectDate = (date) => {
   currentDate.value = new Date(date)
 }
 
+const handlePrevDay = () => {
+  const next = new Date(currentDate.value)
+  next.setDate(next.getDate() - 1)
+  currentDate.value = next
+}
+
+const handleNextDay = () => {
+  const next = new Date(currentDate.value)
+  next.setDate(next.getDate() + 1)
+  currentDate.value = next
+}
+
+const handleToday = () => {
+  currentDate.value = new Date()
+}
+
 const createDefaultEvent = ({ start, end, doctorId }) => {
   const s = toDate(start) ?? new Date()
   const e = toDate(end) ?? new Date(s.getTime() + 30 * 60000)
@@ -692,12 +710,7 @@ watch(currentClinicId, () => {
 })
 
 watch(currentDate, () => {
-  if (currentDateDebounce.value) {
-    clearTimeout(currentDateDebounce.value)
-  }
-  currentDateDebounce.value = setTimeout(() => {
-    fetchEvents()
-  }, 200)
+  fetchEvents()
 })
 
 watch(() => route.query, () => {
