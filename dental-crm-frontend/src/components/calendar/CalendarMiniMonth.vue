@@ -98,7 +98,7 @@ const props = defineProps({
 const emit = defineEmits(['select-date'])
 
 const weekDays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'НД']
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const months = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень']
 
 const mode = ref('day')
 const viewDate = ref(props.currentDate ? new Date(props.currentDate) : new Date())
@@ -114,7 +114,7 @@ const currentDateNormalized = computed(() => normalizeDate(props.currentDate))
 const viewYear = computed(() => viewDate.value.getFullYear())
 const viewMonth = computed(() => viewDate.value.getMonth())
 
-const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
+const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long' })
 const monthLabel = computed(() => monthFormatter.format(viewDate.value))
 const monthLabelWithYear = computed(() => `${monthLabel.value} ${viewYear.value}`)
 

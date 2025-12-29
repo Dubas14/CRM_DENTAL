@@ -11,8 +11,8 @@
       </div>
     </div>
 
-    <div class="px-6 pb-6">
-      <div class="flex gap-6">
+    <div class="px-6 pb-6 h-full">
+      <div class="flex h-full w-full gap-6">
         <CalendarSidebar
           :current-date="currentDate"
           :clinics="clinics"
@@ -30,7 +30,7 @@
           @select-date="selectDate"
         />
 
-        <div class="flex min-w-0 flex-1 flex-col">
+        <div class="flex-1 min-w-0 overflow-hidden">
           <div class="flex h-[calc(100vh-220px)] flex-col overflow-hidden rounded-xl border border-border/40 bg-card/30">
             <div class="border-b border-border/40 px-4 py-3">
               <CalendarHeader

@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex flex-1 overflow-x-auto overflow-y-auto">
+    <div class="flex h-full overflow-y-auto overflow-x-hidden">
       <div class="w-16 shrink-0">
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
