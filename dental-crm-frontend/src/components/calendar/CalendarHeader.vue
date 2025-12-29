@@ -3,7 +3,7 @@
     <div class="flex items-center gap-2">
       <button
         type="button"
-        aria-label="Попередній день"
+        :aria-label="prevLabel"
         class="h-9 w-9 rounded-md border border-border/80 text-lg text-text/80 transition hover:bg-card/80"
         @click="$emit('prev')"
       >
@@ -11,7 +11,7 @@
       </button>
       <button
         type="button"
-        aria-label="Наступний день"
+        :aria-label="nextLabel"
         class="h-9 w-9 rounded-md border border-border/80 text-lg text-text/80 transition hover:bg-card/80"
         @click="$emit('next')"
       >
@@ -27,8 +27,20 @@
       </button>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <span class="text-sm text-text/70">{{ formattedLabel }}</span>
+      <div class="flex items-center rounded-md border border-border/60 bg-card/60 p-1 text-xs text-text/70">
+        <button
+          v-for="option in viewOptions"
+          :key="option.value"
+          type="button"
+          class="rounded-md px-2.5 py-1 transition"
+          :class="option.value === viewMode ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-card/80'"
+          @click="$emit('view-change', option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -41,9 +53,21 @@ const props = defineProps({
     type: Date,
     required: true,
   },
+  viewMode: {
+    type: String,
+    default: 'day',
+  },
+  rangeStart: {
+    type: Date,
+    default: null,
+  },
+  rangeEnd: {
+    type: Date,
+    default: null,
+  },
 })
 
-defineEmits(['select-date', 'prev', 'next', 'today'])
+defineEmits(['select-date', 'prev', 'next', 'today', 'view-change'])
 
 const normalizeDate = (value) => {
   if (!value) return null
@@ -53,22 +77,44 @@ const normalizeDate = (value) => {
 
 const normalizedDate = computed(() => normalizeDate(props.currentDate))
 
-const formatter = new Intl.DateTimeFormat('uk-UA', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-})
+const viewOptions = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+]
 
-const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
+const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')
+
+const formatWithParts = (date, options) => (
+  new Intl.DateTimeFormat('uk-UA', options)
+    .formatToParts(date)
+    .map((part) => {
+      if (part.type === 'month' || part.type === 'weekday') return capitalize(part.value)
+      return part.value
+    })
+    .join('')
+)
 
 const formattedLabel = computed(() => {
   const date = normalizedDate.value
   if (!date) return ''
-  return formatter
-    .formatToParts(date)
-    .map((part) => (part.type === 'month' ? capitalize(part.value) : part.value))
-    .join('')
+
+  if (props.viewMode === 'month') {
+    return formatWithParts(date, { month: 'long', year: 'numeric' })
+  }
+
+  if (props.viewMode === 'week' && props.rangeStart && props.rangeEnd) {
+    const start = formatWithParts(props.rangeStart, { day: 'numeric', month: 'long', year: 'numeric' })
+    const end = formatWithParts(props.rangeEnd, { day: 'numeric', month: 'long', year: 'numeric' })
+    return `${start} – ${end}`
+  }
+
+  return formatWithParts(date, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
 })
 
 const isToday = computed(() => {
@@ -80,6 +126,18 @@ const isToday = computed(() => {
     && date.getMonth() === now.getMonth()
     && date.getDate() === now.getDate()
   )
+})
+
+const prevLabel = computed(() => {
+  if (props.viewMode === 'month') return 'Попередній місяць'
+  if (props.viewMode === 'week') return 'Попередній тиждень'
+  return 'Попередній день'
+})
+
+const nextLabel = computed(() => {
+  if (props.viewMode === 'month') return 'Наступний місяць'
+  if (props.viewMode === 'week') return 'Наступний тиждень'
+  return 'Наступний день'
 })
 
 </script>

@@ -35,10 +35,14 @@
             <div class="border-b border-border/40 px-4 py-3">
               <CalendarHeader
                 :current-date="currentDate"
+                :view-mode="view"
+                :range-start="headerRangeStart"
+                :range-end="headerRangeEnd"
                 @select-date="selectDate"
-                @prev="handlePrevDay"
-                @next="handleNextDay"
+                @prev="handlePrev"
+                @next="handleNext"
                 @today="handleToday"
+                @view-change="setView"
               />
             </div>
             <div class="flex min-h-0 flex-1 overflow-hidden">
@@ -48,26 +52,116 @@
               <div v-else-if="!selectedDoctorId" class="flex h-full flex-1 items-center justify-center text-text/60">
                 ⬅ Оберіть лікаря зі списку зліва
               </div>
-              <div v-else-if="view !== 'day'" class="flex h-full flex-1 items-center justify-center text-text/60">
-                Week та Month View будуть додані наступним етапом.
-              </div>
-              <div v-else class="flex min-h-0 flex-1 overflow-y-auto">
-                <CalendarBoard
-                  :date="currentDate"
-                  :doctors="filteredDoctors"
-                  :items="filteredCalendarItems"
-                  :show-doctor-header="false"
-                  :start-hour="DISPLAY_START_HOUR"
-                  :end-hour="DISPLAY_END_HOUR"
-                  :active-start-hour="CLINIC_START_HOUR"
-                  :active-end-hour="CLINIC_END_HOUR"
-                  :snap-minutes="SNAP_MINUTES"
-                  @select-slot="handleSelectSlot"
-                  @appointment-click="handleAppointmentClick"
-                  @appointment-update="handleAppointmentUpdate"
-                  @appointment-drag-start="handleAppointmentDragStart"
-                  @appointment-drag-end="handleAppointmentDragEnd"
-                />
+              <div v-else class="flex min-h-0 flex-1 flex-col">
+                <div v-if="view === 'week'" class="flex border-b border-border/40 bg-card/30 text-xs font-semibold text-text/70">
+                  <div class="w-16 shrink-0"></div>
+                  <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
+                    <div
+                      v-for="day in weekColumns"
+                      :key="day.id"
+                      class="flex min-w-[160px] flex-1 flex-col justify-center border-r border-border/30 px-3 py-2"
+                    >
+                      <span class="text-[10px] uppercase text-text/50">{{ day.weekday }}</span>
+                      <span class="text-sm text-text/90">{{ day.dayLabel }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="view === 'day'"
+                  class="flex min-h-0 flex-1 overflow-y-auto"
+                >
+                  <CalendarBoard
+                    :date="currentDate"
+                    :doctors="filteredDoctors"
+                    :items="filteredCalendarItems"
+                    :show-doctor-header="false"
+                    :start-hour="DISPLAY_START_HOUR"
+                    :end-hour="DISPLAY_END_HOUR"
+                    :active-start-hour="CLINIC_START_HOUR"
+                    :active-end-hour="CLINIC_END_HOUR"
+                    :snap-minutes="SNAP_MINUTES"
+                    @select-slot="handleSelectSlot"
+                    @appointment-click="handleAppointmentClick"
+                    @appointment-update="handleAppointmentUpdate"
+                    @appointment-drag-start="handleAppointmentDragStart"
+                    @appointment-drag-end="handleAppointmentDragEnd"
+                  />
+                </div>
+
+                <div
+                  v-else-if="view === 'week'"
+                  class="flex min-h-0 flex-1 overflow-y-auto overflow-x-auto"
+                >
+                  <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
+                    <CalendarBoard
+                      :date="weekStart"
+                      :columns="weekColumns"
+                      group-by="date"
+                      :items="filteredCalendarItems"
+                      :show-doctor-header="false"
+                      :start-hour="DISPLAY_START_HOUR"
+                      :end-hour="DISPLAY_END_HOUR"
+                      :active-start-hour="CLINIC_START_HOUR"
+                      :active-end-hour="CLINIC_END_HOUR"
+                      :snap-minutes="SNAP_MINUTES"
+                      :interactive="false"
+                      @appointment-click="handleAppointmentClick"
+                    />
+                  </div>
+                </div>
+
+                <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div class="grid grid-cols-7 gap-px border-b border-border/40 bg-border/40 text-center text-xs font-semibold text-text/70">
+                    <div
+                      v-for="day in monthWeekdays"
+                      :key="day"
+                      class="bg-card/40 py-2"
+                    >
+                      {{ day }}
+                    </div>
+                  </div>
+                  <div class="flex min-h-0 flex-1 overflow-y-auto">
+                    <div class="grid w-full grid-cols-7 grid-rows-6 gap-px bg-border/40">
+                      <button
+                        v-for="cell in monthCells"
+                        :key="cell.key"
+                        type="button"
+                        class="group flex h-full min-h-[110px] flex-col gap-1 bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60"
+                        :class="[
+                          cell.isCurrentMonth ? 'text-text/90' : 'text-text/40',
+                          cell.isSelected ? 'bg-emerald-500/15 ring-1 ring-emerald-500/40' : '',
+                        ]"
+                        @click="handleMonthDayClick(cell.date)"
+                      >
+                        <div class="flex items-center justify-between">
+                          <span
+                            class="text-sm font-semibold"
+                            :class="cell.isToday ? 'text-emerald-300' : ''"
+                          >
+                            {{ cell.label }}
+                          </span>
+                          <span v-if="cell.items.length" class="text-[10px] text-text/50">
+                            {{ cell.items.length }}
+                          </span>
+                        </div>
+                        <div class="flex flex-1 flex-col gap-1">
+                          <div
+                            v-for="item in cell.items.slice(0, 3)"
+                            :key="item.id"
+                            class="rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-100"
+                            :class="item.type === 'block' ? 'bg-slate-500/20 text-slate-100' : ''"
+                          >
+                            <span class="truncate block">{{ item.title }}</span>
+                          </div>
+                          <div v-if="cell.items.length > 3" class="text-[10px] text-text/50">
+                            +{{ cell.items.length - 3 }} ще
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -190,6 +284,111 @@ const formatTimeHM = (date) => {
   return `${hour}:${minute}`
 }
 
+const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')
+
+const formatDateWithParts = (date, options) => (
+  new Intl.DateTimeFormat('uk-UA', options)
+    .formatToParts(date)
+    .map((part) => {
+      if (part.type === 'weekday' || part.type === 'month') return capitalize(part.value)
+      return part.value
+    })
+    .join('')
+)
+
+const weekStart = computed(() => {
+  const base = new Date(currentDate.value)
+  const day = base.getDay() || 7
+  base.setHours(0, 0, 0, 0)
+  base.setDate(base.getDate() - day + 1)
+  return base
+})
+
+const weekDays = computed(() => (
+  Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(weekStart.value)
+    date.setDate(weekStart.value.getDate() + index)
+    return date
+  })
+))
+
+const weekColumns = computed(() => (
+  weekDays.value.map((date) => {
+    const weekday = formatDateWithParts(date, { weekday: 'short' })
+    const dayLabel = formatDateWithParts(date, { day: 'numeric', month: 'long' })
+    return {
+      id: formatDateOnly(date),
+      label: dayLabel,
+      weekday,
+      dayLabel,
+      is_active: true,
+    }
+  })
+))
+
+const weekMinWidth = computed(() => 64 + weekColumns.value.length * 180)
+
+const monthWeekdays = computed(() => {
+  const base = new Date(2021, 7, 1)
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(base)
+    date.setDate(base.getDate() + index)
+    return formatDateWithParts(date, { weekday: 'short' })
+  })
+})
+
+const itemsByDate = computed(() => {
+  const map = {}
+  filteredCalendarItems.value.forEach((item) => {
+    const key = formatDateOnly(item.startAt)
+    if (!key) return
+    if (!map[key]) map[key] = []
+    map[key].push(item)
+  })
+  return map
+})
+
+const monthCells = computed(() => {
+  const base = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
+  const start = new Date(base)
+  const offset = base.getDay()
+  start.setDate(base.getDate() - offset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(start.getDate() + index)
+    const key = formatDateOnly(date)
+    const isCurrentMonth = date.getMonth() === base.getMonth()
+    const isSelected = date.getFullYear() === currentDate.value.getFullYear()
+      && date.getMonth() === currentDate.value.getMonth()
+      && date.getDate() === currentDate.value.getDate()
+    const isToday = (() => {
+      const now = new Date()
+      return date.getFullYear() === now.getFullYear()
+        && date.getMonth() === now.getMonth()
+        && date.getDate() === now.getDate()
+    })()
+
+    return {
+      key,
+      date,
+      label: date.getDate(),
+      isCurrentMonth,
+      isSelected,
+      isToday,
+      items: itemsByDate.value[key] || [],
+    }
+  })
+})
+
+const headerRangeStart = computed(() => (view.value === 'week' ? weekStart.value : null))
+const headerRangeEnd = computed(() => {
+  if (view.value !== 'week') return null
+  const end = new Date(weekStart.value)
+  end.setDate(end.getDate() + 4)
+  return end
+})
+
 const getRangeForView = (date, mode) => {
   const base = new Date(date)
   if (mode === 'week') {
@@ -197,7 +396,7 @@ const getRangeForView = (date, mode) => {
     base.setHours(0, 0, 0, 0)
     base.setDate(base.getDate() - day + 1)
     const end = new Date(base)
-    end.setDate(end.getDate() + 6)
+    end.setDate(end.getDate() + 4)
     return { start: base, end }
   }
 
@@ -421,20 +620,38 @@ const selectDate = (date) => {
   currentDate.value = new Date(date)
 }
 
-const handlePrevDay = () => {
+const shiftDateByView = (direction) => {
   const next = new Date(currentDate.value)
-  next.setDate(next.getDate() - 1)
+  if (view.value === 'month') {
+    next.setMonth(next.getMonth() + direction)
+    currentDate.value = next
+    return
+  }
+  if (view.value === 'week') {
+    next.setDate(next.getDate() + direction * 7)
+    currentDate.value = next
+    return
+  }
+  next.setDate(next.getDate() + direction)
   currentDate.value = next
 }
 
-const handleNextDay = () => {
-  const next = new Date(currentDate.value)
-  next.setDate(next.getDate() + 1)
-  currentDate.value = next
-}
+const handlePrev = () => shiftDateByView(-1)
+const handleNext = () => shiftDateByView(1)
 
 const handleToday = () => {
   currentDate.value = new Date()
+}
+
+const setView = (mode) => {
+  if (!['day', 'week', 'month'].includes(mode)) return
+  view.value = mode
+}
+
+const handleMonthDayClick = (date) => {
+  if (!date) return
+  currentDate.value = new Date(date)
+  view.value = 'day'
 }
 
 const createDefaultEvent = ({ start, end, doctorId }) => {
@@ -654,7 +871,7 @@ const parseQueryDate = (value) => {
 }
 
 const parseQueryView = (value) => {
-  if (value === 'day') return value
+  if (value === 'day' || value === 'week' || value === 'month') return value
   return null
 }
 
