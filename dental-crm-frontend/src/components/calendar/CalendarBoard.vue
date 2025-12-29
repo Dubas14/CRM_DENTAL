@@ -1,11 +1,11 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex h-full overflow-y-auto overflow-x-hidden">
+    <div class="flex h-full w-full overflow-y-auto overflow-x-hidden">
       <div class="w-16 shrink-0">
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
 
-      <div ref="columnsWrapper" class="relative flex min-w-[640px] flex-1 bg-bg/40">
+      <div ref="columnsWrapper" class="relative flex w-full flex-1 min-w-0 bg-bg/40">
         <div class="absolute inset-0 pointer-events-none">
           <div
             v-for="block in inactiveBlocks"

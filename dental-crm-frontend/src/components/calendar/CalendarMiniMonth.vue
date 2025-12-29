@@ -57,13 +57,13 @@
       </div>
     </div>
 
-    <div v-else-if="mode === 'month'" class="grid grid-cols-4 gap-1 text-sm">
+    <div v-else-if="mode === 'month'" class="grid grid-cols-3 gap-3 p-4 text-sm">
       <button
         v-for="(month, index) in months"
         :key="month"
         type="button"
-        class="rounded-md px-2 py-1 transition hover:bg-emerald-600/10 hover:text-emerald-600"
-        :class="isSelectedMonth(index) ? 'bg-emerald-600/15 text-emerald-600 font-semibold' : 'text-text/90'"
+        class="month-item rounded-[10px] border border-transparent px-[10px] py-[8px] text-center text-[13px] font-medium text-text/70 transition hover:bg-white/10"
+        :class="isSelectedMonth(index) ? 'is-selected rounded-[9999px] bg-blue-600 text-white' : ''"
         @click="selectMonth(index)"
       >
         {{ month }}
@@ -98,7 +98,9 @@ const props = defineProps({
 const emit = defineEmits(['select-date'])
 
 const weekDays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'НД']
-const months = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень']
+const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long' })
+const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
+const months = Array.from({ length: 12 }, (_, index) => capitalize(monthFormatter.format(new Date(2020, index, 1))))
 
 const mode = ref('day')
 const viewDate = ref(props.currentDate ? new Date(props.currentDate) : new Date())
@@ -114,8 +116,7 @@ const currentDateNormalized = computed(() => normalizeDate(props.currentDate))
 const viewYear = computed(() => viewDate.value.getFullYear())
 const viewMonth = computed(() => viewDate.value.getMonth())
 
-const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long' })
-const monthLabel = computed(() => monthFormatter.format(viewDate.value))
+const monthLabel = computed(() => capitalize(monthFormatter.format(viewDate.value)))
 const monthLabelWithYear = computed(() => `${monthLabel.value} ${viewYear.value}`)
 
 const currentYear = computed(() => currentDateNormalized.value.getFullYear())

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full flex-col border-r border-border/30">
+  <div class="flex h-full flex-1 min-w-0 flex-col border-r border-border/30">
     <div v-if="showHeader" class="flex h-12 flex-col justify-center border-b border-border/30 px-3">
       <span
         class="text-sm font-semibold text-text"
