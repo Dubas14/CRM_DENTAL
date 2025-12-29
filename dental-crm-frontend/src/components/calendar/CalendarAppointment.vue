@@ -3,6 +3,7 @@
     class="absolute left-1 right-1 rounded-lg border px-2 py-1 text-left text-xs shadow-sm transition-shadow"
     :class="[backgroundClass, cursorClass, isDragging ? 'opacity-80' : '']"
     :style="styleObject"
+    data-calendar-item="appointment"
     @click.stop="handleClick"
     @pointerdown="handlePointerDown"
   >
@@ -74,6 +75,9 @@ const isPast = computed(() => {
 })
 
 const backgroundClass = computed(() => {
+  if (props.item.type === 'draft') {
+    return 'bg-sky-500/30 border-sky-300/70 text-white/80 border-dashed'
+  }
   if (props.item.type === 'block') {
     return 'bg-slate-500/80 border-slate-400/70 text-white'
   }
