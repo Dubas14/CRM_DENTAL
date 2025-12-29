@@ -1,12 +1,24 @@
 <template>
   <div class="flex h-full flex-col border-r border-border/30">
     <div class="flex h-12 flex-col justify-center border-b border-border/30 px-3">
-      <span class="text-sm font-semibold text-text">{{ doctorLabel }}</span>
+      <span
+        class="text-sm font-semibold text-text"
+        :title="doctorLabel"
+        :style="{
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }"
+      >
+        {{ doctorLabel }}
+      </span>
       <span v-if="doctor?.is_active === false" class="text-[11px] text-rose-300">Неактивний</span>
     </div>
     <div
       ref="bodyRef"
-      class="relative flex-1 cursor-crosshair"
+      class="relative flex-1 cursor-crosshair transition-colors"
+      :class="{ 'hover:bg-card/20': items.length === 0 }"
       :style="{ height: `${bodyHeight}px` }"
       @click="handleBodyClick"
     >
@@ -16,6 +28,7 @@
         :item="entry.item"
         :top="entry.top"
         :height="entry.height"
+        :stack-offset="entry.stackOffset"
         :read-only="entry.item.isReadOnly"
         :is-dragging="entry.isDragging"
         @click="emit('appointment-click', entry.item)"
