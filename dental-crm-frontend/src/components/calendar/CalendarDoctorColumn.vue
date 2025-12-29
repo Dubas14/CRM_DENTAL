@@ -24,6 +24,7 @@
       ]"
       :style="{ height: `${bodyHeight}px` }"
       @click="handleBodyClick"
+      @pointerdown="handlePointerDown"
     >
       <CalendarAppointment
         v-for="entry in items"
@@ -43,7 +44,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import CalendarAppointment from './CalendarAppointment.vue'
 
 const props = defineProps({
@@ -85,9 +86,10 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['select-slot', 'appointment-click', 'interaction-start'])
+const emit = defineEmits(['select-slot', 'appointment-click', 'interaction-start', 'draft-start', 'draft-update', 'draft-end'])
 
 const bodyRef = ref(null)
+const draftState = ref(null)
 
 const bodyHeight = computed(() => (props.endHour - props.startHour) * props.hourHeight)
 
@@ -122,7 +124,113 @@ const handleInteractionStart = (payload) => {
   emit('interaction-start', payload)
 }
 
+const snapMinutes = (minutes) => {
+  const snap = props.snapMinutes
+  return Math.round(minutes / snap) * snap
+}
+
+const clampMinutes = (value) => {
+  const max = (props.endHour - props.startHour) * 60
+  return Math.min(Math.max(value, 0), max)
+}
+
+const normalizeMinutesFromOffset = (offsetY) => {
+  const rawMinutes = offsetY / (props.hourHeight / 60)
+  return snapMinutes(rawMinutes)
+}
+
+const updateDraft = (event) => {
+  if (!draftState.value || !bodyRef.value) return
+  const rect = bodyRef.value.getBoundingClientRect()
+  const offsetY = event.clientY - rect.top
+  const currentMinutes = clampMinutes(normalizeMinutesFromOffset(offsetY))
+  const originMinutes = draftState.value.originMinutes
+
+  const startMinutes = Math.min(originMinutes, currentMinutes)
+  const endMinutes = Math.max(originMinutes + props.snapMinutes, currentMinutes + props.snapMinutes)
+  draftState.value.startMinutes = startMinutes
+  draftState.value.endMinutes = clampMinutes(endMinutes)
+
+  emit('draft-update', {
+    doctorId: draftState.value.doctorId,
+    startMinutes: draftState.value.startMinutes,
+    endMinutes: draftState.value.endMinutes,
+    baseDate: props.baseDate,
+  })
+}
+
+const finalizeDraft = () => {
+  if (!draftState.value) return
+  const payload = {
+    doctorId: draftState.value.doctorId,
+    startMinutes: draftState.value.startMinutes,
+    endMinutes: draftState.value.endMinutes,
+    baseDate: props.baseDate,
+  }
+  const captureTarget = draftState.value.captureTarget
+  if (captureTarget?.releasePointerCapture) {
+    captureTarget.releasePointerCapture(draftState.value.pointerId)
+  }
+  emit('draft-end', payload)
+  draftState.value = null
+  window.removeEventListener('pointermove', handleDraftMove)
+  window.removeEventListener('pointerup', handleDraftEnd)
+}
+
+const handleDraftMove = (event) => {
+  updateDraft(event)
+}
+
+const handleDraftEnd = () => {
+  finalizeDraft()
+}
+
+const handlePointerDown = (event) => {
+  if (!props.interactive) return
+  if (props.doctor?.is_active === false) return
+  if (event.button !== 0) return
+  if (event.target?.closest?.('[data-calendar-item]')) return
+  if (!bodyRef.value) return
+  suppressClickUntil.value = Date.now() + 250
+  const rect = bodyRef.value.getBoundingClientRect()
+  const offsetY = event.clientY - rect.top
+  if (offsetY < 0 || offsetY > rect.height) return
+
+  const originMinutes = clampMinutes(normalizeMinutesFromOffset(offsetY))
+  const startMinutes = originMinutes
+  const endMinutes = clampMinutes(originMinutes + props.snapMinutes)
+
+  draftState.value = {
+    doctorId: props.doctor?.id,
+    originMinutes,
+    startMinutes,
+    endMinutes,
+    pointerId: event.pointerId,
+    captureTarget: event.currentTarget,
+  }
+
+  const captureTarget = event.currentTarget
+  if (captureTarget?.setPointerCapture) {
+    captureTarget.setPointerCapture(event.pointerId)
+  }
+
+  emit('draft-start', {
+    doctorId: props.doctor?.id,
+    startMinutes,
+    endMinutes,
+    baseDate: props.baseDate,
+  })
+
+  window.addEventListener('pointermove', handleDraftMove)
+  window.addEventListener('pointerup', handleDraftEnd)
+}
+
 defineExpose({
   bodyRef,
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', handleDraftMove)
+  window.removeEventListener('pointerup', handleDraftEnd)
 })
 </script>

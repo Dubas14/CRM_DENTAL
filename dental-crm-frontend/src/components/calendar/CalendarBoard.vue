@@ -5,7 +5,12 @@
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
 
-      <div ref="columnsWrapper" class="relative flex flex-1 min-w-0 bg-bg/40">
+      <div
+        ref="columnsWrapper"
+        class="relative flex flex-1 min-w-0 bg-bg/40"
+        @mousemove="handleHoverMove"
+        @mouseleave="clearHover"
+      >
         <div class="absolute inset-0 pointer-events-none">
           <div
             v-for="block in inactiveBlocks"
@@ -20,9 +25,22 @@
             v-for="line in gridLines"
             :key="line.index"
             class="absolute left-0 right-0 border-t"
-            :class="line.isMajor ? 'calendar-grid-strong' : 'calendar-grid-light calendar-grid-dashed'"
+            :class="line.isMajor ? 'calendar-grid-major' : 'calendar-grid-minor'"
             :style="{ top: `${line.top}px` }"
           ></div>
+        </div>
+
+        <div
+          v-if="hoverSlot.visible"
+          class="absolute z-10 pointer-events-none rounded-md"
+          :style="{
+            top: `${hoverSlot.top}px`,
+            left: `${hoverSlot.left}px`,
+            width: `${hoverSlot.width}px`,
+            height: `${hoverSlot.height}px`,
+          }"
+        >
+          <div class="h-full w-full rounded-md bg-sky-500/15 ring-1 ring-sky-400/30"></div>
         </div>
 
         <div class="relative z-10 flex min-w-0 flex-1">
@@ -42,6 +60,9 @@
             @select-slot="handleSelectSlot"
             @appointment-click="(item) => emit('appointment-click', item)"
             @interaction-start="handleInteractionStart"
+            @draft-start="handleDraftStart"
+            @draft-update="handleDraftUpdate"
+            @draft-end="handleDraftEnd"
           />
         </div>
 
@@ -77,6 +98,10 @@ const props = defineProps({
   groupBy: {
     type: String,
     default: 'doctor',
+  },
+  viewMode: {
+    type: String,
+    default: 'day',
   },
   items: {
     type: Array,
@@ -123,6 +148,14 @@ const columnRefs = ref(new Map())
 const dragState = ref(null)
 const animationFrame = ref(null)
 const pendingMoveEvent = ref(null)
+const draftState = ref(null)
+const hoverSlot = ref({
+  visible: false,
+  top: 0,
+  left: 0,
+  width: 0,
+  height: 0,
+})
 
 const pixelsPerMinute = computed(() => props.hourHeight / 60)
 
@@ -165,8 +198,10 @@ const resolvedColumns = computed(() => {
   return props.doctors || []
 })
 
+const resolvedGroupBy = computed(() => (props.viewMode === 'week' ? 'date' : props.groupBy))
+
 const resolveGroupKey = (item) => {
-  if (props.groupBy === 'date') {
+  if (resolvedGroupBy.value === 'date') {
     const normalized = normalizeDate(item.startAt)
     if (!normalized) return null
     const year = normalized.getFullYear()
@@ -201,6 +236,30 @@ const itemsByColumn = computed(() => {
       isDragging,
     })
   })
+
+  if (draftState.value) {
+    const draftKey = resolvedGroupBy.value === 'date'
+      ? formatDateKey(draftState.value.baseDate)
+      : draftState.value.doctorId
+    if (draftKey && map[draftKey]) {
+      const startMinutes = draftState.value.startMinutes
+      const endMinutes = draftState.value.endMinutes
+      map[draftKey].push({
+        item: {
+          id: 'draft-create',
+          type: 'draft',
+          title: 'Новий запис',
+          startAt: draftState.value.startAt,
+          endAt: draftState.value.endAt,
+          doctorId: draftState.value.doctorId,
+          isReadOnly: true,
+        },
+        top: startMinutes * pixelsPerMinute.value,
+        height: Math.max((endMinutes - startMinutes) * pixelsPerMinute.value, pixelsPerMinute.value * props.snapMinutes),
+        isDragging: true,
+      })
+    }
+  }
 
   Object.values(map).forEach((entries) => {
     const overlapCounts = new Map()
@@ -251,6 +310,14 @@ const normalizeDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+const formatDateKey = (date) => {
+  if (!date) return null
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getMinutesFromStart = (date) => {
   const normalized = normalizeDate(date)
   if (!normalized) return 0
@@ -261,6 +328,13 @@ const getMinutesFromStart = (date) => {
 
 const getDateFromMinutes = (minutes) => {
   const base = new Date(props.date)
+  base.setHours(props.startHour, 0, 0, 0)
+  base.setMinutes(base.getMinutes() + minutes)
+  return base
+}
+
+const getDateFromMinutesForBase = (baseDate, minutes) => {
+  const base = new Date(baseDate || props.date)
   base.setHours(props.startHour, 0, 0, 0)
   base.setMinutes(base.getMinutes() + minutes)
   return base
@@ -413,6 +487,65 @@ const handlePointerEnd = () => {
   dragState.value = null
   window.removeEventListener('pointermove', handlePointerMove)
   window.removeEventListener('pointerup', handlePointerEnd)
+}
+
+const computeHoverSlot = (event, columnRects) => {
+  const wrapperRect = columnsWrapper.value?.getBoundingClientRect()
+  if (!wrapperRect) return null
+  const hovered = columnRects.find(({ rect }) => event.clientX >= rect.left && event.clientX <= rect.right)
+  if (!hovered) return null
+
+  const offsetY = event.clientY - hovered.rect.top
+  if (offsetY < 0 || offsetY > hovered.rect.height) return null
+  const minutesFromStart = Math.round(offsetY / pixelsPerMinute.value)
+  const snappedMinutes = snapMinutes(minutesFromStart)
+  const top = snappedMinutes * pixelsPerMinute.value
+  return {
+    top: hovered.rect.top - wrapperRect.top + top,
+    left: hovered.rect.left - wrapperRect.left,
+    width: hovered.rect.width,
+    height: props.snapMinutes * pixelsPerMinute.value,
+  }
+}
+
+const handleHoverMove = (event) => {
+  if (!props.interactive || !columnsWrapper.value) return
+  const columnRects = buildColumnRects()
+  if (!columnRects.length) return
+  const slot = computeHoverSlot(event, columnRects)
+  if (!slot) {
+    hoverSlot.value.visible = false
+    return
+  }
+  hoverSlot.value = { ...slot, visible: true }
+}
+
+const clearHover = () => {
+  hoverSlot.value.visible = false
+}
+
+const updateDraftState = (payload) => {
+  const { doctorId, startMinutes, endMinutes, baseDate } = payload
+  const startAt = getDateFromMinutesForBase(baseDate, startMinutes)
+  const endAt = getDateFromMinutesForBase(baseDate, endMinutes)
+  draftState.value = { doctorId, startMinutes, endMinutes, baseDate, startAt, endAt }
+}
+
+const handleDraftStart = (payload) => {
+  if (!props.interactive) return
+  updateDraftState(payload)
+}
+
+const handleDraftUpdate = (payload) => {
+  if (!props.interactive || !draftState.value) return
+  updateDraftState(payload)
+}
+
+const handleDraftEnd = (payload) => {
+  if (!props.interactive) return
+  updateDraftState(payload)
+  emit('select-slot', { doctorId: payload.doctorId, start: draftState.value.startAt, end: draftState.value.endAt })
+  draftState.value = null
 }
 
 watch(

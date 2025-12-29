@@ -87,6 +87,7 @@
                     :active-start-hour="CLINIC_START_HOUR"
                     :active-end-hour="CLINIC_END_HOUR"
                     :snap-minutes="SNAP_MINUTES"
+                    view-mode="day"
                     @select-slot="handleSelectSlot"
                     @appointment-click="handleAppointmentClick"
                     @appointment-update="handleAppointmentUpdate"
@@ -112,6 +113,7 @@
                       :active-end-hour="CLINIC_END_HOUR"
                       :snap-minutes="SNAP_MINUTES"
                       :interactive="false"
+                      view-mode="week"
                       @appointment-click="handleAppointmentClick"
                     />
                   </div>
@@ -128,7 +130,10 @@
                     </div>
                   </div>
                   <div class="flex min-h-0 flex-1 overflow-hidden">
-                    <div class="grid h-full w-full grid-cols-7 grid-rows-4">
+                    <div
+                      class="grid h-full w-full grid-cols-7"
+                      :style="{ gridTemplateRows: `repeat(${monthGridRows}, minmax(0, 1fr))` }"
+                    >
                       <button
                         v-for="(cell, index) in monthCells"
                         :key="cell.key"
@@ -414,13 +419,21 @@ const itemsByDate = computed(() => {
   return map
 })
 
+const monthGridRows = computed(() => {
+  const base = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
+  const startOffset = base.getDay() || 7
+  const daysInMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+  const totalCells = daysInMonth + (startOffset - 1)
+  return Math.max(5, Math.ceil(totalCells / 7))
+})
+
 const monthCells = computed(() => {
   const base = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
   const start = new Date(base)
   const offset = start.getDay() || 7
   start.setDate(base.getDate() - offset + 1)
 
-  return Array.from({ length: 28 }, (_, index) => {
+  return Array.from({ length: monthGridRows.value * 7 }, (_, index) => {
     const date = new Date(start)
     date.setDate(start.getDate() + index)
     const key = formatDateOnly(date)
