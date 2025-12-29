@@ -1,6 +1,5 @@
 @import './css/app.css';
 @import './css/components.css';
-@import './css/toast-grid-theme.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

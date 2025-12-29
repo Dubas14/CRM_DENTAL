@@ -5,10 +5,6 @@ import { createPinia } from 'pinia'
 import 'tui-date-picker/dist/tui-date-picker.css'
 import 'tui-time-picker/dist/tui-time-picker.css'
 import 'tui-grid/dist/tui-grid.css'
-import '@toast-ui/calendar/dist/toastui-calendar.css'
-
-// ✅ твій кастомний theme для календаря
-import './assets/css/toast-calendar-theme.css'
 
 // ✅ Tailwind — ПІСЛЯ
 import './assets/main.css'
