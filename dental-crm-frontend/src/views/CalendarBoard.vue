@@ -11,88 +11,65 @@
       </div>
     </div>
 
-    <div class="px-6 flex flex-wrap items-center gap-4 mb-4">
-      <CalendarHeader
-        :current-date="currentDate"
-        @prev="prev"
-        @next="next"
-        @today="today"
-        @select-date="selectDate"
-      />
+    <div class="px-6 pb-6">
+      <div class="flex gap-6">
+        <CalendarSidebar
+          :current-date="currentDate"
+          :clinics="clinics"
+          :doctors="doctors"
+          :procedures="procedures"
+          :selected-clinic-id="selectedClinicId"
+          :selected-doctor-id="selectedDoctorId"
+          :selected-procedure-id="selectedProcedureId"
+          :loading-doctors="loadingDoctors"
+          :is-doctor="isDoctor"
+          @clinic-change="handleClinicSelection"
+          @doctor-change="handleDoctorSelection"
+          @procedure-change="handleProcedureSelection"
+          @date-change="selectDate"
+          @select-date="selectDate"
+        />
 
-      <div class="flex flex-wrap items-end gap-3">
-        <div v-if="showClinicSelector" class="min-w-[220px]">
-          <label class="text-xs text-text/60 uppercase font-bold block mb-1">Оберіть клініку</label>
-          <select
-            v-model="selectedClinicId"
-            @change="handleClinicChange"
-            class="w-full bg-card border border-border/80 rounded px-3 py-2 text-text text-sm"
-          >
-            <option :value="null" disabled>-- Оберіть клініку --</option>
-            <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
-              {{ clinic.name }}
-            </option>
-          </select>
+        <div class="flex min-w-0 flex-1 flex-col gap-4">
+          <div class="flex items-center justify-end">
+            <button
+              @click="fetchEvents"
+              class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
+            >
+              🔄 Оновити
+            </button>
+          </div>
+
+          <div class="h-[calc(100vh-220px)] overflow-hidden bg-card/30 rounded-xl border border-border/40">
+            <div v-if="!currentClinicId" class="flex h-full items-center justify-center text-text/60">
+              ⬅ Будь ласка, оберіть клініку зі списку зліва
+            </div>
+            <div v-else-if="!selectedDoctorId" class="flex h-full items-center justify-center text-text/60">
+              ⬅ Оберіть лікаря зі списку зліва
+            </div>
+            <div v-else-if="view !== 'day'" class="flex h-full items-center justify-center text-text/60">
+              Week та Month View будуть додані наступним етапом.
+            </div>
+            <CalendarBoard
+              v-else
+              :date="currentDate"
+              :doctors="filteredDoctors"
+              :items="filteredCalendarItems"
+              :show-doctor-header="false"
+              :start-hour="DISPLAY_START_HOUR"
+              :end-hour="DISPLAY_END_HOUR"
+              :active-start-hour="CLINIC_START_HOUR"
+              :active-end-hour="CLINIC_END_HOUR"
+              :snap-minutes="SNAP_MINUTES"
+              @select-slot="handleSelectSlot"
+              @appointment-click="handleAppointmentClick"
+              @appointment-update="handleAppointmentUpdate"
+              @appointment-drag-start="handleAppointmentDragStart"
+              @appointment-drag-end="handleAppointmentDragEnd"
+            />
+          </div>
         </div>
-        <div class="min-w-[220px]">
-          <label class="text-xs text-text/60 uppercase font-bold block mb-1">Оберіть лікаря</label>
-          <select
-            v-model="selectedDoctorId"
-            class="w-full bg-card border border-border/80 rounded px-3 py-2 text-text text-sm"
-            :disabled="loadingDoctors || !doctors.length || isDoctor"
-          >
-            <option :value="null" disabled>-- Оберіть лікаря --</option>
-            <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
-              {{ doctor.full_name || doctor.name }}
-            </option>
-          </select>
-        </div>
       </div>
-
-      <div class="ml-auto flex items-center gap-2">
-        <button
-          @click="fetchEvents"
-          class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
-        >
-          🔄 Оновити
-        </button>
-        <select
-          v-model="view"
-          @change="changeView"
-          class="bg-card border border-border/80 text-text/90 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="day">День</option>
-          <option value="week">Тиждень</option>
-          <option value="month">Місяць</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="px-6 pb-6 h-[calc(100vh-160px)] overflow-hidden bg-card/30 rounded-xl mx-6 border border-border/40">
-      <div v-if="!currentClinicId" class="flex h-full items-center justify-center text-text/60">
-        ⬅ Будь ласка, оберіть клініку зі списку зверху
-      </div>
-      <div v-else-if="!selectedDoctorId" class="flex h-full items-center justify-center text-text/60">
-        ⬅ Оберіть лікаря зі списку зверху
-      </div>
-      <div v-else-if="view !== 'day'" class="flex h-full items-center justify-center text-text/60">
-        Week та Month View будуть додані наступним етапом.
-      </div>
-      <CalendarBoard
-        v-else
-        :date="currentDate"
-        :doctors="filteredDoctors"
-        :items="filteredCalendarItems"
-        :show-doctor-header="false"
-        :start-hour="START_HOUR"
-        :end-hour="END_HOUR"
-        :snap-minutes="SNAP_MINUTES"
-        @select-slot="handleSelectSlot"
-        @appointment-click="handleAppointmentClick"
-        @appointment-update="handleAppointmentUpdate"
-        @appointment-drag-start="handleAppointmentDragStart"
-        @appointment-drag-end="handleAppointmentDragEnd"
-      />
     </div>
 
     <EventModal
@@ -117,19 +94,22 @@
 <script setup>
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import CalendarHeader from '../components/calendar/CalendarHeader.vue'
 import CalendarBoard from '../components/calendar/CalendarBoard.vue'
+import CalendarSidebar from '../components/calendar/CalendarSidebar.vue'
 import EventModal from '../components/EventModal.vue'
 import AppointmentModal from '../components/AppointmentModal.vue'
 import calendarApi from '../services/calendarApi'
 import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
+import procedureApi from '../services/procedureApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
 
-const START_HOUR = 8
-const END_HOUR = 22
+const DISPLAY_START_HOUR = 0
+const DISPLAY_END_HOUR = 24
+const CLINIC_START_HOUR = 8
+const CLINIC_END_HOUR = 22
 const SNAP_MINUTES = 15
 
 const view = ref('day')
@@ -145,6 +125,8 @@ const selectedClinicId = ref(null)
 const doctors = ref([])
 const selectedDoctorId = ref(null)
 const loadingDoctors = ref(false)
+const procedures = ref([])
+const selectedProcedureId = ref(null)
 
 const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
@@ -160,8 +142,6 @@ const currentClinicId = computed(() => {
 })
 
 const defaultDoctorId = computed(() => user.value?.doctor_id || user.value?.doctor?.id || null)
-const showClinicSelector = computed(() => clinics.value.length > 1 || !user.value?.clinic_id)
-
 const selectedDoctor = computed(() =>
   doctors.value.find((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
 )
@@ -303,7 +283,7 @@ const hasOverlap = (itemId, doctorId, startAt, endAt) => {
 const isWithinClinicHours = (startAt, endAt) => {
   const startHour = startAt.getHours() + startAt.getMinutes() / 60
   const endHour = endAt.getHours() + endAt.getMinutes() / 60
-  return startHour >= START_HOUR && endHour <= END_HOUR
+  return startHour >= CLINIC_START_HOUR && endHour <= CLINIC_END_HOUR
 }
 
 const isDropAllowed = async (appointment, doctorId, startAt, endAt) => {
@@ -433,41 +413,9 @@ const handleClinicChange = () => {
   nextTick(() => fetchEvents())
 }
 
-const changeView = () => {
-  fetchEvents()
-}
-
 const selectDate = (date) => {
   if (!date) return
   currentDate.value = new Date(date)
-}
-
-const next = () => {
-  const date = new Date(currentDate.value)
-  if (view.value === 'week') {
-    date.setDate(date.getDate() + 7)
-  } else if (view.value === 'month') {
-    date.setMonth(date.getMonth() + 1)
-  } else {
-    date.setDate(date.getDate() + 1)
-  }
-  currentDate.value = date
-}
-
-const prev = () => {
-  const date = new Date(currentDate.value)
-  if (view.value === 'week') {
-    date.setDate(date.getDate() - 7)
-  } else if (view.value === 'month') {
-    date.setMonth(date.getMonth() - 1)
-  } else {
-    date.setDate(date.getDate() - 1)
-  }
-  currentDate.value = date
-}
-
-const today = () => {
-  currentDate.value = new Date()
 }
 
 const createDefaultEvent = ({ start, end, doctorId }) => {
@@ -516,6 +464,26 @@ const loadDoctors = async () => {
     selectedDoctorId.value = null
   } finally {
     loadingDoctors.value = false
+  }
+}
+
+const loadProcedures = async () => {
+  if (!currentClinicId.value) {
+    procedures.value = []
+    selectedProcedureId.value = null
+    return
+  }
+
+  try {
+    const { data } = await procedureApi.list({ clinic_id: currentClinicId.value })
+    procedures.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+    if (selectedProcedureId.value && !procedures.value.some((proc) => Number(proc.id) === Number(selectedProcedureId.value))) {
+      selectedProcedureId.value = null
+    }
+  } catch (error) {
+    console.error(error)
+    procedures.value = []
+    selectedProcedureId.value = null
   }
 }
 
@@ -645,6 +613,21 @@ const handleAppointmentDragEnd = () => {
   // Reserved for future availability overlays
 }
 
+const handleClinicSelection = (clinicId) => {
+  selectedClinicId.value = clinicId
+  handleClinicChange()
+}
+
+const handleDoctorSelection = (doctorId) => {
+  selectedDoctorId.value = doctorId
+  fetchEvents()
+}
+
+const handleProcedureSelection = (procedureId) => {
+  selectedProcedureId.value = procedureId
+  fetchEvents()
+}
+
 const parseQueryDate = (value) => {
   if (typeof value !== 'string' || !value.trim()) return null
   const parsed = new Date(`${value}T00:00:00`)
@@ -652,7 +635,7 @@ const parseQueryDate = (value) => {
 }
 
 const parseQueryView = (value) => {
-  if (value === 'day' || value === 'week' || value === 'month') return value
+  if (value === 'day') return value
   return null
 }
 
@@ -692,6 +675,7 @@ onMounted(async () => {
     applyRouteSelection()
     fetchEvents()
     loadDoctors()
+    loadProcedures()
   }, 100)
 })
 
@@ -704,6 +688,7 @@ watch(view, () => {
 watch(currentClinicId, () => {
   fetchEvents()
   loadDoctors()
+  loadProcedures()
 })
 
 watch(currentDate, () => {
