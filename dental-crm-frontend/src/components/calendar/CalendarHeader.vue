@@ -53,16 +53,22 @@ const normalizeDate = (value) => {
 
 const normalizedDate = computed(() => normalizeDate(props.currentDate))
 
+const formatter = new Intl.DateTimeFormat('uk-UA', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+})
+
+const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
+
 const formattedLabel = computed(() => {
   const date = normalizedDate.value
   if (!date) return ''
-  const formatter = new Intl.DateTimeFormat('uk-UA', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
-  return formatter.format(date)
+  return formatter
+    .formatToParts(date)
+    .map((part) => (part.type === 'month' ? capitalize(part.value) : part.value))
+    .join('')
 })
 
 const isToday = computed(() => {

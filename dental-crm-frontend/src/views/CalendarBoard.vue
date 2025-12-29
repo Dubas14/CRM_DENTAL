@@ -30,7 +30,7 @@
           @select-date="selectDate"
         />
 
-        <div class="flex-1 min-w-0 overflow-hidden">
+        <div class="flex-1 min-w-0">
           <div class="flex h-[calc(100vh-220px)] flex-col overflow-hidden rounded-xl border border-border/40 bg-card/30">
             <div class="border-b border-border/40 px-4 py-3">
               <CalendarHeader
@@ -51,23 +51,24 @@
               <div v-else-if="view !== 'day'" class="flex h-full flex-1 items-center justify-center text-text/60">
                 Week та Month View будуть додані наступним етапом.
               </div>
-              <CalendarBoard
-                v-else
-                :date="currentDate"
-                :doctors="filteredDoctors"
-                :items="filteredCalendarItems"
-                :show-doctor-header="false"
-                :start-hour="DISPLAY_START_HOUR"
-                :end-hour="DISPLAY_END_HOUR"
-                :active-start-hour="CLINIC_START_HOUR"
-                :active-end-hour="CLINIC_END_HOUR"
-                :snap-minutes="SNAP_MINUTES"
-                @select-slot="handleSelectSlot"
-                @appointment-click="handleAppointmentClick"
-                @appointment-update="handleAppointmentUpdate"
-                @appointment-drag-start="handleAppointmentDragStart"
-                @appointment-drag-end="handleAppointmentDragEnd"
-              />
+              <div v-else class="flex min-h-0 flex-1 overflow-y-auto">
+                <CalendarBoard
+                  :date="currentDate"
+                  :doctors="filteredDoctors"
+                  :items="filteredCalendarItems"
+                  :show-doctor-header="false"
+                  :start-hour="DISPLAY_START_HOUR"
+                  :end-hour="DISPLAY_END_HOUR"
+                  :active-start-hour="CLINIC_START_HOUR"
+                  :active-end-hour="CLINIC_END_HOUR"
+                  :snap-minutes="SNAP_MINUTES"
+                  @select-slot="handleSelectSlot"
+                  @appointment-click="handleAppointmentClick"
+                  @appointment-update="handleAppointmentUpdate"
+                  @appointment-drag-start="handleAppointmentDragStart"
+                  @appointment-drag-end="handleAppointmentDragEnd"
+                />
+              </div>
             </div>
           </div>
         </div>

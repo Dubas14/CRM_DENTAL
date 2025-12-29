@@ -57,26 +57,26 @@
       </div>
     </div>
 
-    <div v-else-if="mode === 'month'" class="grid grid-cols-3 gap-3 p-4 text-sm">
+    <div v-else-if="mode === 'month'" class="grid grid-cols-3 gap-3 p-3 text-sm">
       <button
         v-for="(month, index) in months"
         :key="month"
         type="button"
-        class="month-item rounded-[10px] border border-transparent px-[10px] py-[8px] text-center text-[13px] font-medium text-text/70 transition hover:bg-white/10"
-        :class="isSelectedMonth(index) ? 'is-selected rounded-[9999px] bg-blue-600 text-white' : ''"
+        class="month-item rounded-lg border border-transparent px-3 py-2 text-center text-[13px] font-medium text-text/70 transition hover:bg-white/10"
+        :class="isSelectedMonth(index) ? 'border-emerald-500/70 bg-emerald-500/15 text-emerald-100' : ''"
         @click="selectMonth(index)"
       >
         {{ month }}
       </button>
     </div>
 
-    <div v-else class="grid grid-cols-3 gap-1 text-sm">
+    <div v-else class="grid grid-cols-3 gap-2 p-3 text-sm">
       <button
         v-for="year in yearRange"
         :key="year"
         type="button"
-        class="rounded-md px-2 py-1 transition hover:bg-emerald-600/10 hover:text-emerald-600"
-        :class="year === currentYear ? 'bg-emerald-600/15 text-emerald-600 font-semibold' : 'text-text/90'"
+        class="rounded-lg px-2 py-1.5 transition hover:bg-emerald-600/10 hover:text-emerald-600"
+        :class="year === currentYear ? 'border border-emerald-500/60 bg-emerald-600/15 text-emerald-100 font-semibold' : 'text-text/90'"
         @click="selectYear(year)"
       >
         {{ year }}

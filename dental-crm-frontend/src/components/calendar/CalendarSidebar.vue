@@ -111,6 +111,7 @@ const emit = defineEmits(['clinic-change', 'doctor-change', 'procedure-change', 
 
 const isCalendarOpen = ref(false)
 const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' })
+const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
 
 const normalizedCurrentDate = computed(() => {
   const value = props.currentDate
@@ -119,7 +120,12 @@ const normalizedCurrentDate = computed(() => {
   return Number.isNaN(date.getTime()) ? new Date() : date
 })
 
-const monthLabel = computed(() => monthFormatter.format(normalizedCurrentDate.value))
+const monthLabel = computed(() => (
+  monthFormatter
+    .formatToParts(normalizedCurrentDate.value)
+    .map((part) => (part.type === 'month' ? capitalize(part.value) : part.value))
+    .join('')
+))
 
 const toggleCalendar = () => {
   isCalendarOpen.value = !isCalendarOpen.value

@@ -1,11 +1,11 @@
 <template>
-  <div class="flex h-full flex-col">
-    <div class="flex h-full w-full overflow-y-auto overflow-x-hidden">
+  <div class="flex w-full flex-col">
+    <div class="flex w-full">
       <div class="w-16 shrink-0">
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
 
-      <div ref="columnsWrapper" class="relative flex w-full flex-1 min-w-0 bg-bg/40">
+      <div ref="columnsWrapper" class="relative flex flex-1 min-w-0 bg-bg/40">
         <div class="absolute inset-0 pointer-events-none">
           <div
             v-for="block in inactiveBlocks"
@@ -20,12 +20,12 @@
             v-for="line in gridLines"
             :key="line.index"
             class="absolute left-0 right-0 border-t"
-            :class="line.isMajor ? 'border-border/30' : 'border-border/20'"
+            :class="line.isMajor ? 'border-t-2 border-border/40' : 'border-border/20'"
             :style="{ top: `${line.top}px` }"
           ></div>
         </div>
 
-        <div class="relative z-10 flex w-full">
+        <div class="relative z-10 flex min-w-0 flex-1">
           <CalendarDoctorColumn
             v-for="doctor in doctors"
             :key="doctor.id"
@@ -116,7 +116,7 @@ const pixelsPerMinute = computed(() => props.hourHeight / 60)
 const gridLines = computed(() => {
   const lines = []
   const totalMinutes = (props.endHour - props.startHour) * 60
-  for (let minutes = 0; minutes <= totalMinutes; minutes += props.snapMinutes) {
+  for (let minutes = 0; minutes <= totalMinutes; minutes += 30) {
     lines.push({
       index: minutes,
       top: minutes * pixelsPerMinute.value,
