@@ -53,13 +53,13 @@
                 ⬅ Оберіть лікаря зі списку зліва
               </div>
               <div v-else class="flex min-h-0 flex-1 flex-col">
-                <div v-if="view === 'week'" class="flex border-b border-border/80 bg-card/30 text-xs font-semibold text-text/70 dark:border-border/40">
+                <div v-if="view === 'week'" class="flex border-b calendar-grid-strong calendar-all-day-divider bg-card/30 text-xs font-semibold text-text/70">
                   <div class="w-16 shrink-0"></div>
                   <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
                     <div
                       v-for="day in weekColumns"
                       :key="day.id"
-                      class="flex flex-1 flex-col justify-center border-r border-border/70 px-3 py-2 dark:border-border/40"
+                      class="flex flex-1 flex-col justify-center border-r calendar-grid-strong px-3 py-2"
                       :style="{ minWidth: `${WEEK_COLUMN_WIDTH}px` }"
                     >
                       <span class="text-[10px] uppercase text-text/50">{{ day.weekday }}</span>
@@ -118,11 +118,11 @@
                 </div>
 
                 <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <div class="grid grid-cols-7 gap-px border-b border-border/80 bg-border/80 text-center text-xs font-semibold text-text/70 dark:border-border/40 dark:bg-border/40">
+                  <div class="grid grid-cols-7 border-b calendar-grid-strong text-center text-xs font-semibold text-text/70">
                     <div
                       v-for="day in monthWeekdays"
                       :key="day"
-                      class="bg-card/40 py-2"
+                      class="border-r calendar-grid-strong bg-card/40 py-2 last:border-r-0"
                     >
                       {{ day }}
                     </div>
@@ -130,13 +130,14 @@
                   <div class="flex min-h-0 flex-1 overflow-hidden">
                     <div class="grid w-full grid-cols-7 auto-rows-[150px]">
                       <button
-                        v-for="cell in monthCells"
+                        v-for="(cell, index) in monthCells"
                         :key="cell.key"
                         type="button"
-                        class="group flex h-[150px] min-h-[150px] max-h-[150px] flex-col gap-2 border border-border/60 bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60 dark:border-border/40"
+                        class="group flex h-[150px] min-h-[150px] max-h-[150px] flex-col gap-2 border calendar-grid-strong bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60"
                         :class="[
                           cell.isCurrentMonth ? 'text-text/90' : 'text-text/40',
                           cell.isSelected ? 'bg-emerald-500/15 ring-1 ring-emerald-500/40' : '',
+                          index >= 7 ? 'calendar-week-divider' : '',
                         ]"
                         @click="handleMonthDayClick(cell.date)"
                       >

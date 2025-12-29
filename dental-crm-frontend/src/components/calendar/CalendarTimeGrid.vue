@@ -1,5 +1,5 @@
 <template>
-  <div class="calendar-time-grid calendar-time-grid--sticky pointer-events-none relative h-full border-r border-border/80 dark:border-border/45">
+  <div class="calendar-time-grid calendar-time-grid--sticky pointer-events-none relative h-full border-r calendar-grid-strong">
     <div
       v-for="hour in hours"
       :key="hour"
@@ -9,7 +9,7 @@
       <div class="w-14 pr-2 text-right text-xs text-text/60">
         {{ formatHour(hour) }}
       </div>
-      <div class="flex-1 border-t border-border/70 dark:border-border/45"></div>
+      <div class="flex-1 border-t calendar-grid-medium"></div>
     </div>
   </div>
 </template>
