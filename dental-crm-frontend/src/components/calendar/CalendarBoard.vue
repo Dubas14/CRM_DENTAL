@@ -20,7 +20,7 @@
             v-for="line in gridLines"
             :key="line.index"
             class="absolute left-0 right-0 border-t"
-            :class="line.isMajor ? 'border-t-2 border-border/40' : 'border-border/20'"
+            :class="line.isMajor ? 'border-t-2 border-border/60 dark:border-border/30' : 'border-border/40 dark:border-border/20'"
             :style="{ top: `${line.top}px` }"
           ></div>
         </div>
