@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-bg">
-    <div class="p-6 pb-2">
+  <div class="flex h-full min-h-0 flex-col bg-bg">
+    <div class="shrink-0 p-6 pb-2">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-text mb-2">Календар записів</h1>
@@ -11,8 +11,8 @@
       </div>
     </div>
 
-    <div class="px-6 pb-6 h-full">
-      <div class="flex h-full w-full gap-6">
+    <div class="flex min-h-0 flex-1 px-6 pb-6">
+      <div class="flex min-h-0 w-full gap-6">
         <CalendarSidebar
           :current-date="currentDate"
           :clinics="clinics"
@@ -30,9 +30,9 @@
           @select-date="selectDate"
         />
 
-        <div class="flex-1 min-w-0">
-          <div class="flex h-[calc(100vh-220px)] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30 dark:border-border/30">
-            <div class="border-b border-border/60 px-4 py-3 dark:border-border/30">
+        <div class="flex min-h-0 flex-1 min-w-0">
+          <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30 dark:border-border/30">
+            <div class="shrink-0 border-b border-border/60 px-4 py-3 dark:border-border/30">
               <CalendarHeader
                 :current-date="currentDate"
                 :view-mode="view"
@@ -75,7 +75,7 @@
 
                 <div
                   v-if="view === 'day'"
-                  class="flex min-h-0 flex-1 overflow-y-auto"
+                  class="flex min-h-0 flex-1 overflow-y-auto custom-scrollbar"
                 >
                   <CalendarBoard
                     :date="currentDate"
@@ -97,7 +97,7 @@
 
                 <div
                   v-else-if="view === 'week'"
-                  class="flex min-h-0 flex-1 overflow-y-auto overflow-x-auto"
+                  class="flex min-h-0 flex-1 overflow-x-auto overflow-y-auto custom-scrollbar"
                 >
                   <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
                     <CalendarBoard
@@ -128,12 +128,12 @@
                     </div>
                   </div>
                   <div class="flex min-h-0 flex-1 overflow-hidden">
-                    <div class="grid w-full grid-cols-7 auto-rows-[150px]">
+                    <div class="grid h-full w-full grid-cols-7 grid-rows-4">
                       <button
                         v-for="(cell, index) in monthCells"
                         :key="cell.key"
                         type="button"
-                        class="group flex h-[150px] min-h-[150px] max-h-[150px] flex-col gap-2 border calendar-grid-strong bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60"
+                        class="group flex min-h-0 flex-col gap-2 border calendar-grid-strong bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60"
                         :class="[
                           cell.isCurrentMonth ? 'text-text/90' : 'text-text/40',
                           cell.isSelected ? 'bg-emerald-500/15 ring-1 ring-emerald-500/40' : '',
@@ -155,7 +155,7 @@
                             {{ cell.items.length }}
                           </span>
                         </div>
-                        <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+                        <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                           <div
                             v-for="item in cell.items.slice(0, MAX_EVENTS_PER_DAY)"
                             :key="item.id"
@@ -390,7 +390,7 @@ const weekColumns = computed(() => (
 const weekMinWidth = computed(() => 64 + weekColumns.value.length * WEEK_COLUMN_WIDTH)
 
 const monthWeekdays = computed(() => {
-  const base = new Date(2021, 7, 1)
+  const base = new Date(2021, 7, 2)
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(base)
     date.setDate(base.getDate() + index)
@@ -417,10 +417,10 @@ const itemsByDate = computed(() => {
 const monthCells = computed(() => {
   const base = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1)
   const start = new Date(base)
-  const offset = base.getDay()
-  start.setDate(base.getDate() - offset)
+  const offset = start.getDay() || 7
+  start.setDate(base.getDate() - offset + 1)
 
-  return Array.from({ length: 42 }, (_, index) => {
+  return Array.from({ length: 28 }, (_, index) => {
     const date = new Date(start)
     date.setDate(start.getDate() + index)
     const key = formatDateOnly(date)

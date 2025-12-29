@@ -4,6 +4,7 @@
   --bg-card: 253 254 255;
   --border-soft: 226 232 240;
   --border-strong: 203 213 225;
+  --calendar-grid-border-width: 1px;
   --calendar-grid-strong: var(--border-strong);
   --calendar-grid-medium: var(--border-soft);
   --calendar-grid-light: var(--border-soft);
@@ -63,11 +64,13 @@ body,
 #app {
   background-color: rgb(var(--bg-main));
   color: rgb(var(--text-main));
+  height: 100%;
 }
 
 html,
 body {
   min-height: 100%;
+  overflow: hidden;
 }
 
 #app {
@@ -76,14 +79,17 @@ body {
 
 .calendar-grid-strong {
   border-color: rgb(var(--calendar-grid-strong) / 0.9);
+  border-width: var(--calendar-grid-border-width, 1px);
 }
 
 .calendar-grid-medium {
   border-color: rgb(var(--calendar-grid-medium) / 0.7);
+  border-width: var(--calendar-grid-border-width, 1px);
 }
 
 .calendar-grid-light {
   border-color: rgb(var(--calendar-grid-light) / 0.35);
+  border-width: var(--calendar-grid-border-width, 1px);
 }
 
 .calendar-grid-dashed {

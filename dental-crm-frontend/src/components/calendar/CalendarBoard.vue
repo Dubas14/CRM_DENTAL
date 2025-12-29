@@ -20,7 +20,7 @@
             v-for="line in gridLines"
             :key="line.index"
             class="absolute left-0 right-0 border-t"
-            :class="line.isMajor ? 'calendar-grid-medium' : 'calendar-grid-light calendar-grid-dashed'"
+            :class="line.isMajor ? 'calendar-grid-strong' : 'calendar-grid-light calendar-grid-dashed'"
             :style="{ top: `${line.top}px` }"
           ></div>
         </div>
