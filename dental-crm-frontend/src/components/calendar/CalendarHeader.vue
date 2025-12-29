@@ -28,12 +28,6 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <input
-        type="date"
-        :value="inputValue"
-        class="rounded-md border border-border/70 bg-card px-3 py-2 text-sm text-text/90 shadow-sm focus:border-emerald-500 focus:outline-none"
-        @change="handleDateChange"
-      />
       <span class="text-sm text-text/70">{{ formattedLabel }}</span>
     </div>
   </div>
@@ -49,7 +43,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['select-date', 'prev', 'next', 'today'])
+defineEmits(['select-date', 'prev', 'next', 'today'])
 
 const normalizeDate = (value) => {
   if (!value) return null
@@ -58,15 +52,6 @@ const normalizeDate = (value) => {
 }
 
 const normalizedDate = computed(() => normalizeDate(props.currentDate))
-
-const inputValue = computed(() => {
-  const date = normalizedDate.value
-  if (!date) return ''
-  const year = date.getFullYear()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
-})
 
 const formattedLabel = computed(() => {
   const date = normalizedDate.value
@@ -91,11 +76,4 @@ const isToday = computed(() => {
   )
 })
 
-const handleDateChange = (event) => {
-  const value = event?.target?.value
-  if (!value) return
-  const next = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(next.getTime())) return
-  emit('select-date', next)
-}
 </script>

@@ -110,7 +110,7 @@ const props = defineProps({
 const emit = defineEmits(['clinic-change', 'doctor-change', 'procedure-change', 'date-change', 'select-date'])
 
 const isCalendarOpen = ref(false)
-const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' })
 
 const normalizedCurrentDate = computed(() => {
   const value = props.currentDate
