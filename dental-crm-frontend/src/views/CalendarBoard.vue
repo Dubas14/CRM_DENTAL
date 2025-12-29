@@ -53,13 +53,14 @@
                 ⬅ Оберіть лікаря зі списку зліва
               </div>
               <div v-else class="flex min-h-0 flex-1 flex-col">
-                <div v-if="view === 'week'" class="flex border-b border-border/60 bg-card/30 text-xs font-semibold text-text/70 dark:border-border/30">
+                <div v-if="view === 'week'" class="flex border-b border-border/80 bg-card/30 text-xs font-semibold text-text/70 dark:border-border/40">
                   <div class="w-16 shrink-0"></div>
                   <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
                     <div
                       v-for="day in weekColumns"
                       :key="day.id"
-                      class="flex min-w-[160px] flex-1 flex-col justify-center border-r border-border/50 px-3 py-2 dark:border-border/25"
+                      class="flex flex-1 flex-col justify-center border-r border-border/70 px-3 py-2 dark:border-border/40"
+                      :style="{ minWidth: `${WEEK_COLUMN_WIDTH}px` }"
                     >
                       <span class="text-[10px] uppercase text-text/50">{{ day.weekday }}</span>
                       <span
@@ -117,7 +118,7 @@
                 </div>
 
                 <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <div class="grid grid-cols-7 gap-px border-b border-border/60 bg-border/60 text-center text-xs font-semibold text-text/70 dark:border-border/30 dark:bg-border/30">
+                  <div class="grid grid-cols-7 gap-px border-b border-border/80 bg-border/80 text-center text-xs font-semibold text-text/70 dark:border-border/40 dark:bg-border/40">
                     <div
                       v-for="day in monthWeekdays"
                       :key="day"
@@ -127,7 +128,7 @@
                     </div>
                   </div>
                   <div class="flex min-h-0 flex-1 overflow-y-auto">
-                    <div class="grid w-full grid-cols-7 grid-rows-6 gap-px bg-border/60 dark:bg-border/30">
+                    <div class="grid w-full grid-cols-7 grid-rows-6 gap-px bg-border/80 dark:bg-border/40">
                       <button
                         v-for="cell in monthCells"
                         :key="cell.key"
@@ -217,6 +218,7 @@ const DISPLAY_END_HOUR = 24
 const CLINIC_START_HOUR = 8
 const CLINIC_END_HOUR = 22
 const SNAP_MINUTES = 15
+const WEEK_COLUMN_WIDTH = 150
 
 const view = ref('day')
 const currentDate = ref(new Date())
@@ -335,7 +337,7 @@ const weekColumns = computed(() => (
   })
 ))
 
-const weekMinWidth = computed(() => 64 + weekColumns.value.length * 180)
+const weekMinWidth = computed(() => 64 + weekColumns.value.length * WEEK_COLUMN_WIDTH)
 
 const monthWeekdays = computed(() => {
   const base = new Date(2021, 7, 1)
