@@ -12,9 +12,9 @@
         <div v-if="clinics.length > 1 || !user?.clinic_id" class="w-64">
           <label class="text-xs text-text/60 uppercase font-bold block mb-1">Оберіть клініку</label>
           <select
-              v-model="selectedClinicId"
-              @change="handleClinicChange"
-              class="w-full bg-card border border-border/80 rounded px-3 py-2 text-text text-sm"
+            v-model="selectedClinicId"
+            @change="handleClinicChange"
+            class="w-full bg-card border border-border/80 rounded px-3 py-2 text-text text-sm"
           >
             <option :value="null" disabled>-- Оберіть клініку --</option>
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -27,24 +27,24 @@
 
     <div class="px-6 flex flex-wrap items-center justify-between gap-4 mb-4">
       <CalendarHeader
-          :current-date="currentDate"
-          @prev="prev"
-          @next="next"
-          @today="today"
-          @select-date="selectMonth"
+        :current-date="currentDate"
+        @prev="prev"
+        @next="next"
+        @today="today"
+        @select-date="selectDate"
       />
 
       <div class="flex items-center gap-2">
         <button
-            @click="fetchEvents"
-            class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
+          @click="fetchEvents"
+          class="text-sm px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20"
         >
           🔄 Оновити
         </button>
         <select
-            v-model="view"
-            @change="changeView"
-            class="bg-card border border-border/80 text-text/90 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          v-model="view"
+          @change="changeView"
+          class="bg-card border border-border/80 text-text/90 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="day">День</option>
           <option value="week">Тиждень</option>
@@ -57,32 +57,40 @@
       <div v-if="!currentClinicId" class="flex h-full items-center justify-center text-text/60">
         ⬅ Будь ласка, оберіть клініку зі списку зверху
       </div>
-      <ToastCalendar
-          v-else
-          ref="calendarRef"
-          @select-date-time="handleSelectDateTime"
-          @click-event="handleClickEvent"
-          @before-update-event="handleBeforeUpdateEvent"
-          @event-drag-start="handleEventDragStart"
-          @event-drag-end="handleEventDragEnd"
+      <div v-else-if="view !== 'day'" class="flex h-full items-center justify-center text-text/60">
+        Week та Month View будуть додані наступним етапом.
+      </div>
+      <CalendarBoard
+        v-else
+        :date="currentDate"
+        :doctors="doctors"
+        :items="calendarItems"
+        :start-hour="START_HOUR"
+        :end-hour="END_HOUR"
+        :snap-minutes="SNAP_MINUTES"
+        @select-slot="handleSelectSlot"
+        @appointment-click="handleAppointmentClick"
+        @appointment-update="handleAppointmentUpdate"
+        @appointment-drag-start="handleAppointmentDragStart"
+        @appointment-drag-end="handleAppointmentDragEnd"
       />
     </div>
 
     <EventModal
-        :open="isEventModalOpen"
-        :event="activeEvent"
-        :doctors="doctors"
-        :default-doctor-id="defaultDoctorId"
-        @save="handleSaveEvent"
-        @close="handleCloseModal"
+      :open="isEventModalOpen"
+      :event="activeEvent"
+      :doctors="doctors"
+      :default-doctor-id="defaultDoctorId"
+      @save="handleSaveEvent"
+      @close="handleCloseModal"
     />
 
     <AppointmentModal
-        :is-open="isAppointmentModalOpen"
-        :appointment="selectedAppointment"
-        :clinic-id="currentClinicId"
-        @close="handleCloseAppointmentModal"
-        @saved="handleAppointmentSaved"
+      :is-open="isAppointmentModalOpen"
+      :appointment="selectedAppointment"
+      :clinic-id="currentClinicId"
+      @close="handleCloseAppointmentModal"
+      @saved="handleAppointmentSaved"
     />
   </div>
 </template>
@@ -90,8 +98,8 @@
 <script setup>
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import CalendarHeader from '../components/CalendarHeader.vue'
-import ToastCalendar from '../components/ToastCalendar.vue'
+import CalendarHeader from '../components/calendar/CalendarHeader.vue'
+import CalendarBoard from '../components/calendar/CalendarBoard.vue'
 import EventModal from '../components/EventModal.vue'
 import AppointmentModal from '../components/AppointmentModal.vue'
 import calendarApi from '../services/calendarApi'
@@ -100,17 +108,18 @@ import clinicApi from '../services/clinicApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
 
-// --- STATE ---
-const calendarRef = ref(null)
-const view = ref('week')
+const START_HOUR = 8
+const END_HOUR = 22
+const SNAP_MINUTES = 15
+
+const view = ref('day')
 const currentDate = ref(new Date())
 const isEventModalOpen = ref(false)
 const activeEvent = ref({})
 const isAppointmentModalOpen = ref(false)
 const selectedAppointment = ref(null)
 
-const events = ref([])
-const availabilityEvents = ref([])
+const calendarItems = ref([])
 const clinics = ref([])
 const selectedClinicId = ref(null)
 const doctors = ref([])
@@ -119,15 +128,9 @@ const { error: toastError, success: toastSuccess } = useToast()
 const { user, initAuth } = useAuth()
 const route = useRoute()
 
-const SNAP_MINUTES = 15
-const DRAG_VALID_COLOR = '#16a34a'
-const DRAG_INVALID_COLOR = '#ef4444'
-const AVAILABILITY_BG_COLOR = 'rgba(16, 185, 129, 0.18)'
-const AVAILABILITY_BORDER_COLOR = 'rgba(16, 185, 129, 0.45)'
-let availabilityRequestId = 0
 const pendingAppointmentId = ref(null)
+const currentDateDebounce = ref(null)
 
-// --- COMPUTED ---
 const currentClinicId = computed(() => {
   if (selectedClinicId.value) return selectedClinicId.value
   return user.value?.clinic_id || user.value?.doctor?.clinic_id || null
@@ -135,7 +138,6 @@ const currentClinicId = computed(() => {
 
 const defaultDoctorId = computed(() => user.value?.doctor_id || user.value?.doctor?.id || null)
 
-// --- HELPERS ---
 const toDate = (value) => {
   if (!value) return null
   if (value.toDate) return value.toDate()
@@ -171,196 +173,121 @@ const formatTimeHM = (date) => {
   return `${hour}:${minute}`
 }
 
-const snapToMinutes = (date, stepMinutes = SNAP_MINUTES) => {
-  const normalized = toDate(date)
-  if (!normalized) return null
-  const stepMs = stepMinutes * 60000
-  return new Date(Math.round(normalized.getTime() / stepMs) * stepMs)
+const getRangeForView = (date, mode) => {
+  const base = new Date(date)
+  if (mode === 'week') {
+    const day = base.getDay() || 7
+    base.setHours(0, 0, 0, 0)
+    base.setDate(base.getDate() - day + 1)
+    const end = new Date(base)
+    end.setDate(end.getDate() + 6)
+    return { start: base, end }
+  }
+
+  if (mode === 'month') {
+    const start = new Date(base.getFullYear(), base.getMonth(), 1)
+    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+    return { start, end }
+  }
+
+  const start = new Date(base)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start, end }
 }
 
-const addMinutesToTime = (time, minutes) => {
-  if (!time || typeof time !== 'string') return null
-  const [hourStr, minuteStr] = time.split(':')
-  const hour = Number.parseInt(hourStr, 10)
-  const minute = Number.parseInt(minuteStr, 10)
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return null
-  const totalMinutes = hour * 60 + minute + minutes
-  const nextHour = Math.floor((totalMinutes % (24 * 60)) / 60)
-  const nextMinute = totalMinutes % 60
-  return `${String(nextHour).padStart(2, '0')}:${String(nextMinute).padStart(2, '0')}`
+const mapBlockToItem = (block) => {
+  const startAt = toDate(block.start_at)
+  const endAt = toDate(block.end_at)
+  if (!startAt || !endAt) return null
+  const doctorId = block.doctor_id || block.doctor?.id
+  if (!doctorId) return null
+
+  return {
+    id: String(block.id),
+    type: 'block',
+    title: block.note || 'Блок',
+    startAt,
+    endAt,
+    doctorId,
+    isReadOnly: false,
+    raw: block,
+  }
 }
 
-const getAppointmentDurationMinutes = (appt) => {
-  const start = toDate(appt?.start_at)
-  const end = toDate(appt?.end_at)
+const mapAppointmentToItem = (appt) => {
+  const startAt = toDate(appt.start_at)
+  const endAt = toDate(appt.end_at)
+  if (!startAt || !endAt) return null
+  const doctorId = appt.doctor_id || appt.doctor?.id
+  if (!doctorId) return null
+
+  return {
+    id: String(appt.id),
+    type: 'appointment',
+    title: appt.patient?.full_name || 'Запис',
+    startAt,
+    endAt,
+    doctorId,
+    status: appt.status,
+    isReadOnly: appt.status === 'done',
+    raw: appt,
+  }
+}
+
+const updateCalendarItem = (updated) => {
+  calendarItems.value = calendarItems.value.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+}
+
+const getAppointmentDurationMinutes = (startAt, endAt) => {
+  const start = toDate(startAt)
+  const end = toDate(endAt)
   if (!start || !end) return 30
   const diff = Math.round((end.getTime() - start.getTime()) / 60000)
   return diff > 0 ? diff : 30
 }
 
-const mergeSlotsToIntervals = (slots, durationMinutes = 30) => {
-  if (!slots?.length) return []
-  const normalized = slots
-      .map((slot) => {
-        const start = slot.start
-        const end = slot.end || addMinutesToTime(slot.start, durationMinutes)
-        if (!start || !end) return null
-        return { start, end }
-      })
-      .filter(Boolean)
-  if (!normalized.length) return []
-
-  const sorted = [...normalized].sort((a, b) => a.start.localeCompare(b.start))
-  const merged = []
-
-  for (const slot of sorted) {
-    const last = merged[merged.length - 1]
-    if (!last) {
-      merged.push({ ...slot })
-      continue
-    }
-    if (last.end === slot.start) {
-      last.end = slot.end
-    } else {
-      merged.push({ ...slot })
-    }
-  }
-
-  return merged
+const isDoctorActive = (doctorId) => {
+  const doctor = doctors.value.find((item) => item.id === doctorId)
+  return doctor ? doctor.is_active !== false : true
 }
 
-const mapBlockToEvent = (block) => {
-  const s = toDate(block.start_at)
-  const e = toDate(block.end_at)
-  if (!s || !e) return null
-  return {
-    id: String(block.id),
-    calendarId: 'main',
-    title: block.note || 'Блок',
-    category: 'time',
-    start: s,
-    end: e,
-    type: block.type,
-    isReadOnly: false,
-    backgroundColor: '#6b7280',
-    dragBackgroundColor: '#9ca3af',
-    color: '#fff',
-    raw: block
-  }
+const hasOverlap = (itemId, doctorId, startAt, endAt) => {
+  const isBlockingBlock = (item) => (
+    item?.type === 'block'
+    && (item.raw?.is_blocking === true || item.raw?.blocking === true || item.raw?.type === 'room_block')
+  )
+  return calendarItems.value.some((item) => {
+    if (item.id === itemId) return false
+    if (item.doctorId !== doctorId) return false
+    if (item.type === 'block' && !isBlockingBlock(item)) return false
+    return startAt < item.endAt && endAt > item.startAt
+  })
 }
 
-const mapAppointmentToEvent = (appt) => {
-  const s = toDate(appt.start_at)
-  const e = toDate(appt.end_at)
-  if (!s || !e) return null
-
-  const isDone = appt.status === 'done'
-  // Перевіряємо, чи подія в минулому (порівнюємо з поточним часом)
-  const isPast = e < new Date()
-
-  // Кольори
-  // Завершений: Насичений синій (Royal Blue)
-  // Активний: Смарагдовий (Emerald)
-  // Прострочений/Минулий: Сірий або тьмяний смарагд
-  let bgColor = '#10b981' // Default Green
-  let borderColor = '#059669'
-
-  if (isDone) {
-    bgColor = '#2563eb' // 🔥 Vibrant Blue (замість блідого)
-    borderColor = '#1e40af'
-  } else if (isPast) {
-    bgColor = '#64748b' // Slate (сірий для минулих незавершених)
-    borderColor = '#475569'
-  }
-
-  return {
-    id: String(appt.id),
-    calendarId: 'main',
-    title: (isDone ? '✅ ' : '') + (appt.patient?.full_name || 'Запис'), // Додаємо галочку для краси
-    category: 'time',
-    start: s,
-    end: e,
-    isReadOnly: isDone, // Завершені не рухаємо
-
-    backgroundColor: bgColor,
-    borderColor: borderColor,
-    dragBackgroundColor: bgColor,
-    color: '#ffffff', // Завжди білий текст для контрасту
-
-    // 👇 ВАЖЛИВО: Додаємо класи для CSS стилізації
-    classNames: [
-      isPast ? 'event-past' : 'event-future',
-      isDone ? 'event-done' : 'event-active'
-    ],
-
-    raw: appt
-  }
+const isWithinClinicHours = (startAt, endAt) => {
+  const startHour = startAt.getHours() + startAt.getMinutes() / 60
+  const endHour = endAt.getHours() + endAt.getMinutes() / 60
+  return startHour >= START_HOUR && endHour <= END_HOUR
 }
 
-const getAppointmentDoctorId = (appt) => appt?.doctor_id || appt?.doctor?.id || null
-
-const parseQueryDate = (value) => {
-  if (typeof value !== 'string' || !value.trim()) return null
-  const parsed = new Date(`${value}T00:00:00`)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const parseQueryView = (value) => {
-  if (value === 'day' || value === 'week' || value === 'month') return value
-  return null
-}
-
-const parseQueryNumber = (value) => {
-  const num = Number(value)
-  return Number.isFinite(num) && num > 0 ? num : null
-}
-
-const applyRouteSelection = () => {
-  if (!calendarRef.value) return
-
-  const nextView = parseQueryView(route.query.view)
-  if (nextView && view.value !== nextView) {
-    view.value = nextView
-    calendarRef.value?.changeView?.(nextView)
-  }
-
-  const nextDate = parseQueryDate(route.query.date)
-  if (nextDate) {
-    calendarRef.value?.setDate?.(nextDate)
-    currentDate.value = new Date(nextDate)
-  }
-
-  const clinicId = parseQueryNumber(route.query.clinic || route.query.clinic_id)
-  if (clinicId) {
-    selectedClinicId.value = clinicId
-  }
-
-  const appointmentId = route.query.appointment_id || route.query.appointment
-  if (appointmentId) {
-    pendingAppointmentId.value = String(appointmentId)
-  }
-}
-
-const isDropAllowed = async (appt, start, end) => {
-  const doctorId = getAppointmentDoctorId(appt)
-  if (!doctorId) {
-    toastError('Неможливо визначити лікаря для запису')
-    return false
-  }
-
+const isDropAllowed = async (appointment, doctorId, startAt, endAt) => {
+  if (!doctorId) return false
   try {
-    const date = formatDateOnly(start)
-    const startTime = formatTimeHM(start)
+    const date = formatDateOnly(startAt)
+    const durationMinutes = getAppointmentDurationMinutes(startAt, endAt)
     const { data } = await calendarApi.getDoctorSlots(doctorId, {
       date,
-      procedure_id: appt.procedure_id || appt.procedure?.id || undefined,
-      room_id: appt.room_id || appt.room?.id || undefined,
-      equipment_id: appt.equipment_id || appt.equipment?.id || undefined,
-      assistant_id: appt.assistant_id || appt.assistant?.id || undefined,
+      procedure_id: appointment?.procedure_id || appointment?.procedure?.id || undefined,
+      room_id: appointment?.room_id || appointment?.room?.id || undefined,
+      equipment_id: appointment?.equipment_id || appointment?.equipment?.id || undefined,
+      assistant_id: appointment?.assistant_id || appointment?.assistant?.id || undefined,
+      duration_minutes: durationMinutes,
     })
     const slots = Array.isArray(data?.slots) ? data.slots : []
     const allowed = new Set(slots.map((slot) => slot.start))
-    return allowed.has(startTime)
+    return allowed.has(formatTimeHM(startAt))
   } catch (error) {
     console.error(error)
     toastError('Не вдалося перевірити доступний час лікаря')
@@ -368,151 +295,14 @@ const isDropAllowed = async (appt, start, end) => {
   }
 }
 
-const replaceAppointmentEvent = (updatedAppointment, fallbackStart, fallbackEnd) => {
-  const mapped = mapAppointmentToEvent(updatedAppointment) ?? {
-    id: String(updatedAppointment.id),
-    calendarId: 'main',
-    start: fallbackStart,
-    end: fallbackEnd,
-    raw: updatedAppointment
-  }
-
-  events.value = events.value.map((event) => (
-      event.id === String(updatedAppointment.id)
-          ? { ...event, ...mapped }
-          : event
-  ))
-
-  calendarRef.value?.updateEvent?.(String(updatedAppointment.id), mapped.calendarId, {
-    title: mapped.title,
-    start: mapped.start,
-    end: mapped.end,
-    isReadOnly: mapped.isReadOnly,
-    backgroundColor: mapped.backgroundColor,
-    borderColor: mapped.borderColor,
-    dragBackgroundColor: mapped.dragBackgroundColor,
-    color: mapped.color,
-    raw: mapped.raw
-  })
-}
-
-const flashInvalidDrop = (eventId, calendarId) => {
-  const existing = events.value.find((entry) => entry.id === String(eventId))
-  if (!existing) return
-
-  calendarRef.value?.updateEvent?.(String(eventId), calendarId, {
-    backgroundColor: DRAG_INVALID_COLOR,
-    borderColor: DRAG_INVALID_COLOR,
-    dragBackgroundColor: DRAG_INVALID_COLOR
-  })
-
-  setTimeout(() => {
-    calendarRef.value?.updateEvent?.(String(eventId), calendarId, {
-      backgroundColor: existing.backgroundColor,
-      borderColor: existing.borderColor,
-      dragBackgroundColor: existing.dragBackgroundColor
-    })
-  }, 180)
-}
-
-const removeAvailabilityEvents = () => {
-  availabilityEvents.value.forEach((event) => {
-    calendarRef.value?.deleteEvent?.(event.id, event.calendarId)
-  })
-  availabilityEvents.value = []
-}
-
-const applyAvailabilityEvents = (nextEvents) => {
-  removeAvailabilityEvents()
-  if (!nextEvents?.length) return
-  availabilityEvents.value = nextEvents
-  calendarRef.value?.createEvents?.(availabilityEvents.value)
-}
-
-const loadAvailabilitySlots = async (appointment) => {
-  if (!appointment || view.value === 'month') {
-    removeAvailabilityEvents()
-    return
-  }
-
-  const doctorId = getAppointmentDoctorId(appointment)
-  if (!doctorId) {
-    removeAvailabilityEvents()
-    return
-  }
-
-  const rangeStart = calendarRef.value?.getDateRangeStart?.()
-  const rangeEnd = calendarRef.value?.getDateRangeEnd?.()
-  if (!rangeStart || !rangeEnd) {
-    removeAvailabilityEvents()
-    return
-  }
-
-  const startDate = new Date(rangeStart)
-  const endDate = new Date(rangeEnd)
-  startDate.setHours(0, 0, 0, 0)
-  endDate.setHours(0, 0, 0, 0)
-  const endExclusive = new Date(endDate)
-  endExclusive.setDate(endExclusive.getDate() + 1)
-
-  const durationMinutes = getAppointmentDurationMinutes(appointment)
-  const requestId = ++availabilityRequestId
-  const eventsBuffer = []
-
-  const cursor = new Date(startDate)
-  while (cursor < endExclusive) {
-    const date = formatDateOnly(cursor)
-    try {
-      const { data } = await calendarApi.getDoctorSlots(doctorId, {
-        date,
-        procedure_id: appointment.procedure_id || appointment.procedure?.id || undefined,
-        room_id: appointment.room_id || appointment.room?.id || undefined,
-        equipment_id: appointment.equipment_id || appointment.equipment?.id || undefined,
-        assistant_id: appointment.assistant_id || appointment.assistant?.id || undefined,
-        duration_minutes: durationMinutes,
-      })
-      const slots = Array.isArray(data?.slots) ? data.slots : []
-      const intervals = mergeSlotsToIntervals(slots, durationMinutes)
-      intervals.forEach((interval) => {
-        const start = new Date(`${date}T${interval.start}:00`)
-        const end = new Date(`${date}T${interval.end}:00`)
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return
-        eventsBuffer.push({
-          id: `availability-${doctorId}-${date}-${interval.start}`,
-          calendarId: 'main',
-          title: '',
-          category: 'time',
-          start,
-          end,
-          isReadOnly: true,
-          backgroundColor: AVAILABILITY_BG_COLOR,
-          borderColor: AVAILABILITY_BORDER_COLOR,
-          dragBackgroundColor: AVAILABILITY_BG_COLOR,
-          color: 'transparent',
-          classNames: ['calendar-availability-slot'],
-        })
-      })
-    } catch (error) {
-      console.error(`Помилка завантаження слотів на ${date}`, error)
-    }
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  if (requestId !== availabilityRequestId) return
-  applyAvailabilityEvents(eventsBuffer)
-}
-
-// --- API ACTIONS ---
-
-// 1. Завантаження клінік
 const loadClinics = async () => {
   try {
     if (user.value?.global_role === 'super_admin') {
-      const { data } = await clinicApi.list();
-      clinics.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      const { data } = await clinicApi.list()
+      clinics.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
     } else {
-      const { data } = await clinicApi.listMine();
-      clinics.value = (data.clinics || []).map(c => ({ id: c.clinic_id, name: c.clinic_name }));
+      const { data } = await clinicApi.listMine()
+      clinics.value = (data.clinics || []).map((c) => ({ id: c.clinic_id, name: c.clinic_name }))
     }
 
     if (!currentClinicId.value && clinics.value.length > 0) {
@@ -523,53 +313,33 @@ const loadClinics = async () => {
   }
 }
 
-// 2. Завантаження подій
 const fetchEvents = async () => {
-  if (!currentClinicId.value) return;
+  if (!currentClinicId.value) return
 
-  const start = calendarRef.value?.getDateRangeStart?.()
-  const end = calendarRef.value?.getDateRangeEnd?.()
-
-  if (!start || !end) return;
-
+  const { start, end } = getRangeForView(currentDate.value, view.value)
   const from = formatDateOnly(start)
   const to = formatDateOnly(end)
 
   try {
     const [blocksResponse, appointmentsResponse] = await Promise.all([
       calendarApi.getCalendarBlocks({ clinic_id: currentClinicId.value, from, to }),
-      calendarApi.getAppointments({ clinic_id: currentClinicId.value, from_date: from, to_date: to })
-    ]);
+      calendarApi.getAppointments({ clinic_id: currentClinicId.value, from_date: from, to_date: to }),
+    ])
 
-    // Обробка Блоків
-    const blocksData = blocksResponse.data?.data || blocksResponse.data || [];
-    const mappedBlocks = blocksData.map(mapBlockToEvent).filter(Boolean)
+    const blocksData = blocksResponse.data?.data || blocksResponse.data || []
+    const appointmentsData = appointmentsResponse.data?.data || appointmentsResponse.data || []
 
-    // Обробка Записів
-    const appointmentsData = appointmentsResponse.data?.data || appointmentsResponse.data || [];
-    const mappedAppointments = appointmentsData.map(mapAppointmentToEvent).filter(Boolean)
+    const mappedBlocks = blocksData.map(mapBlockToItem).filter(Boolean)
+    const mappedAppointments = appointmentsData.map(mapAppointmentToItem).filter(Boolean)
 
-    events.value = [...mappedBlocks, ...mappedAppointments];
-
-    calendarRef.value?.clear?.();
-    if (events.value.length) {
-      calendarRef.value?.createEvents?.(events.value);
-    }
-    if (availabilityEvents.value.length) {
-      calendarRef.value?.createEvents?.(availabilityEvents.value);
-    }
-
+    calendarItems.value = [...mappedBlocks, ...mappedAppointments]
   } catch (error) {
-    console.error(error);
-    toastError('Помилка завантаження даних');
+    console.error(error)
+    toastError('Помилка завантаження даних')
   }
 
   if (pendingAppointmentId.value) {
-    const target = events.value.find((event) => (
-      event.id === pendingAppointmentId.value
-      && event.raw
-      && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')
-    ))
+    const target = calendarItems.value.find((item) => item.id === pendingAppointmentId.value && item.type === 'appointment')
     if (target) {
       selectedAppointment.value = target.raw
       isAppointmentModalOpen.value = true
@@ -578,24 +348,23 @@ const fetchEvents = async () => {
   }
 }
 
-// 3. Збереження події
 const saveEvent = async (payload) => {
   if (!currentClinicId.value) {
-    toastError('Оберіть клініку!');
-    return;
+    toastError('Оберіть клініку!')
+    return
   }
 
-  const payloadToSave = { ...payload };
+  const payloadToSave = { ...payload }
   if (!payloadToSave.doctor_id && defaultDoctorId.value) {
-    payloadToSave.doctor_id = defaultDoctorId.value;
+    payloadToSave.doctor_id = defaultDoctorId.value
   }
 
-  if (!payloadToSave.doctor_id && !payloadToSave.room_id && !payloadToSave.equipment_id) {
-    toastError('Помилка: Потрібно обрати лікаря або кабінет у формі.');
-    return;
+  if (!payloadToSave.doctor_id) {
+    toastError('Помилка: Потрібно обрати лікаря у формі.')
+    return
   }
 
-  const isEdit = payload.id && !String(payload.id).startsWith('new-');
+  const isEdit = payload.id && !String(payload.id).startsWith('new-')
 
   const apiPayload = {
     clinic_id: currentClinicId.value,
@@ -603,8 +372,8 @@ const saveEvent = async (payload) => {
     start_at: formatDateTime(payload.start),
     end_at: formatDateTime(payload.end),
     note: payload.note ?? payload.title ?? '',
-    doctor_id: payloadToSave.doctor_id
-  };
+    doctor_id: payloadToSave.doctor_id,
+  }
 
   try {
     if (isEdit) {
@@ -614,75 +383,70 @@ const saveEvent = async (payload) => {
       await calendarApi.createCalendarBlock(apiPayload)
       toastSuccess('Блок створено')
     }
-    fetchEvents();
-    handleCloseModal();
+    fetchEvents()
+    handleCloseModal()
   } catch (e) {
-    console.error(e);
-    toastError('Не вдалося зберегти: ' + (e.response?.data?.message || 'Помилка'));
+    console.error(e)
+    toastError('Не вдалося зберегти: ' + (e.response?.data?.message || 'Помилка'))
   }
 }
 
-// --- EVENT HANDLERS ---
 const handleSaveEvent = (payload) => {
   saveEvent(payload)
 }
 
 const handleClinicChange = () => {
-  removeAvailabilityEvents()
   nextTick(() => fetchEvents())
 }
 
-const updateCurrentDate = () => {
-  const date = calendarRef.value?.getDate?.()
-  if (date) currentDate.value = new Date(date)
+const changeView = () => {
+  fetchEvents()
+}
+
+const selectDate = (date) => {
+  if (!date) return
+  currentDate.value = new Date(date)
 }
 
 const next = () => {
-  calendarRef.value?.next()
-  updateCurrentDate()
-  fetchEvents()
-  removeAvailabilityEvents()
+  const date = new Date(currentDate.value)
+  if (view.value === 'week') {
+    date.setDate(date.getDate() + 7)
+  } else if (view.value === 'month') {
+    date.setMonth(date.getMonth() + 1)
+  } else {
+    date.setDate(date.getDate() + 1)
+  }
+  currentDate.value = date
 }
+
 const prev = () => {
-  calendarRef.value?.prev()
-  updateCurrentDate()
-  fetchEvents()
-  removeAvailabilityEvents()
+  const date = new Date(currentDate.value)
+  if (view.value === 'week') {
+    date.setDate(date.getDate() - 7)
+  } else if (view.value === 'month') {
+    date.setMonth(date.getMonth() - 1)
+  } else {
+    date.setDate(date.getDate() - 1)
+  }
+  currentDate.value = date
 }
+
 const today = () => {
-  calendarRef.value?.today()
-  updateCurrentDate()
-  fetchEvents()
-  removeAvailabilityEvents()
+  currentDate.value = new Date()
 }
 
-const changeView = () => {
-  calendarRef.value?.changeView(view.value)
-  updateCurrentDate()
-  fetchEvents()
-  removeAvailabilityEvents()
-}
-
-const selectMonth = (date) => {
-  if (!date) return
-  calendarRef.value?.setDate?.(date)
-  updateCurrentDate()
-  fetchEvents()
-  removeAvailabilityEvents()
-}
-
-const createDefaultEvent = ({ start, end, event }) => {
+const createDefaultEvent = ({ start, end, doctorId }) => {
   const s = toDate(start) ?? new Date()
   const e = toDate(end) ?? new Date(s.getTime() + 30 * 60000)
   return {
-    id: event?.id || `new-${Date.now()}`,
-    calendarId: 'main',
-    title: event?.title || '',
+    id: `new-${Date.now()}`,
+    title: '',
     start: s,
     end: e,
-    doctor_id: event?.doctor_id || defaultDoctorId.value,
-    type: event?.type || event?.raw?.type || 'personal_block',
-    note: event?.note || '',
+    doctor_id: doctorId || defaultDoctorId.value,
+    type: 'personal_block',
+    note: '',
   }
 }
 
@@ -720,124 +484,151 @@ const handleAppointmentSaved = () => {
   fetchEvents()
 }
 
-const handleSelectDateTime = (info) => {
-  const start = toDate(info?.start)
-  const end = toDate(info?.end)
-  removeAvailabilityEvents()
-  openEventModal(createDefaultEvent({ start, end }))
+const handleSelectSlot = ({ doctorId, start, end }) => {
+  openEventModal(createDefaultEvent({ start, end, doctorId }))
 }
 
-const handleClickEvent = (info) => {
-  const event = info?.event
-  if (!event) return
-
-  if (event.raw && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) {
-    removeAvailabilityEvents()
-    selectedAppointment.value = event.raw
+const handleAppointmentClick = (item) => {
+  if (item.type === 'appointment') {
+    selectedAppointment.value = item.raw
     isAppointmentModalOpen.value = true
-    return;
+    return
   }
-  removeAvailabilityEvents()
-  openEventModal(createDefaultEvent({ event, start: event.start, end: event.end }))
+
+  openEventModal({
+    id: item.id,
+    title: item.title,
+    start: item.startAt,
+    end: item.endAt,
+    doctor_id: item.doctorId,
+    note: item.raw?.note || '',
+    type: item.raw?.type || 'personal_block',
+  })
 }
 
-const handleEventDragStart = ({ event }) => {
-  if (!event?.raw || !Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) return
-  loadAvailabilitySlots(event.raw)
-}
-
-const handleEventDragEnd = () => {
-  removeAvailabilityEvents()
-}
-
-const handleBeforeUpdateEvent = async (info) => {
-  const event = info?.event
-  if (!event) return
-
-  const originalStart = toDate(event.start)
-  const originalEnd = toDate(event.end)
-  if (!originalStart || !originalEnd) {
-    toastError('Не вдалося оновити час запису');
+const handleAppointmentUpdate = async ({ id, startAt, endAt, doctorId }) => {
+  const item = calendarItems.value.find((entry) => entry.id === id)
+  if (!item || item.type !== 'appointment') return
+  if (
+    item.startAt.getTime() === startAt.getTime()
+    && item.endAt.getTime() === endAt.getTime()
+    && item.doctorId === doctorId
+  ) {
     return
   }
 
-  const nextStartRaw = toDate(info?.changes?.start ?? event.start)
-  const nextEndRaw = toDate(info?.changes?.end ?? event.end)
+  const original = { ...item }
 
-  if (!nextStartRaw || !nextEndRaw) {
-    toastError('Не вдалося оновити час запису');
+  updateCalendarItem({ ...item, startAt, endAt, doctorId })
+
+  if (!doctorId) {
+    toastError('Неможливо визначити лікаря для запису')
+    updateCalendarItem(original)
     return
   }
 
-  const snappedStart = snapToMinutes(nextStartRaw)
-  if (!snappedStart) {
-    toastError('Не вдалося обчислити новий час запису')
+  if (!isDoctorActive(doctorId)) {
+    toastError('Лікар неактивний')
+    updateCalendarItem(original)
     return
   }
 
-  const durationMs = nextEndRaw.getTime() - nextStartRaw.getTime()
-  if (durationMs <= 0) {
-    toastError('Некоректна тривалість запису')
+  if (!isWithinClinicHours(startAt, endAt)) {
+    toastError('Запис поза робочим часом клініки')
+    updateCalendarItem(original)
     return
   }
 
-  const snappedEnd = new Date(snappedStart.getTime() + durationMs)
+  if (hasOverlap(item.id, doctorId, startAt, endAt)) {
+    toastError('Перетин записів у лікаря')
+    updateCalendarItem(original)
+    return
+  }
 
-  if (event.raw && Object.prototype.hasOwnProperty.call(event.raw, 'patient_id')) {
-    if (event.raw.status === 'done') {
-      toastError('Завершений запис не можна переносити');
-      return
-    }
+  if (item.raw?.status === 'done') {
+    toastError('Завершений запис не можна переносити')
+    updateCalendarItem(original)
+    return
+  }
 
-    try {
-      const slotAllowed = await isDropAllowed(event.raw, snappedStart, snappedEnd)
-      if (!slotAllowed) {
-        toastError('Лікар недоступний у вибраний час')
-        flashInvalidDrop(event.id, event.calendarId)
-        calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
-          start: originalStart,
-          end: originalEnd,
-        })
-        removeAvailabilityEvents()
-        return
-      }
+  const slotAllowed = await isDropAllowed(item.raw, doctorId, startAt, endAt)
+  if (!slotAllowed) {
+    toastError('Лікар недоступний у вибраний час')
+    updateCalendarItem(original)
+    return
+  }
 
-      const { data } = await calendarApi.updateAppointment(event.id, {
-        doctor_id: getAppointmentDoctorId(event.raw),
-        start_at: formatDateTime(snappedStart),
-        end_at: formatDateTime(snappedEnd),
-      })
+  try {
+    const { data } = await calendarApi.updateAppointment(item.id, {
+      doctor_id: doctorId,
+      start_at: formatDateTime(startAt),
+      end_at: formatDateTime(endAt),
+    })
 
-      const updatedAppointment = data?.data || data?.appointment || data
-      if (updatedAppointment) {
-        replaceAppointmentEvent(updatedAppointment, snappedStart, snappedEnd)
+    const updatedAppointment = data?.data || data?.appointment || data
+    if (updatedAppointment) {
+      const mapped = mapAppointmentToItem(updatedAppointment)
+      if (mapped) {
+        updateCalendarItem(mapped)
       } else {
-        calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
-          start: snappedStart,
-          end: snappedEnd,
-        })
+        updateCalendarItem({ ...item, startAt, endAt, doctorId, raw: updatedAppointment })
       }
-
-      toastSuccess('Запис перенесено')
-      removeAvailabilityEvents()
-    } catch (error) {
-      console.error(error)
-      toastError('Не вдалося перенести запис')
-      flashInvalidDrop(event.id, event.calendarId)
-      calendarRef.value?.updateEvent?.(event.id, event.calendarId, {
-        start: originalStart,
-        end: originalEnd,
-      })
-      removeAvailabilityEvents()
     }
-    return
-  }
 
-  removeAvailabilityEvents()
-  openEventModal(createDefaultEvent({ event, start: snappedStart, end: snappedEnd }))
+    toastSuccess('Запис перенесено')
+  } catch (error) {
+    console.error(error)
+    toastError('Не вдалося перенести запис')
+    updateCalendarItem(original)
+  }
 }
 
-// --- LIFECYCLE ---
+const handleAppointmentDragStart = () => {
+  // Reserved for future availability overlays
+}
+
+const handleAppointmentDragEnd = () => {
+  // Reserved for future availability overlays
+}
+
+const parseQueryDate = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const parsed = new Date(`${value}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const parseQueryView = (value) => {
+  if (value === 'day' || value === 'week' || value === 'month') return value
+  return null
+}
+
+const parseQueryNumber = (value) => {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : null
+}
+
+const applyRouteSelection = () => {
+  const nextView = parseQueryView(route.query.view)
+  if (nextView) {
+    view.value = nextView
+  }
+
+  const nextDate = parseQueryDate(route.query.date)
+  if (nextDate) {
+    currentDate.value = new Date(nextDate)
+  }
+
+  const clinicId = parseQueryNumber(route.query.clinic || route.query.clinic_id)
+  if (clinicId) {
+    selectedClinicId.value = clinicId
+  }
+
+  const appointmentId = route.query.appointment_id || route.query.appointment
+  if (appointmentId) {
+    pendingAppointmentId.value = String(appointmentId)
+  }
+}
+
 onMounted(async () => {
   await initAuth()
   await loadClinics()
@@ -845,7 +636,6 @@ onMounted(async () => {
   await nextTick()
   setTimeout(() => {
     applyRouteSelection()
-    updateCurrentDate()
     fetchEvents()
     loadDoctors()
   }, 100)
@@ -854,17 +644,27 @@ onMounted(async () => {
 watch(view, () => {
   handleCloseModal()
   handleCloseAppointmentModal()
+  fetchEvents()
 })
+
 watch(currentClinicId, () => {
   fetchEvents()
   loadDoctors()
+})
+
+watch(currentDate, () => {
+  if (currentDateDebounce.value) {
+    clearTimeout(currentDateDebounce.value)
+  }
+  currentDateDebounce.value = setTimeout(() => {
+    fetchEvents()
+  }, 200)
 })
 
 watch(() => route.query, () => {
   handleCloseModal()
   handleCloseAppointmentModal()
   applyRouteSelection()
-  updateCurrentDate()
   fetchEvents()
 })
 </script>
