@@ -17,8 +17,11 @@
     </div>
     <div
       ref="bodyRef"
-      class="relative flex-1 cursor-crosshair transition-colors"
-      :class="{ 'hover:bg-card/20': items.length === 0 }"
+      class="relative flex-1 transition-colors"
+      :class="[
+        items.length === 0 && interactive ? 'hover:bg-card/20' : '',
+        interactive ? 'cursor-crosshair' : 'cursor-default',
+      ]"
       :style="{ height: `${bodyHeight}px` }"
       @click="handleBodyClick"
     >
@@ -31,6 +34,7 @@
         :stack-offset="entry.stackOffset"
         :read-only="entry.item.isReadOnly"
         :is-dragging="entry.isDragging"
+        :interactive="interactive"
         @click="emit('appointment-click', entry.item)"
         @interaction-start="handleInteractionStart"
       />
@@ -75,6 +79,10 @@ const props = defineProps({
     type: Number,
     default: 15,
   },
+  interactive: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits(['select-slot', 'appointment-click', 'interaction-start'])
@@ -83,11 +91,17 @@ const bodyRef = ref(null)
 
 const bodyHeight = computed(() => (props.endHour - props.startHour) * props.hourHeight)
 
-const doctorLabel = computed(() => props.doctor?.full_name || props.doctor?.name || 'Лікар')
+const doctorLabel = computed(() => (
+  props.doctor?.label
+  || props.doctor?.full_name
+  || props.doctor?.name
+  || 'Лікар'
+))
 
 const suppressClickUntil = ref(0)
 
 const handleBodyClick = (event) => {
+  if (!props.interactive) return
   if (props.doctor?.is_active === false) return
   if (Date.now() < suppressClickUntil.value) return
   if (!bodyRef.value) return

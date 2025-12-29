@@ -27,17 +27,18 @@
 
         <div class="relative z-10 flex min-w-0 flex-1">
           <CalendarDoctorColumn
-            v-for="doctor in doctors"
-            :key="doctor.id"
-            :ref="(el) => setColumnRef(doctor.id, el)"
-            :doctor="doctor"
+            v-for="column in resolvedColumns"
+            :key="column.id"
+            :ref="(el) => setColumnRef(column.id, el)"
+            :doctor="column"
             :show-header="showDoctorHeader"
-            :items="itemsByDoctor[doctor.id] || []"
+            :items="itemsByColumn[column.id] || []"
             :start-hour="startHour"
             :end-hour="endHour"
             :hour-height="hourHeight"
             :base-date="date"
             :snap-minutes="snapMinutes"
+            :interactive="interactive"
             @select-slot="handleSelectSlot"
             @appointment-click="(item) => emit('appointment-click', item)"
             @interaction-start="handleInteractionStart"
@@ -69,6 +70,14 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  columns: {
+    type: Array,
+    default: null,
+  },
+  groupBy: {
+    type: String,
+    default: 'doctor',
+  },
   items: {
     type: Array,
     default: () => [],
@@ -98,6 +107,10 @@ const props = defineProps({
     default: 15,
   },
   showDoctorHeader: {
+    type: Boolean,
+    default: true,
+  },
+  interactive: {
     type: Boolean,
     default: true,
   },
@@ -147,10 +160,27 @@ const inactiveBlocks = computed(() => {
   return blocks
 })
 
-const itemsByDoctor = computed(() => {
+const resolvedColumns = computed(() => {
+  if (props.columns && props.columns.length) return props.columns
+  return props.doctors || []
+})
+
+const resolveGroupKey = (item) => {
+  if (props.groupBy === 'date') {
+    const normalized = normalizeDate(item.startAt)
+    if (!normalized) return null
+    const year = normalized.getFullYear()
+    const month = `${normalized.getMonth() + 1}`.padStart(2, '0')
+    const day = `${normalized.getDate()}`.padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return item.doctorId || null
+}
+
+const itemsByColumn = computed(() => {
   const map = {}
-  props.doctors.forEach((doctor) => {
-    map[doctor.id] = []
+  resolvedColumns.value.forEach((column) => {
+    map[column.id] = []
   })
 
   props.items.forEach((item) => {
@@ -159,11 +189,12 @@ const itemsByDoctor = computed(() => {
       ? { ...item, startAt: dragState.value.draftStart, endAt: dragState.value.draftEnd, doctorId: dragState.value.draftDoctorId }
       : item
 
-    if (!activeItem.doctorId || !map[activeItem.doctorId]) return
+    const groupKey = resolveGroupKey(activeItem)
+    if (!groupKey || !map[groupKey]) return
     const startMinutes = getMinutesFromStart(activeItem.startAt)
     const endMinutes = getMinutesFromStart(activeItem.endAt)
     const height = Math.max((endMinutes - startMinutes) * pixelsPerMinute.value, pixelsPerMinute.value * props.snapMinutes)
-    map[activeItem.doctorId].push({
+    map[groupKey].push({
       item: activeItem,
       top: startMinutes * pixelsPerMinute.value,
       height,
@@ -223,9 +254,9 @@ const normalizeDate = (value) => {
 const getMinutesFromStart = (date) => {
   const normalized = normalizeDate(date)
   if (!normalized) return 0
-  const base = new Date(props.date)
-  base.setHours(props.startHour, 0, 0, 0)
-  return Math.max(0, Math.round((normalized.getTime() - base.getTime()) / 60000))
+  const minutes = normalized.getHours() * 60 + normalized.getMinutes()
+  const startMinutes = props.startHour * 60
+  return Math.max(0, minutes - startMinutes)
 }
 
 const getDateFromMinutes = (minutes) => {
@@ -236,24 +267,26 @@ const getDateFromMinutes = (minutes) => {
 }
 
 const handleSelectSlot = ({ doctorId, minutesFromStart }) => {
+  if (!props.interactive) return
   const start = getDateFromMinutes(minutesFromStart)
   const end = getDateFromMinutes(minutesFromStart + props.snapMinutes * 2)
   emit('select-slot', { doctorId, start, end })
 }
 
 const buildColumnRects = () => {
-  return props.doctors
-    .map((doctor) => {
-      const instance = columnRefs.value.get(doctor.id)
+  return resolvedColumns.value
+    .map((column) => {
+      const instance = columnRefs.value.get(column.id)
       const body = instance?.bodyRef?.value
       if (!body) return null
       const rect = body.getBoundingClientRect()
-      return { doctorId: doctor.id, rect }
+      return { doctorId: column.id, rect }
     })
     .filter(Boolean)
 }
 
 const handleInteractionStart = ({ item, type, pointerEvent }) => {
+  if (!props.interactive) return
   if (!pointerEvent) return
   pointerEvent.preventDefault()
   pointerEvent.stopPropagation()

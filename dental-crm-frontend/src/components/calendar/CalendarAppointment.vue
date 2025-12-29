@@ -46,6 +46,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  interactive: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits(['click', 'interaction-start'])
@@ -84,7 +88,7 @@ const backgroundClass = computed(() => {
 
 const cursorClass = computed(() => {
   if (props.isDragging) return 'cursor-grabbing'
-  if (props.readOnly || props.item.type !== 'appointment') return 'cursor-default'
+  if (!props.interactive || props.readOnly || props.item.type !== 'appointment') return 'cursor-default'
   return 'cursor-grab'
 })
 
@@ -100,7 +104,7 @@ const handleClick = () => {
 }
 
 const handlePointerDown = (event) => {
-  if (props.readOnly || props.item.type !== 'appointment') return
+  if (!props.interactive || props.readOnly || props.item.type !== 'appointment') return
   const rect = event.currentTarget?.getBoundingClientRect?.()
   if (!rect) return
   const offsetY = event.clientY - rect.top
