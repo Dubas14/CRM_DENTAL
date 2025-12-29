@@ -127,13 +127,13 @@
                       {{ day }}
                     </div>
                   </div>
-                  <div class="flex min-h-0 flex-1 overflow-y-auto">
-                    <div class="grid w-full grid-cols-7 grid-rows-6 gap-px bg-border/80 dark:bg-border/40">
+                  <div class="flex min-h-0 flex-1 overflow-hidden">
+                    <div class="grid w-full grid-cols-7 auto-rows-[150px]">
                       <button
                         v-for="cell in monthCells"
                         :key="cell.key"
                         type="button"
-                        class="group flex h-full min-h-[110px] flex-col gap-1 bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60"
+                        class="group flex h-[150px] min-h-[150px] max-h-[150px] flex-col gap-2 border border-border/60 bg-card/30 px-2 py-2 text-left text-xs transition hover:bg-card/60 dark:border-border/40"
                         :class="[
                           cell.isCurrentMonth ? 'text-text/90' : 'text-text/40',
                           cell.isSelected ? 'bg-emerald-500/15 ring-1 ring-emerald-500/40' : '',
@@ -154,18 +154,24 @@
                             {{ cell.items.length }}
                           </span>
                         </div>
-                        <div class="flex flex-1 flex-col gap-1">
+                        <div class="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
                           <div
-                            v-for="item in cell.items.slice(0, 3)"
+                            v-for="item in cell.items.slice(0, MAX_EVENTS_PER_DAY)"
                             :key="item.id"
                             class="rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-100"
                             :class="item.type === 'block' ? 'bg-slate-500/20 text-slate-100' : ''"
+                            @click.stop="handleMonthEventClick(item)"
                           >
                             <span class="truncate block">{{ item.title }}</span>
                           </div>
-                          <div v-if="cell.items.length > 3" class="text-[10px] text-text/50">
-                            +{{ cell.items.length - 3 }} ще
-                          </div>
+                          <button
+                            v-if="cell.items.length > MAX_EVENTS_PER_DAY"
+                            type="button"
+                            class="text-left text-[10px] text-text/50 hover:text-emerald-200"
+                            @click.stop="openMonthEvents(cell)"
+                          >
+                            +{{ cell.items.length - MAX_EVENTS_PER_DAY }} ще
+                          </button>
                         </div>
                       </button>
                     </div>
@@ -194,6 +200,45 @@
       @close="handleCloseAppointmentModal"
       @saved="handleAppointmentSaved"
     />
+
+    <div
+      v-if="isMonthEventsOpen"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-6"
+      @click.self="closeMonthEvents"
+    >
+      <div class="w-full max-w-md rounded-xl border border-border/60 bg-card p-4 shadow-xl dark:border-border/40">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-text">Події дня</p>
+            <p class="text-xs text-text/60">{{ monthEventsLabel }}</p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-border/60 px-2 py-1 text-xs text-text/70 hover:text-text dark:border-border/40"
+            @click="closeMonthEvents"
+          >
+            Закрити
+          </button>
+        </div>
+        <div class="mt-3 max-h-[360px] space-y-2 overflow-y-auto">
+          <button
+            v-for="item in monthEventsItems"
+            :key="item.id"
+            type="button"
+            class="flex w-full items-start gap-2 rounded-lg border border-border/50 px-3 py-2 text-left text-xs text-text/80 transition hover:border-emerald-400/60 hover:bg-emerald-500/10 dark:border-border/30"
+            @click="handleMonthEventClick(item)"
+          >
+            <span class="mt-0.5 inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-400/80"></span>
+            <div class="min-w-0">
+              <p class="truncate font-semibold text-text/90">{{ item.title }}</p>
+              <p class="text-[11px] text-text/60">
+                {{ formatTimeHM(item.startAt) }} – {{ formatTimeHM(item.endAt) }}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -219,6 +264,7 @@ const CLINIC_START_HOUR = 8
 const CLINIC_END_HOUR = 22
 const SNAP_MINUTES = 15
 const WEEK_COLUMN_WIDTH = 150
+const MAX_EVENTS_PER_DAY = 3
 
 const view = ref('day')
 const currentDate = ref(new Date())
@@ -226,6 +272,9 @@ const isEventModalOpen = ref(false)
 const activeEvent = ref({})
 const isAppointmentModalOpen = ref(false)
 const selectedAppointment = ref(null)
+const isMonthEventsOpen = ref(false)
+const monthEventsItems = ref([])
+const monthEventsDate = ref(null)
 
 const calendarItems = ref([])
 const clinics = ref([])
@@ -346,6 +395,11 @@ const monthWeekdays = computed(() => {
     date.setDate(base.getDate() + index)
     return formatDateWithParts(date, { weekday: 'short' })
   })
+})
+
+const monthEventsLabel = computed(() => {
+  if (!monthEventsDate.value) return ''
+  return formatDateWithParts(monthEventsDate.value, { day: 'numeric', month: 'long', year: 'numeric' })
 })
 
 const itemsByDate = computed(() => {
@@ -666,6 +720,24 @@ const handleMonthDayClick = (date) => {
   view.value = 'day'
 }
 
+const openMonthEvents = (cell) => {
+  if (!cell?.items?.length) return
+  monthEventsItems.value = cell.items
+  monthEventsDate.value = cell.date
+  isMonthEventsOpen.value = true
+}
+
+const closeMonthEvents = () => {
+  isMonthEventsOpen.value = false
+  monthEventsItems.value = []
+  monthEventsDate.value = null
+}
+
+const handleMonthEventClick = (item) => {
+  closeMonthEvents()
+  handleAppointmentClick(item)
+}
+
 const createDefaultEvent = ({ start, end, doctorId }) => {
   const s = toDate(start) ?? new Date()
   const e = toDate(end) ?? new Date(s.getTime() + 30 * 60000)
@@ -930,6 +1002,7 @@ onMounted(async () => {
 watch(view, () => {
   handleCloseModal()
   handleCloseAppointmentModal()
+  closeMonthEvents()
   fetchEvents()
 })
 
@@ -946,6 +1019,7 @@ watch(currentDate, () => {
 watch(() => route.query, () => {
   handleCloseModal()
   handleCloseAppointmentModal()
+  closeMonthEvents()
   applyRouteSelection()
   fetchEvents()
 })
