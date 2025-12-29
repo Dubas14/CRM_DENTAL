@@ -1,11 +1,20 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="flex flex-1 overflow-x-auto overflow-y-auto">
       <div class="w-16 shrink-0">
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
 
       <div ref="columnsWrapper" class="relative flex min-w-[640px] flex-1 bg-bg/40">
+        <div class="absolute inset-0 pointer-events-none">
+          <div
+            v-for="block in inactiveBlocks"
+            :key="block.key"
+            class="hour--inactive absolute left-0 right-0 bg-bg/60"
+            :style="{ top: `${block.top}px`, height: `${block.height}px` }"
+          ></div>
+        </div>
+
         <div class="absolute inset-0 pointer-events-none">
           <div
             v-for="line in gridLines"
@@ -72,6 +81,14 @@ const props = defineProps({
     type: Number,
     default: 22,
   },
+  activeStartHour: {
+    type: Number,
+    default: null,
+  },
+  activeEndHour: {
+    type: Number,
+    default: null,
+  },
   hourHeight: {
     type: Number,
     default: 64,
@@ -107,6 +124,27 @@ const gridLines = computed(() => {
     })
   }
   return lines
+})
+
+const inactiveBlocks = computed(() => {
+  const blocks = []
+  const activeStart = props.activeStartHour ?? props.startHour
+  const activeEnd = props.activeEndHour ?? props.endHour
+  if (activeStart > props.startHour) {
+    blocks.push({
+      key: 'inactive-start',
+      top: 0,
+      height: (activeStart - props.startHour) * props.hourHeight,
+    })
+  }
+  if (activeEnd < props.endHour) {
+    blocks.push({
+      key: 'inactive-end',
+      top: (activeEnd - props.startHour) * props.hourHeight,
+      height: (props.endHour - activeEnd) * props.hourHeight,
+    })
+  }
+  return blocks
 })
 
 const itemsByDoctor = computed(() => {
@@ -361,3 +399,9 @@ onBeforeUnmount(() => {
   if (animationFrame.value) cancelAnimationFrame(animationFrame.value)
 })
 </script>
+
+<style scoped>
+.hour--inactive {
+  opacity: 0.35;
+}
+</style>
