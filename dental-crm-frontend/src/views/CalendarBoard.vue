@@ -75,6 +75,7 @@
 
                 <div
                   v-if="view === 'day'"
+                  ref="dayScrollRef"
                   class="flex min-h-0 flex-1 overflow-y-auto custom-scrollbar"
                 >
                   <CalendarBoard
@@ -86,6 +87,7 @@
                     :end-hour="DISPLAY_END_HOUR"
                     :active-start-hour="CLINIC_START_HOUR"
                     :active-end-hour="CLINIC_END_HOUR"
+                    :hour-height="HOUR_HEIGHT"
                     :snap-minutes="SNAP_MINUTES"
                     view-mode="day"
                     @select-slot="handleSelectSlot"
@@ -98,6 +100,7 @@
 
                 <div
                   v-else-if="view === 'week'"
+                  ref="weekScrollRef"
                   class="flex min-h-0 flex-1 overflow-x-auto overflow-y-auto custom-scrollbar"
                 >
                   <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
@@ -111,10 +114,15 @@
                       :end-hour="DISPLAY_END_HOUR"
                       :active-start-hour="CLINIC_START_HOUR"
                       :active-end-hour="CLINIC_END_HOUR"
+                      :hour-height="HOUR_HEIGHT"
                       :snap-minutes="SNAP_MINUTES"
-                      :interactive="false"
+                      :interactive="true"
                       view-mode="week"
+                      @select-slot="handleSelectSlot"
                       @appointment-click="handleAppointmentClick"
+                      @appointment-update="handleAppointmentUpdate"
+                      @appointment-drag-start="handleAppointmentDragStart"
+                      @appointment-drag-end="handleAppointmentDragEnd"
                     />
                   </div>
                 </div>
@@ -269,6 +277,7 @@ const DISPLAY_END_HOUR = 24
 const CLINIC_START_HOUR = 8
 const CLINIC_END_HOUR = 22
 const SNAP_MINUTES = 15
+const HOUR_HEIGHT = 64
 const WEEK_COLUMN_WIDTH = 150
 const MAX_EVENTS_PER_DAY = 3
 
@@ -281,6 +290,8 @@ const selectedAppointment = ref(null)
 const isMonthEventsOpen = ref(false)
 const monthEventsItems = ref([])
 const monthEventsDate = ref(null)
+const dayScrollRef = ref(null)
+const weekScrollRef = ref(null)
 
 const calendarItems = ref([])
 const clinics = ref([])
@@ -383,6 +394,8 @@ const weekColumns = computed(() => (
     const dayLabel = formatDateWithParts(date, { day: 'numeric', month: 'long' })
     return {
       id: formatDateOnly(date),
+      date,
+      doctorId: selectedDoctorId.value,
       label: dayLabel,
       weekday,
       dayLabel,
@@ -719,8 +732,23 @@ const shiftDateByView = (direction) => {
 const handlePrev = () => shiftDateByView(-1)
 const handleNext = () => shiftDateByView(1)
 
+const scrollToCurrentTime = async () => {
+  if (view.value !== 'day' && view.value !== 'week') return
+  await nextTick()
+  const container = view.value === 'day' ? dayScrollRef.value : weekScrollRef.value
+  if (!container) return
+  const now = new Date()
+  const minutesFromStart = (now.getHours() - DISPLAY_START_HOUR) * 60 + now.getMinutes()
+  if (minutesFromStart < 0) return
+  const pixelsPerMinute = HOUR_HEIGHT / 60
+  const targetTop = minutesFromStart * pixelsPerMinute
+  const offset = Math.max(0, targetTop - container.clientHeight / 2)
+  container.scrollTop = offset
+}
+
 const handleToday = () => {
   currentDate.value = new Date()
+  scrollToCurrentTime()
 }
 
 const setView = (mode) => {
