@@ -424,7 +424,7 @@ const resolveColumnAt = (x, columnRects, fallbackColumnId) => {
   return found?.columnId || fallbackColumnId
 }
 
-const snapMinutes = (minutes) => {
+const snapToMinutes = (minutes) => {
   const snap = props.snapMinutes
   return Math.round(minutes / snap) * snap
 }
@@ -448,7 +448,7 @@ const resolveBaseDateFromColumn = (columnId) => {
 
 const processPointerMove = (event) => {
   if (!dragState.value) return
-  const deltaMinutes = snapMinutes((event.clientY - dragState.value.startY) / pixelsPerMinute.value)
+  const deltaMinutes = snapToMinutes((event.clientY - dragState.value.startY) / pixelsPerMinute.value)
   const originStartMinutes = getMinutesFromStart(dragState.value.originStart)
   const originEndMinutes = getMinutesFromStart(dragState.value.originEnd)
 
@@ -462,13 +462,13 @@ const processPointerMove = (event) => {
     startMinutes = clamped.startMinutes
     endMinutes = clamped.endMinutes
   } else if (dragState.value.type === 'resize-start') {
-    startMinutes = snapMinutes(originStartMinutes + deltaMinutes)
+    startMinutes = snapToMinutes(originStartMinutes + deltaMinutes)
     const { min } = activeMinutesRange.value
     startMinutes = Math.min(startMinutes, originEndMinutes - props.snapMinutes)
     startMinutes = Math.max(min, startMinutes)
     endMinutes = originEndMinutes
   } else if (dragState.value.type === 'resize-end') {
-    endMinutes = snapMinutes(originEndMinutes + deltaMinutes)
+    endMinutes = snapToMinutes(originEndMinutes + deltaMinutes)
     const { max } = activeMinutesRange.value
     endMinutes = Math.max(endMinutes, originStartMinutes + props.snapMinutes)
     endMinutes = Math.min(endMinutes, max)
@@ -534,7 +534,7 @@ const computeHoverSlot = (event, columnRects) => {
   const offsetY = event.clientY - hovered.rect.top
   if (offsetY < 0 || offsetY > hovered.rect.height) return null
   const minutesFromStart = Math.round(offsetY / pixelsPerMinute.value)
-  const snappedMinutes = snapMinutes(minutesFromStart)
+  const snappedMinutes = snapToMinutes(minutesFromStart)
   const { min, max } = activeMinutesRange.value
   if (snappedMinutes < min || snappedMinutes + props.snapMinutes > max) return null
   const top = snappedMinutes * pixelsPerMinute.value
