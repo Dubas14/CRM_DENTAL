@@ -22,12 +22,16 @@
 
         <div class="absolute inset-0 pointer-events-none">
           <div
-            v-for="line in gridLines"
-            :key="line.index"
-            class="absolute left-0 right-0 border-t"
-            :class="line.isMajor ? 'calendar-grid-major' : 'calendar-grid-minor'"
-            :style="{ top: `${line.top}px` }"
-          ></div>
+              v-for="line in gridLines"
+              :key="line.index"
+              class="absolute left-0 right-0 border-t"
+              :class="{
+    'calendar-grid-strong': line.type === 'hour',
+    'calendar-grid-medium': line.type === 'half',
+    'calendar-grid-light': line.type === 'quarter',
+  }"
+              :style="{ top: `${line.top}px` }"
+          />
         </div>
 
         <div
@@ -162,11 +166,18 @@ const pixelsPerMinute = computed(() => props.hourHeight / 60)
 const gridLines = computed(() => {
   const lines = []
   const totalMinutes = (props.endHour - props.startHour) * 60
-  for (let minutes = 0; minutes <= totalMinutes; minutes += 30) {
+  for (let minutes = 0; minutes <= totalMinutes; minutes += props.snapMinutes) {
+    const isHour = minutes % 60 === 0
+    const isHalfHour = minutes % 30 === 0 && !isHour
+
     lines.push({
       index: minutes,
       top: minutes * pixelsPerMinute.value,
-      isMajor: minutes % 60 === 0,
+      type: isHour
+          ? 'hour'
+          : isHalfHour
+              ? 'half'
+              : 'quarter',
     })
   }
   return lines
