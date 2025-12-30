@@ -68,6 +68,14 @@ const props = defineProps({
     type: Number,
     default: 22,
   },
+  activeStartHour: {
+    type: Number,
+    default: null,
+  },
+  activeEndHour: {
+    type: Number,
+    default: null,
+  },
   hourHeight: {
     type: Number,
     default: 64,
@@ -102,6 +110,16 @@ const doctorLabel = computed(() => (
 
 const suppressClickUntil = ref(0)
 
+const activeMinutesRange = computed(() => {
+  const activeStart = props.activeStartHour ?? props.startHour
+  const activeEnd = props.activeEndHour ?? props.endHour
+  const min = Math.max(0, (activeStart - props.startHour) * 60)
+  const max = Math.min((props.endHour - props.startHour) * 60, (activeEnd - props.startHour) * 60)
+  return { min, max }
+})
+
+const resolvedDoctorId = computed(() => props.doctor?.doctorId ?? props.doctor?.id)
+
 const handleBodyClick = (event) => {
   if (!props.interactive) return
   if (props.doctor?.is_active === false) return
@@ -113,9 +131,12 @@ const handleBodyClick = (event) => {
 
   const minutesFromStart = Math.round(offsetY / (props.hourHeight / 60))
   const snappedMinutes = Math.round(minutesFromStart / props.snapMinutes) * props.snapMinutes
+  const { min, max } = activeMinutesRange.value
+  if (snappedMinutes < min || snappedMinutes + props.snapMinutes > max) return
   emit('select-slot', {
-    doctorId: props.doctor?.id,
+    doctorId: resolvedDoctorId.value,
     minutesFromStart: snappedMinutes,
+    baseDate: props.baseDate,
   })
 }
 
@@ -130,8 +151,8 @@ const snapMinutes = (minutes) => {
 }
 
 const clampMinutes = (value) => {
-  const max = (props.endHour - props.startHour) * 60
-  return Math.min(Math.max(value, 0), max)
+  const { min, max } = activeMinutesRange.value
+  return Math.min(Math.max(value, min), max)
 }
 
 const normalizeMinutesFromOffset = (offsetY) => {
@@ -196,12 +217,15 @@ const handlePointerDown = (event) => {
   const offsetY = event.clientY - rect.top
   if (offsetY < 0 || offsetY > rect.height) return
 
-  const originMinutes = clampMinutes(normalizeMinutesFromOffset(offsetY))
+  const rawMinutes = normalizeMinutesFromOffset(offsetY)
+  const { min, max } = activeMinutesRange.value
+  if (rawMinutes < min || rawMinutes + props.snapMinutes > max) return
+  const originMinutes = clampMinutes(rawMinutes)
   const startMinutes = originMinutes
   const endMinutes = clampMinutes(originMinutes + props.snapMinutes)
 
   draftState.value = {
-    doctorId: props.doctor?.id,
+    doctorId: resolvedDoctorId.value,
     originMinutes,
     startMinutes,
     endMinutes,

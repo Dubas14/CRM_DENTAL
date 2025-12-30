@@ -53,8 +53,10 @@
             :items="itemsByColumn[column.id] || []"
             :start-hour="startHour"
             :end-hour="endHour"
+            :active-start-hour="activeStartHour"
+            :active-end-hour="activeEndHour"
             :hour-height="hourHeight"
-            :base-date="date"
+            :base-date="column.date || date"
             :snap-minutes="snapMinutes"
             :interactive="interactive"
             @select-slot="handleSelectSlot"
@@ -77,7 +79,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import CalendarTimeGrid from './CalendarTimeGrid.vue'
 import CalendarDoctorColumn from './CalendarDoctorColumn.vue'
 import CalendarNowLine from './CalendarNowLine.vue'
@@ -156,8 +158,17 @@ const hoverSlot = ref({
   width: 0,
   height: 0,
 })
+const nowTick = ref(Date.now())
+const nowInterval = ref(null)
 
 const pixelsPerMinute = computed(() => props.hourHeight / 60)
+const activeMinutesRange = computed(() => {
+  const activeStart = props.activeStartHour ?? props.startHour
+  const activeEnd = props.activeEndHour ?? props.endHour
+  const min = Math.max(0, (activeStart - props.startHour) * 60)
+  const max = Math.min((props.endHour - props.startHour) * 60, (activeEnd - props.startHour) * 60)
+  return { min, max }
+})
 
 const gridLines = computed(() => {
   const lines = []
@@ -285,14 +296,14 @@ const isToday = computed(() => {
 const showNowLine = computed(() => isToday.value)
 
 const nowLineTop = computed(() => {
-  const now = new Date()
+  const now = new Date(nowTick.value)
   const minutes = (now.getHours() - props.startHour) * 60 + now.getMinutes()
   if (minutes < 0 || minutes > (props.endHour - props.startHour) * 60) return -999
   return minutes * pixelsPerMinute.value
 })
 
 const nowLabel = computed(() => {
-  const now = new Date()
+  const now = new Date(nowTick.value)
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 })
 
@@ -308,6 +319,12 @@ const normalizeDate = (value) => {
   if (!value) return null
   const date = value instanceof Date ? value : new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
+}
+
+const parseDateKey = (key) => {
+  if (typeof key !== 'string') return null
+  const parsed = new Date(`${key}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 const formatDateKey = (date) => {
@@ -326,13 +343,6 @@ const getMinutesFromStart = (date) => {
   return Math.max(0, minutes - startMinutes)
 }
 
-const getDateFromMinutes = (minutes) => {
-  const base = new Date(props.date)
-  base.setHours(props.startHour, 0, 0, 0)
-  base.setMinutes(base.getMinutes() + minutes)
-  return base
-}
-
 const getDateFromMinutesForBase = (baseDate, minutes) => {
   const base = new Date(baseDate || props.date)
   base.setHours(props.startHour, 0, 0, 0)
@@ -340,10 +350,12 @@ const getDateFromMinutesForBase = (baseDate, minutes) => {
   return base
 }
 
-const handleSelectSlot = ({ doctorId, minutesFromStart }) => {
+const handleSelectSlot = ({ doctorId, minutesFromStart, baseDate }) => {
   if (!props.interactive) return
-  const start = getDateFromMinutes(minutesFromStart)
-  const end = getDateFromMinutes(minutesFromStart + props.snapMinutes * 2)
+  const range = activeMinutesRange.value
+  if (minutesFromStart < range.min || minutesFromStart + props.snapMinutes > range.max) return
+  const start = getDateFromMinutesForBase(baseDate || props.date, minutesFromStart)
+  const end = getDateFromMinutesForBase(baseDate || props.date, minutesFromStart + props.snapMinutes * 2)
   emit('select-slot', { doctorId, start, end })
 }
 
@@ -354,7 +366,7 @@ const buildColumnRects = () => {
       const body = instance?.bodyRef?.value
       if (!body) return null
       const rect = body.getBoundingClientRect()
-      return { doctorId: column.id, rect }
+      return { columnId: column.id, rect, baseDate: column.date || parseDateKey(column.id) }
     })
     .filter(Boolean)
 }
@@ -381,6 +393,7 @@ const handleInteractionStart = ({ item, type, pointerEvent }) => {
     originStart: item.startAt,
     originEnd: item.endAt,
     originDoctorId: item.doctorId,
+    originBaseDate: normalizeDate(item.startAt) || props.date,
     startX: pointerEvent.clientX,
     startY: pointerEvent.clientY,
     columnRects,
@@ -395,9 +408,9 @@ const handleInteractionStart = ({ item, type, pointerEvent }) => {
   window.addEventListener('pointerup', handlePointerEnd)
 }
 
-const resolveDoctorAt = (x, columnRects, fallbackDoctorId) => {
+const resolveColumnAt = (x, columnRects, fallbackColumnId) => {
   const found = columnRects.find(({ rect }) => x >= rect.left && x <= rect.right)
-  return found?.doctorId || fallbackDoctorId
+  return found?.columnId || fallbackColumnId
 }
 
 const snapMinutes = (minutes) => {
@@ -406,8 +419,7 @@ const snapMinutes = (minutes) => {
 }
 
 const clampMinutesRange = (startMinutes, endMinutes) => {
-  const min = 0
-  const max = (props.endHour - props.startHour) * 60
+  const { min, max } = activeMinutesRange.value
   const duration = endMinutes - startMinutes
   let nextStart = Math.max(min, Math.min(startMinutes, max - duration))
   let nextEnd = nextStart + duration
@@ -416,6 +428,11 @@ const clampMinutesRange = (startMinutes, endMinutes) => {
     nextStart = Math.max(min, max - duration)
   }
   return { startMinutes: nextStart, endMinutes: nextEnd }
+}
+
+const resolveBaseDateFromColumn = (columnId) => {
+  if (props.viewMode !== 'week') return props.date
+  return parseDateKey(columnId) || props.date
 }
 
 const processPointerMove = (event) => {
@@ -435,23 +452,31 @@ const processPointerMove = (event) => {
     endMinutes = clamped.endMinutes
   } else if (dragState.value.type === 'resize-start') {
     startMinutes = snapMinutes(originStartMinutes + deltaMinutes)
+    const { min } = activeMinutesRange.value
     startMinutes = Math.min(startMinutes, originEndMinutes - props.snapMinutes)
-    startMinutes = Math.max(0, startMinutes)
+    startMinutes = Math.max(min, startMinutes)
     endMinutes = originEndMinutes
   } else if (dragState.value.type === 'resize-end') {
     endMinutes = snapMinutes(originEndMinutes + deltaMinutes)
+    const { max } = activeMinutesRange.value
     endMinutes = Math.max(endMinutes, originStartMinutes + props.snapMinutes)
-    const max = (props.endHour - props.startHour) * 60
     endMinutes = Math.min(endMinutes, max)
     startMinutes = originStartMinutes
   }
 
-  const doctorId = dragState.value.type === 'move'
-    ? resolveDoctorAt(event.clientX, dragState.value.columnRects, dragState.value.originDoctorId)
+  const fallbackColumnId = props.viewMode === 'week'
+    ? formatDateKey(dragState.value.originBaseDate)
     : dragState.value.originDoctorId
+  const columnId = dragState.value.type === 'move'
+    ? resolveColumnAt(event.clientX, dragState.value.columnRects, fallbackColumnId)
+    : fallbackColumnId
+  const doctorId = props.viewMode === 'week' ? dragState.value.originDoctorId : columnId
+  const baseDate = props.viewMode === 'week' && dragState.value.type === 'move'
+    ? resolveBaseDateFromColumn(columnId)
+    : dragState.value.originBaseDate
 
-  dragState.value.draftStart = getDateFromMinutes(startMinutes)
-  dragState.value.draftEnd = getDateFromMinutes(endMinutes)
+  dragState.value.draftStart = getDateFromMinutesForBase(baseDate, startMinutes)
+  dragState.value.draftEnd = getDateFromMinutesForBase(baseDate, endMinutes)
   dragState.value.draftDoctorId = doctorId
 }
 
@@ -499,6 +524,8 @@ const computeHoverSlot = (event, columnRects) => {
   if (offsetY < 0 || offsetY > hovered.rect.height) return null
   const minutesFromStart = Math.round(offsetY / pixelsPerMinute.value)
   const snappedMinutes = snapMinutes(minutesFromStart)
+  const { min, max } = activeMinutesRange.value
+  if (snappedMinutes < min || snappedMinutes + props.snapMinutes > max) return null
   const top = snappedMinutes * pixelsPerMinute.value
   return {
     top: hovered.rect.top - wrapperRect.top + top,
@@ -563,6 +590,13 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', handlePointerMove)
   window.removeEventListener('pointerup', handlePointerEnd)
   if (animationFrame.value) cancelAnimationFrame(animationFrame.value)
+  if (nowInterval.value) clearInterval(nowInterval.value)
+})
+
+onMounted(() => {
+  nowInterval.value = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 60000)
 })
 </script>
 
