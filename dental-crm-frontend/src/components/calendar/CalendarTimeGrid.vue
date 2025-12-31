@@ -1,5 +1,7 @@
 <template>
-  <div class="calendar-time-grid calendar-time-grid--sticky pointer-events-none relative h-full border-r calendar-grid-strong">
+  <div
+    class="calendar-time-grid calendar-time-grid--sticky pointer-events-none relative h-full border-r calendar-grid-strong"
+  >
     <div
       v-for="hour in hours"
       :key="hour"
@@ -14,22 +16,22 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
 const props = defineProps({
   startHour: {
     type: Number,
-    default: 8,
+    default: 8
   },
   endHour: {
     type: Number,
-    default: 22,
+    default: 22
   },
   hourHeight: {
     type: Number,
-    default: 64,
-  },
+    default: 64
+  }
 })
 
 const hours = computed(() => {

@@ -11,9 +11,7 @@
         <span v-else>✨</span>
         Підібрати час
       </button>
-      <span v-if="!canSearch" class="text-xs text-gray-500">
-        (Оберіть лікаря)
-      </span>
+      <span v-if="!canSearch" class="text-xs text-gray-500"> (Оберіть лікаря) </span>
     </div>
 
     <div v-else class="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
@@ -22,9 +20,7 @@
         <button @click="showList = false" class="text-gray-400 hover:text-gray-600">✕</button>
       </div>
 
-      <div v-if="loading" class="text-center py-4 text-gray-500">
-        Пошук ідеального часу...
-      </div>
+      <div v-if="loading" class="text-center py-4 text-gray-500">Пошук ідеального часу...</div>
 
       <div v-else-if="slots.length === 0" class="text-center py-2 text-sm text-gray-500">
         Вільних вікон на найближчі дні не знайдено 😔
@@ -41,9 +37,7 @@
               <div class="font-medium text-gray-900">
                 {{ formatDate(slot.date) }}
               </div>
-              <div class="text-xs text-gray-500">
-                {{ slot.start }} - {{ slot.end }}
-              </div>
+              <div class="text-xs text-gray-500">{{ slot.start }} - {{ slot.end }}</div>
             </div>
             <div class="text-indigo-600 opacity-0 group-hover:opacity-100 font-medium text-sm">
               Обрати →
@@ -59,30 +53,30 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue';
-import calendarApi from '../services/calendarApi';
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import calendarApi from '../services/calendarApi'
 
 const props = defineProps({
   doctorId: { type: [Number, String], required: true },
   procedureId: { type: [Number, String], default: null },
   fromDate: { type: String, default: () => new Date().toISOString().split('T')[0] }
-});
+})
 
-const emit = defineEmits(['select']);
+const emit = defineEmits(['select'])
 
-const loading = ref(false);
-const showList = ref(false);
-const slots = ref([]);
+const loading = ref(false)
+const showList = ref(false)
+const slots = ref([])
 
-const canSearch = computed(() => !!props.doctorId);
+const canSearch = computed(() => !!props.doctorId)
 
 const fetchSuggestions = async () => {
-  if (!canSearch.value) return;
+  if (!canSearch.value) return
 
-  loading.value = true;
-  showList.value = true;
-  slots.value = [];
+  loading.value = true
+  showList.value = true
+  slots.value = []
 
   try {
     const { data } = await calendarApi.getBookingSuggestions({
@@ -90,33 +84,33 @@ const fetchSuggestions = async () => {
       procedure_id: props.procedureId,
       from_date: props.fromDate,
       limit: 5
-    });
-    slots.value = data?.slots || [];
+    })
+    slots.value = data?.slots || []
   } catch (e) {
-    console.error('Помилка підбору слотів:', e);
-    slots.value = [];
+    console.error('Помилка підбору слотів:', e)
+    slots.value = []
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const selectSlot = (slot) => {
   emit('select', {
     date: slot.date,
     start: slot.start,
     end: slot.end
-  });
-  showList.value = false;
-};
+  })
+  showList.value = false
+}
 
 const formatDate = (dateStr) => {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr)
   return new Intl.DateTimeFormat('uk-UA', {
     day: 'numeric',
     month: 'long',
     weekday: 'short'
-  }).format(date);
-};
+  }).format(date)
+}
 </script>
 
 <style scoped>

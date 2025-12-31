@@ -35,7 +35,11 @@
           :key="month"
           type="button"
           class="month-item rounded-[10px] border border-transparent px-[10px] py-[8px] text-center text-[13px] font-medium text-text/70 transition hover:bg-white/10"
-          :class="index === currentMonth && selectedYear === currentYear ? 'is-selected rounded-[9999px] bg-blue-600 text-white' : ''"
+          :class="
+            index === currentMonth && selectedYear === currentYear
+              ? 'is-selected rounded-[9999px] bg-blue-600 text-white'
+              : ''
+          "
           @click="selectMonth(index)"
         >
           {{ month }}
@@ -45,14 +49,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   date: {
     type: Date,
-    required: true,
-  },
+    required: true
+  }
 })
 
 const emit = defineEmits(['select'])

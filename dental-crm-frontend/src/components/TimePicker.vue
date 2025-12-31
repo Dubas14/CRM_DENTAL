@@ -1,13 +1,10 @@
 <template>
-  <div
-      class="time-picker-wrapper"
-      :class="{ 'is-disabled': disabled }"
-  >
+  <div class="time-picker-wrapper" :class="{ 'is-disabled': disabled }">
     <div ref="pickerRef" class="time-picker-container"></div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import TimePicker from 'tui-time-picker'
 import 'tui-time-picker/dist/tui-time-picker.css'
@@ -18,30 +15,27 @@ import 'tui-time-picker/dist/tui-time-picker.css'
 const props = defineProps({
   modelValue: {
     type: String,
-    default: null, // 'HH:mm'
+    default: null // 'HH:mm'
   },
   minuteStep: {
     type: Number,
-    default: 5,
+    default: 5
   },
   disabled: {
     type: Boolean,
-    default: false,
+    default: false
   },
   // резерв на майбутнє
   format: {
     type: String,
-    default: 'HH:mm',
-  },
+    default: 'HH:mm'
+  }
 })
 
 /**
  * EMITS
  */
-const emit = defineEmits([
-  'update:modelValue',
-  'change',
-])
+const emit = defineEmits(['update:modelValue', 'change'])
 
 /**
  * REFS / STATE
@@ -75,7 +69,7 @@ const parseTime = (value) => {
 
   return {
     hour: parts[0],
-    minute: parts[1],
+    minute: parts[1]
   }
 }
 
@@ -96,9 +90,9 @@ onMounted(() => {
     initialHour: hour,
     initialMinute: minute,
     inputType: 'spinbox',
-    showMeridiem: false,        // ❌ AM/PM
+    showMeridiem: false, // ❌ AM/PM
     minuteStep: props.minuteStep,
-    usageStatistics: false,
+    usageStatistics: false
   })
 
   // 🔥 Обмеження робочого часу (медицина)
@@ -127,27 +121,27 @@ onMounted(() => {
 
 // синхронізація з v-model (ЗОВНІ → В СЕРЕДИНУ)
 watch(
-    () => props.modelValue,
-    (newValue) => {
-      if (!pickerInstance) return
+  () => props.modelValue,
+  (newValue) => {
+    if (!pickerInstance) return
 
-      // якщо це наш власний emit — ігноруємо
-      if (isInternalUpdate) {
-        isInternalUpdate = false
-        return
-      }
-
-      setPickerTime(newValue)
+    // якщо це наш власний emit — ігноруємо
+    if (isInternalUpdate) {
+      isInternalUpdate = false
+      return
     }
+
+    setPickerTime(newValue)
+  }
 )
 
 // disabled state
 watch(
-    () => props.disabled,
-    (isDisabled) => {
-      if (!pickerInstance) return
-      pickerInstance.setDisabled(isDisabled)
-    }
+  () => props.disabled,
+  (isDisabled) => {
+    if (!pickerInstance) return
+    pickerInstance.setDisabled(isDisabled)
+  }
 )
 
 /**
@@ -177,8 +171,7 @@ onBeforeUnmount(() => {
 }
 
 .time-picker-wrapper :deep(.tui-timepicker-input) {
-  @apply
-  w-full
+  @apply w-full
   rounded-lg
   border
   border-slate-700
@@ -200,8 +193,7 @@ onBeforeUnmount(() => {
 }
 
 .time-picker-wrapper :deep(.tui-timepicker-btn) {
-  @apply
-  border
+  @apply border
   border-slate-600
   bg-slate-800
   text-slate-300

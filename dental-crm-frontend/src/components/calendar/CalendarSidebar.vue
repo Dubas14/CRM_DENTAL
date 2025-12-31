@@ -18,7 +18,9 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60">Оберіть клініку</label>
+          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
+            >Оберіть клініку</label
+          >
           <select
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedClinicId"
@@ -32,7 +34,9 @@
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60">Оберіть лікаря</label>
+          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
+            >Оберіть лікаря</label
+          >
           <select
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedDoctorId"
@@ -47,7 +51,9 @@
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60">Оберіть процедуру</label>
+          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
+            >Оберіть процедуру</label
+          >
           <select
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedProcedureId"
@@ -64,50 +70,56 @@
   </aside>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import CalendarMiniMonth from './CalendarMiniMonth.vue'
 
 const props = defineProps({
   currentDate: {
     type: Date,
-    required: true,
+    required: true
   },
   clinics: {
     type: Array,
-    default: () => [],
+    default: () => []
   },
   doctors: {
     type: Array,
-    default: () => [],
+    default: () => []
   },
   procedures: {
     type: Array,
-    default: () => [],
+    default: () => []
   },
   selectedClinicId: {
     type: [Number, String, null],
-    default: null,
+    default: null
   },
   selectedDoctorId: {
     type: [Number, String, null],
-    default: null,
+    default: null
   },
   selectedProcedureId: {
     type: [Number, String, null],
-    default: null,
+    default: null
   },
   loadingDoctors: {
     type: Boolean,
-    default: false,
+    default: false
   },
   isDoctor: {
     type: Boolean,
-    default: false,
-  },
+    default: false
+  }
 })
 
-const emit = defineEmits(['clinic-change', 'doctor-change', 'procedure-change', 'date-change', 'select-date'])
+const emit = defineEmits([
+  'clinic-change',
+  'doctor-change',
+  'procedure-change',
+  'date-change',
+  'select-date'
+])
 
 const isCalendarOpen = ref(false)
 const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' })
@@ -120,12 +132,12 @@ const normalizedCurrentDate = computed(() => {
   return Number.isNaN(date.getTime()) ? new Date() : date
 })
 
-const monthLabel = computed(() => (
+const monthLabel = computed(() =>
   monthFormatter
     .formatToParts(normalizedCurrentDate.value)
     .map((part) => (part.type === 'month' ? capitalize(part.value) : part.value))
     .join('')
-))
+)
 
 const toggleCalendar = () => {
   isCalendarOpen.value = !isCalendarOpen.value
@@ -150,5 +162,4 @@ const onProcedureChange = (event) => {
   const value = event?.target?.value
   emit('procedure-change', value && value !== 'null' ? Number(value) : null)
 }
-
 </script>

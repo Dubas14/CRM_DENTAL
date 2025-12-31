@@ -1,45 +1,43 @@
-<script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import apiClient from '../services/apiClient';
-import { useAuth } from '../composables/useAuth';
+<script setup lang="ts">
+import { ref, onMounted, computed, watch } from 'vue'
+import apiClient from '../services/apiClient'
+import { useAuth } from '../composables/useAuth'
 
-const { user } = useAuth();
-const canManageClinics = computed(() => user.value?.global_role === 'super_admin');
+const { user } = useAuth()
+const canManageClinics = computed(() => user.value?.global_role === 'super_admin')
 
-const clinics = ref([]);
-const loading = ref(true);
-const error = ref(null);
-const pageSize = 10;
-const currentPage = ref(1);
+const clinics = ref([])
+const loading = ref(true)
+const error = ref(null)
+const pageSize = 10
+const currentPage = ref(1)
 
-const gridData = computed(() => clinics.value);
-const totalItems = computed(() => gridData.value.length);
-const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)));
-const safeCurrentPage = computed(() =>
-  Math.min(Math.max(currentPage.value, 1), pageCount.value)
-);
+const gridData = computed(() => clinics.value)
+const totalItems = computed(() => gridData.value.length)
+const pageCount = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize)))
+const safeCurrentPage = computed(() => Math.min(Math.max(currentPage.value, 1), pageCount.value))
 const pagedClinics = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return gridData.value.slice(start, start + pageSize);
-});
+  const start = (currentPage.value - 1) * pageSize
+  return gridData.value.slice(start, start + pageSize)
+})
 
 const pagesToShow = computed(() => {
-  const visible = 5;
-  const half = Math.floor(visible / 2);
-  let start = Math.max(1, safeCurrentPage.value - half);
-  let end = Math.min(pageCount.value, start + visible - 1);
+  const visible = 5
+  const half = Math.floor(visible / 2)
+  let start = Math.max(1, safeCurrentPage.value - half)
+  const end = Math.min(pageCount.value, start + visible - 1)
 
   if (end - start + 1 < visible) {
-    start = Math.max(1, end - visible + 1);
+    start = Math.max(1, end - visible + 1)
   }
 
-  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
-});
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+})
 
 // --- стан форми створення ---
-const showForm = ref(false);
-const creating = ref(false);
-const formError = ref(null);
+const showForm = ref(false)
+const creating = ref(false)
+const formError = ref(null)
 
 const form = ref({
   name: '',
@@ -48,39 +46,36 @@ const form = ref({
   address: '',
   phone: '',
   email: '',
-  website: '',
-});
+  website: ''
+})
 
 // завантаження списку клінік
 const loadClinics = async () => {
-  loading.value = true;
-  error.value = null;
+  loading.value = true
+  error.value = null
 
   try {
-    const { data } = await apiClient.get('/clinics');
-    clinics.value = data;
-    currentPage.value = 1;
+    const { data } = await apiClient.get('/clinics')
+    clinics.value = data
+    currentPage.value = 1
   } catch (e) {
-    console.error(e);
-    error.value =
-        e.response?.data?.message ||
-        e.message ||
-        'Помилка завантаження клінік';
+    console.error(e)
+    error.value = e.response?.data?.message || e.message || 'Помилка завантаження клінік'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 // створення нової клініки
 const createClinic = async () => {
-  formError.value = null;
-  creating.value = true;
+  formError.value = null
+  creating.value = true
 
   try {
-    const { data } = await apiClient.post('/clinics', form.value);
+    const { data } = await apiClient.post('/clinics', form.value)
 
     // додаємо в список без додаткового запиту
-    clinics.value.push(data);
+    clinics.value.push(data)
 
     // чистимо форму
     form.value = {
@@ -90,41 +85,40 @@ const createClinic = async () => {
       address: '',
       phone: '',
       email: '',
-      website: '',
-    };
+      website: ''
+    }
 
-    showForm.value = false;
+    showForm.value = false
   } catch (e) {
-    console.error(e);
+    console.error(e)
     if (e.response?.data?.errors) {
       // беремо першу помилку валідації
-      const first = Object.values(e.response.data.errors)[0];
-      formError.value = Array.isArray(first) ? first[0] : String(first);
+      const first = Object.values(e.response.data.errors)[0]
+      formError.value = Array.isArray(first) ? first[0] : String(first)
     } else {
-      formError.value =
-          e.response?.data?.message || e.message || 'Не вдалося створити клініку';
+      formError.value = e.response?.data?.message || e.message || 'Не вдалося створити клініку'
     }
   } finally {
-    creating.value = false;
+    creating.value = false
   }
-};
+}
 
-onMounted(loadClinics);
+onMounted(loadClinics)
 
 const goToPage = (page) => {
-  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
-  if (nextPage === currentPage.value) return;
-  currentPage.value = nextPage;
-};
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value)
+  if (nextPage === currentPage.value) return
+  currentPage.value = nextPage
+}
 
 watch(
   () => totalItems.value,
   () => {
     if (currentPage.value > pageCount.value) {
-      currentPage.value = pageCount.value;
+      currentPage.value = pageCount.value
     }
   }
-);
+)
 </script>
 
 <template>
@@ -133,26 +127,24 @@ watch(
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Клініки</h1>
-        <p class="text-sm text-text/70">
-          Дані тягнемо з Laravel API (<code>/api/clinics</code>).
-        </p>
+        <p class="text-sm text-text/70">Дані тягнемо з Laravel API (<code>/api/clinics</code>).</p>
       </div>
 
       <div class="flex items-center gap-2">
         <!-- ✅ цю кнопку бачить тільки super_admin -->
         <button
-            v-if="canManageClinics"
-            type="button"
-            class="px-3 py-2 rounded-lg border border-emerald-500/50 text-sm text-emerald-300 hover:bg-emerald-500/10"
-            @click="showForm = !showForm"
+          v-if="canManageClinics"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-emerald-500/50 text-sm text-emerald-300 hover:bg-emerald-500/10"
+          @click="showForm = !showForm"
         >
           {{ showForm ? 'Приховати форму' : 'Нова клініка' }}
         </button>
 
         <button
-            type="button"
-            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-            @click="loadClinics"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
+          @click="loadClinics"
         >
           Оновити
         </button>
@@ -161,26 +153,22 @@ watch(
 
     <!-- форма створення -->
     <div
-        v-if="showForm"
-        class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
+      v-if="showForm"
+      class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
       <h2 class="text-lg font-semibold">Нова клініка</h2>
 
-      <div v-if="formError" class="text-sm text-red-400">
-        ❌ {{ formError }}
-      </div>
+      <div v-if="formError" class="text-sm text-red-400">❌ {{ formError }}</div>
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createClinic">
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Назва *
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Назва * </label>
           <input
-              v-model="form.name"
-              type="text"
-              required
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Dental Plus"
+            v-model="form.name"
+            type="text"
+            required
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Dental Plus"
           />
         </div>
 
@@ -189,85 +177,75 @@ watch(
             Юридична назва
           </label>
           <input
-              v-model="form.legal_name"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="ТОВ «Дентал Плюс»"
+            v-model="form.legal_name"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="ТОВ «Дентал Плюс»"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Місто
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Місто </label>
           <input
-              v-model="form.city"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Черкаси"
+            v-model="form.city"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Черкаси"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Адреса
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Адреса </label>
           <input
-              v-model="form.address"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="вул. Прикладна, 10"
+            v-model="form.address"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="вул. Прикладна, 10"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Телефон
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Телефон </label>
           <input
-              v-model="form.phone"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="+380..."
+            v-model="form.phone"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="+380..."
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Email
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
           <input
-              v-model="form.email"
-              type="email"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="clinic@example.com"
+            v-model="form.email"
+            type="email"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="clinic@example.com"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Сайт
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Сайт </label>
           <input
-              v-model="form.website"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="https://..."
+            v-model="form.website"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="https://..."
           />
         </div>
 
         <div class="md:col-span-2 flex justify-end gap-2">
           <button
-              type="button"
-              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
-              @click="showForm = false"
+            type="button"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
+            @click="showForm = false"
           >
             Скасувати
           </button>
           <button
-              type="submit"
-              :disabled="creating"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+            type="submit"
+            :disabled="creating"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {{ creating ? 'Збереження...' : 'Зберегти' }}
           </button>
@@ -276,13 +254,9 @@ watch(
     </div>
 
     <!-- список клінік -->
-    <div v-if="loading" class="text-text/80">
-      Завантаження клінік...
-    </div>
+    <div v-if="loading" class="text-text/80">Завантаження клінік...</div>
 
-    <div v-else-if="error" class="text-red-400">
-      ❌ {{ error }}
-    </div>
+    <div v-else-if="error" class="text-red-400">❌ {{ error }}</div>
 
     <div v-else>
       <div v-if="clinics.length === 0" class="text-text/70 text-sm">
@@ -290,8 +264,8 @@ watch(
       </div>
 
       <div
-          v-else
-          class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
+        v-else
+        class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-border/60 text-sm">
@@ -336,7 +310,9 @@ watch(
         class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
       >
         <p>
-          Показано {{ (safeCurrentPage - 1) * pageSize + 1 }}–{{ Math.min(safeCurrentPage * pageSize, totalItems) }}
+          Показано {{ (safeCurrentPage - 1) * pageSize + 1 }}–{{
+            Math.min(safeCurrentPage * pageSize, totalItems)
+          }}
           з {{ totalItems }}
         </p>
         <div class="flex flex-wrap items-center gap-2">
@@ -354,7 +330,11 @@ watch(
             :key="page"
             type="button"
             class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
-            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            :class="
+              page === safeCurrentPage
+                ? 'border-accent bg-accent text-card'
+                : 'border-border bg-card text-text hover:bg-card/70'
+            "
             @click="goToPage(page)"
           >
             {{ page }}

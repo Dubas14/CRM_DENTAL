@@ -1,24 +1,24 @@
-<script setup>
-import { ref, onMounted, watch, computed } from 'vue';
-import procedureApi from '../services/procedureApi';
-import equipmentApi from '../services/equipmentApi';
-import clinicApi from '../services/clinicApi';
-import { useAuth } from '../composables/useAuth';
+<script setup lang="ts">
+import { ref, onMounted, watch, computed } from 'vue'
+import procedureApi from '../services/procedureApi'
+import equipmentApi from '../services/equipmentApi'
+import clinicApi from '../services/clinicApi'
+import { useAuth } from '../composables/useAuth'
 
-const { user } = useAuth();
+const { user } = useAuth()
 
-const clinics = ref([]);
-const selectedClinicId = ref('');
-const procedures = ref([]);
-const equipments = ref([]);
-const loading = ref(false);
-const error = ref(null);
+const clinics = ref([])
+const selectedClinicId = ref('')
+const procedures = ref([])
+const equipments = ref([])
+const loading = ref(false)
+const error = ref(null)
 
-const showForm = ref(false);
-const creating = ref(false);
-const createError = ref(null);
-const editError = ref(null);
-const editingProcedureId = ref(null);
+const showForm = ref(false)
+const creating = ref(false)
+const createError = ref(null)
+const editError = ref(null)
+const editingProcedureId = ref(null)
 const editForm = ref({
   name: '',
   category: '',
@@ -26,64 +26,62 @@ const editForm = ref({
   requires_room: false,
   requires_assistant: false,
   equipment_id: '',
-  steps: [],
-});
-const savingEdit = ref(false);
-const perPage = 12;
-const currentPage = ref(1);
+  steps: []
+})
+const savingEdit = ref(false)
+const perPage = 12
+const currentPage = ref(1)
 const pagination = ref({
   currentPage: 1,
   lastPage: 1,
   total: 0,
   perPage,
   from: 0,
-  to: 0,
-});
-const isServerPaginated = ref(false);
+  to: 0
+})
+const isServerPaginated = ref(false)
 
-const totalItems = computed(() => pagination.value.total || procedures.value.length);
+const totalItems = computed(() => pagination.value.total || procedures.value.length)
 const pageCount = computed(() => {
   if (isServerPaginated.value) {
-    return pagination.value.lastPage || 1;
+    return pagination.value.lastPage || 1
   }
-  return Math.max(1, Math.ceil(totalItems.value / perPage));
-});
-const safeCurrentPage = computed(() =>
-  Math.min(Math.max(currentPage.value, 1), pageCount.value)
-);
+  return Math.max(1, Math.ceil(totalItems.value / perPage))
+})
+const safeCurrentPage = computed(() => Math.min(Math.max(currentPage.value, 1), pageCount.value))
 
 const pagesToShow = computed(() => {
-  const visible = 5;
-  const half = Math.floor(visible / 2);
-  let start = Math.max(1, safeCurrentPage.value - half);
-  let end = Math.min(pageCount.value, start + visible - 1);
+  const visible = 5
+  const half = Math.floor(visible / 2)
+  let start = Math.max(1, safeCurrentPage.value - half)
+  const end = Math.min(pageCount.value, start + visible - 1)
 
   if (end - start + 1 < visible) {
-    start = Math.max(1, end - visible + 1);
+    start = Math.max(1, end - visible + 1)
   }
 
-  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
-});
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+})
 
 const pagedProcedures = computed(() => {
   if (isServerPaginated.value) {
-    return procedures.value;
+    return procedures.value
   }
-  const start = (safeCurrentPage.value - 1) * perPage;
-  return procedures.value.slice(start, start + perPage);
-});
+  const start = (safeCurrentPage.value - 1) * perPage
+  return procedures.value.slice(start, start + perPage)
+})
 
 const displayFrom = computed(() => {
-  if (!totalItems.value) return 0;
-  if (isServerPaginated.value) return pagination.value.from ?? 0;
-  return (safeCurrentPage.value - 1) * perPage + 1;
-});
+  if (!totalItems.value) return 0
+  if (isServerPaginated.value) return pagination.value.from ?? 0
+  return (safeCurrentPage.value - 1) * perPage + 1
+})
 
 const displayTo = computed(() => {
-  if (!totalItems.value) return 0;
-  if (isServerPaginated.value) return pagination.value.to ?? 0;
-  return Math.min(safeCurrentPage.value * perPage, totalItems.value);
-});
+  if (!totalItems.value) return 0
+  if (isServerPaginated.value) return pagination.value.to ?? 0
+  return Math.min(safeCurrentPage.value * perPage, totalItems.value)
+})
 
 const form = ref({
   clinic_id: '',
@@ -93,102 +91,100 @@ const form = ref({
   requires_room: false,
   requires_assistant: false,
   equipment_id: '',
-  steps: [],
-});
+  steps: []
+})
 
 const createStep = (overrides = {}) => ({
   name: '',
   duration_minutes: 30,
   order: 1,
-  ...overrides,
-});
+  ...overrides
+})
 
 const normalizeSteps = (steps) =>
   (steps || []).map((step, index) => ({
     name: step.name,
     duration_minutes: step.duration_minutes ?? 30,
-    order: index + 1,
-  }));
+    order: index + 1
+  }))
 
 const addFormStep = () => {
-  form.value.steps.push(createStep({ order: form.value.steps.length + 1 }));
-};
+  form.value.steps.push(createStep({ order: form.value.steps.length + 1 }))
+}
 
 const removeFormStep = (index) => {
-  form.value.steps.splice(index, 1);
-};
+  form.value.steps.splice(index, 1)
+}
 
 const addEditStep = () => {
-  editForm.value.steps.push(createStep({ order: editForm.value.steps.length + 1 }));
-};
+  editForm.value.steps.push(createStep({ order: editForm.value.steps.length + 1 }))
+}
 
 const removeEditStep = (index) => {
-  editForm.value.steps.splice(index, 1);
-};
+  editForm.value.steps.splice(index, 1)
+}
 
 const loadClinics = async () => {
   if (user.value?.global_role === 'super_admin') {
-    const { data } = await clinicApi.list();
-    clinics.value = data.data ?? data;
+    const { data } = await clinicApi.list()
+    clinics.value = data.data ?? data
   } else {
-    const { data } = await clinicApi.listMine();
+    const { data } = await clinicApi.listMine()
     clinics.value = (data.clinics ?? []).map((clinic) => ({
       id: clinic.clinic_id,
-      name: clinic.clinic_name,
-    }));
+      name: clinic.clinic_name
+    }))
   }
 
   if (!selectedClinicId.value && clinics.value.length) {
-    selectedClinicId.value = clinics.value[0].id;
+    selectedClinicId.value = clinics.value[0].id
   }
-};
+}
 
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value) return;
-  const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value });
-  equipments.value = data.data ?? data;
-};
+  if (!selectedClinicId.value) return
+  const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
+  equipments.value = data.data ?? data
+}
 
 const fetchProcedures = async () => {
-  if (!selectedClinicId.value) return;
-  loading.value = true;
-  error.value = null;
+  if (!selectedClinicId.value) return
+  loading.value = true
+  error.value = null
   try {
     const { data } = await procedureApi.list({
       clinic_id: selectedClinicId.value,
       page: currentPage.value,
-      per_page: perPage,
-    });
-    const items = data.data ?? data;
-    procedures.value = items;
+      per_page: perPage
+    })
+    const items = data.data ?? data
+    procedures.value = items
     const hasPagination =
-      data?.current_page !== undefined ||
-      data?.last_page !== undefined ||
-      data?.total !== undefined;
-    isServerPaginated.value = hasPagination;
-    const fallbackTotal = data?.total ?? items.length;
-    const fallbackLastPage = Math.max(1, Math.ceil(fallbackTotal / perPage));
+      data?.current_page !== undefined || data?.last_page !== undefined || data?.total !== undefined
+    isServerPaginated.value = hasPagination
+    const fallbackTotal = data?.total ?? items.length
+    const fallbackLastPage = Math.max(1, Math.ceil(fallbackTotal / perPage))
     pagination.value = {
       currentPage: data?.current_page ?? currentPage.value,
       lastPage: data?.last_page ?? fallbackLastPage,
       total: fallbackTotal,
       perPage: data?.per_page ?? perPage,
       from: data?.from ?? (items.length ? (currentPage.value - 1) * perPage + 1 : 0),
-      to: data?.to ?? (items.length ? Math.min(currentPage.value * perPage, fallbackTotal) : 0),
-    };
+      to: data?.to ?? (items.length ? Math.min(currentPage.value * perPage, fallbackTotal) : 0)
+    }
 
     if (!hasPagination && currentPage.value > pagination.value.lastPage) {
-      currentPage.value = pagination.value.lastPage;
+      currentPage.value = pagination.value.lastPage
     } else {
-      currentPage.value = pagination.value.currentPage;
+      currentPage.value = pagination.value.currentPage
     }
   } catch (err) {
-    console.error(err);
-    error.value = 'Не вдалося завантажити процедури';
+    console.error(err)
+    error.value = 'Не вдалося завантажити процедури'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const resetForm = () => {
   form.value = {
@@ -199,41 +195,41 @@ const resetForm = () => {
     requires_room: false,
     requires_assistant: false,
     equipment_id: '',
-    steps: [],
-  };
-};
+    steps: []
+  }
+}
 
 const toggleForm = () => {
-  showForm.value = !showForm.value;
+  showForm.value = !showForm.value
   if (showForm.value) {
-    resetForm();
+    resetForm()
   }
-};
+}
 
 const createProcedure = async () => {
-  creating.value = true;
-  createError.value = null;
+  creating.value = true
+  createError.value = null
   try {
     await procedureApi.create({
       ...form.value,
       clinic_id: form.value.clinic_id || selectedClinicId.value,
       equipment_id: form.value.equipment_id || null,
-      steps: normalizeSteps(form.value.steps),
-    });
-    showForm.value = false;
-    resetForm();
-    await fetchProcedures();
+      steps: normalizeSteps(form.value.steps)
+    })
+    showForm.value = false
+    resetForm()
+    await fetchProcedures()
   } catch (err) {
-    console.error(err);
-    createError.value = err.response?.data?.message || 'Помилка створення процедури';
+    console.error(err)
+    createError.value = err.response?.data?.message || 'Помилка створення процедури'
   } finally {
-    creating.value = false;
+    creating.value = false
   }
-};
+}
 
 const startEdit = (procedure) => {
-  editingProcedureId.value = procedure.id;
-  editError.value = null;
+  editingProcedureId.value = procedure.id
+  editError.value = null
   editForm.value = {
     name: procedure.name || '',
     category: procedure.category || '',
@@ -241,18 +237,18 @@ const startEdit = (procedure) => {
     requires_room: !!procedure.requires_room,
     requires_assistant: !!procedure.requires_assistant,
     equipment_id: procedure.equipment_id || '',
-    steps: (procedure.steps || []).map((step) => createStep(step)),
-  };
-};
+    steps: (procedure.steps || []).map((step) => createStep(step))
+  }
+}
 
 const cancelEdit = () => {
-  editingProcedureId.value = null;
-  editError.value = null;
-};
+  editingProcedureId.value = null
+  editError.value = null
+}
 
 const updateProcedure = async (procedure) => {
-  savingEdit.value = true;
-  editError.value = null;
+  savingEdit.value = true
+  editError.value = null
   try {
     await procedureApi.update(procedure.id, {
       name: editForm.value.name,
@@ -261,46 +257,46 @@ const updateProcedure = async (procedure) => {
       requires_room: editForm.value.requires_room,
       requires_assistant: editForm.value.requires_assistant,
       equipment_id: editForm.value.equipment_id || null,
-      steps: normalizeSteps(editForm.value.steps),
-    });
-    await fetchProcedures();
-    editingProcedureId.value = null;
+      steps: normalizeSteps(editForm.value.steps)
+    })
+    await fetchProcedures()
+    editingProcedureId.value = null
   } catch (err) {
-    console.error(err);
-    editError.value = err.response?.data?.message || 'Не вдалося оновити процедуру';
+    console.error(err)
+    editError.value = err.response?.data?.message || 'Не вдалося оновити процедуру'
   } finally {
-    savingEdit.value = false;
+    savingEdit.value = false
   }
-};
+}
 
 const deleteProcedure = async (procedure) => {
-  if (!window.confirm(`Видалити процедуру "${procedure.name}"?`)) return;
-  editError.value = null;
+  if (!window.confirm(`Видалити процедуру "${procedure.name}"?`)) return
+  editError.value = null
   try {
-    await procedureApi.delete(procedure.id);
-    await fetchProcedures();
+    await procedureApi.delete(procedure.id)
+    await fetchProcedures()
   } catch (err) {
-    console.error(err);
-    editError.value = err.response?.data?.message || 'Не вдалося видалити процедуру';
+    console.error(err)
+    editError.value = err.response?.data?.message || 'Не вдалося видалити процедуру'
   }
-};
+}
 
 watch(selectedClinicId, async () => {
-  currentPage.value = 1;
-  await Promise.all([fetchProcedures(), fetchEquipments()]);
-});
+  currentPage.value = 1
+  await Promise.all([fetchProcedures(), fetchEquipments()])
+})
 
 onMounted(async () => {
-  await loadClinics();
-  await Promise.all([fetchProcedures(), fetchEquipments()]);
-});
+  await loadClinics()
+  await Promise.all([fetchProcedures(), fetchEquipments()])
+})
 
 const goToPage = async (page) => {
-  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
-  if (nextPage === currentPage.value) return;
-  currentPage.value = nextPage;
-  await fetchProcedures();
-};
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value)
+  if (nextPage === currentPage.value) return
+  currentPage.value = nextPage
+  await fetchProcedures()
+}
 </script>
 
 <template>
@@ -393,11 +389,19 @@ const goToPage = async (page) => {
 
       <div class="flex flex-wrap gap-4">
         <label class="flex items-center gap-2 text-sm text-text/80">
-          <input v-model="form.requires_room" type="checkbox" class="rounded border-border/80 bg-bg" />
+          <input
+            v-model="form.requires_room"
+            type="checkbox"
+            class="rounded border-border/80 bg-bg"
+          />
           Потрібна кімната
         </label>
         <label class="flex items-center gap-2 text-sm text-text/80">
-          <input v-model="form.requires_assistant" type="checkbox" class="rounded border-border/80 bg-bg" />
+          <input
+            v-model="form.requires_assistant"
+            type="checkbox"
+            class="rounded border-border/80 bg-bg"
+          />
           Потрібен асистент
         </label>
       </div>
@@ -405,12 +409,20 @@ const goToPage = async (page) => {
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-xs uppercase text-text/70">Етапи процедури</label>
-          <button type="button" class="text-xs text-emerald-300 hover:text-emerald-200" @click="addFormStep">
+          <button
+            type="button"
+            class="text-xs text-emerald-300 hover:text-emerald-200"
+            @click="addFormStep"
+          >
             + Додати етап
           </button>
         </div>
         <div v-if="!form.steps.length" class="text-xs text-text/60">Етапи не додані.</div>
-        <div v-for="(step, index) in form.steps" :key="`new-step-${index}`" class="flex flex-wrap items-center gap-2">
+        <div
+          v-for="(step, index) in form.steps"
+          :key="`new-step-${index}`"
+          class="flex flex-wrap items-center gap-2"
+        >
           <input
             v-model="step.name"
             type="text"
@@ -465,7 +477,11 @@ const goToPage = async (page) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="procedure in pagedProcedures" :key="procedure.id" class="border-t border-border">
+            <tr
+              v-for="procedure in pagedProcedures"
+              :key="procedure.id"
+              class="border-t border-border"
+            >
               <td class="py-2 px-3">
                 <input
                   v-if="editingProcedureId === procedure.id"
@@ -496,8 +512,14 @@ const goToPage = async (page) => {
               </td>
               <td class="py-2 px-3">
                 <div v-if="editingProcedureId === procedure.id" class="space-y-2">
-                  <div v-if="!editForm.steps.length" class="text-xs text-text/60">Етапи не додані.</div>
-                  <div v-for="(step, index) in editForm.steps" :key="`edit-step-${index}`" class="flex flex-wrap items-center gap-2">
+                  <div v-if="!editForm.steps.length" class="text-xs text-text/60">
+                    Етапи не додані.
+                  </div>
+                  <div
+                    v-for="(step, index) in editForm.steps"
+                    :key="`edit-step-${index}`"
+                    class="flex flex-wrap items-center gap-2"
+                  >
                     <input
                       v-model="step.name"
                       type="text"
@@ -511,17 +533,25 @@ const goToPage = async (page) => {
                       class="w-24 rounded-md bg-bg border border-border/80 px-2 py-1 text-xs text-text"
                     />
                     <span class="text-[10px] text-text/70">хв</span>
-                    <button type="button" class="text-[10px] text-red-400 hover:text-red-300" @click="removeEditStep(index)">
+                    <button
+                      type="button"
+                      class="text-[10px] text-red-400 hover:text-red-300"
+                      @click="removeEditStep(index)"
+                    >
                       ✕
                     </button>
                   </div>
-                  <button type="button" class="text-xs text-emerald-300 hover:text-emerald-200" @click="addEditStep">
+                  <button
+                    type="button"
+                    class="text-xs text-emerald-300 hover:text-emerald-200"
+                    @click="addEditStep"
+                  >
                     + Додати етап
                   </button>
                 </div>
                 <div v-else class="text-xs text-text/70">
                   <span v-if="procedure.steps?.length">
-                    {{ procedure.steps.map(step => step.name).join(', ') }}
+                    {{ procedure.steps.map((step) => step.name).join(', ') }}
                   </span>
                   <span v-else>—</span>
                 </div>
@@ -542,13 +572,24 @@ const goToPage = async (page) => {
                 </span>
               </td>
               <td class="py-2 px-3">
-                <div v-if="editingProcedureId === procedure.id" class="flex flex-col gap-1 text-xs text-text/80">
+                <div
+                  v-if="editingProcedureId === procedure.id"
+                  class="flex flex-col gap-1 text-xs text-text/80"
+                >
                   <label class="inline-flex items-center gap-2">
-                    <input v-model="editForm.requires_room" type="checkbox" class="accent-emerald-500" />
+                    <input
+                      v-model="editForm.requires_room"
+                      type="checkbox"
+                      class="accent-emerald-500"
+                    />
                     Кімната
                   </label>
                   <label class="inline-flex items-center gap-2">
-                    <input v-model="editForm.requires_assistant" type="checkbox" class="accent-emerald-500" />
+                    <input
+                      v-model="editForm.requires_assistant"
+                      type="checkbox"
+                      class="accent-emerald-500"
+                    />
                     Асистент
                   </label>
                 </div>
@@ -568,11 +609,23 @@ const goToPage = async (page) => {
                   >
                     {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
                   </button>
-                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">Скасувати</button>
+                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">
+                    Скасувати
+                  </button>
                 </div>
                 <div v-else class="flex justify-end gap-3">
-                  <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(procedure)">Редагувати</button>
-                  <button class="text-red-400 hover:text-red-300" @click="deleteProcedure(procedure)">Видалити</button>
+                  <button
+                    class="text-emerald-300 hover:text-emerald-200"
+                    @click="startEdit(procedure)"
+                  >
+                    Редагувати
+                  </button>
+                  <button
+                    class="text-red-400 hover:text-red-300"
+                    @click="deleteProcedure(procedure)"
+                  >
+                    Видалити
+                  </button>
                 </div>
               </td>
             </tr>
@@ -583,9 +636,7 @@ const goToPage = async (page) => {
         v-if="pageCount > 1"
         class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
       >
-        <p>
-          Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}
-        </p>
+        <p>Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}</p>
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -601,7 +652,11 @@ const goToPage = async (page) => {
             :key="page"
             type="button"
             class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
-            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            :class="
+              page === safeCurrentPage
+                ? 'border-accent bg-accent text-card'
+                : 'border-border bg-card text-text hover:bg-card/70'
+            "
             @click="goToPage(page)"
           >
             {{ page }}

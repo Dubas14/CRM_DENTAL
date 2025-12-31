@@ -1,157 +1,157 @@
-<script setup>
-import { ref, onMounted, watch } from 'vue';
-import equipmentApi from '../services/equipmentApi';
-import clinicApi from '../services/clinicApi';
-import { useAuth } from '../composables/useAuth';
+<script setup lang="ts">
+import { ref, onMounted, watch } from 'vue'
+import equipmentApi from '../services/equipmentApi'
+import clinicApi from '../services/clinicApi'
+import { useAuth } from '../composables/useAuth'
 
-const { user } = useAuth();
+const { user } = useAuth()
 
-const clinics = ref([]);
-const selectedClinicId = ref('');
-const equipments = ref([]);
-const loading = ref(false);
-const error = ref(null);
+const clinics = ref([])
+const selectedClinicId = ref('')
+const equipments = ref([])
+const loading = ref(false)
+const error = ref(null)
 
-const showForm = ref(false);
-const creating = ref(false);
-const createError = ref(null);
-const editError = ref(null);
-const editingEquipmentId = ref(null);
+const showForm = ref(false)
+const creating = ref(false)
+const createError = ref(null)
+const editError = ref(null)
+const editingEquipmentId = ref(null)
 const editForm = ref({
   name: '',
   description: '',
-  is_active: true,
-});
-const savingEdit = ref(false);
+  is_active: true
+})
+const savingEdit = ref(false)
 
 const form = ref({
   clinic_id: '',
   name: '',
   description: '',
-  is_active: true,
-});
+  is_active: true
+})
 
 const loadClinics = async () => {
   if (user.value?.global_role === 'super_admin') {
-    const { data } = await clinicApi.list();
-    clinics.value = data.data ?? data;
+    const { data } = await clinicApi.list()
+    clinics.value = data.data ?? data
   } else {
-    const { data } = await clinicApi.listMine();
+    const { data } = await clinicApi.listMine()
     clinics.value = (data.clinics ?? []).map((clinic) => ({
       id: clinic.clinic_id,
-      name: clinic.clinic_name,
-    }));
+      name: clinic.clinic_name
+    }))
   }
 
   if (!selectedClinicId.value && clinics.value.length) {
-    selectedClinicId.value = clinics.value[0].id;
+    selectedClinicId.value = clinics.value[0].id
   }
-};
+}
 
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value) return;
-  loading.value = true;
-  error.value = null;
+  if (!selectedClinicId.value) return
+  loading.value = true
+  error.value = null
   try {
-    const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value });
-    equipments.value = data.data ?? data;
+    const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
+    equipments.value = data.data ?? data
   } catch (err) {
-    console.error(err);
-    error.value = 'Не вдалося завантажити обладнання';
+    console.error(err)
+    error.value = 'Не вдалося завантажити обладнання'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const resetForm = () => {
   form.value = {
     clinic_id: selectedClinicId.value || clinics.value[0]?.id || '',
     name: '',
     description: '',
-    is_active: true,
-  };
-};
+    is_active: true
+  }
+}
 
 const toggleForm = () => {
-  showForm.value = !showForm.value;
+  showForm.value = !showForm.value
   if (showForm.value) {
-    resetForm();
+    resetForm()
   }
-};
+}
 
 const createEquipment = async () => {
-  creating.value = true;
-  createError.value = null;
+  creating.value = true
+  createError.value = null
   try {
     await equipmentApi.create({
       ...form.value,
-      clinic_id: form.value.clinic_id || selectedClinicId.value,
-    });
-    showForm.value = false;
-    resetForm();
-    await fetchEquipments();
+      clinic_id: form.value.clinic_id || selectedClinicId.value
+    })
+    showForm.value = false
+    resetForm()
+    await fetchEquipments()
   } catch (err) {
-    console.error(err);
-    createError.value = err.response?.data?.message || 'Помилка створення обладнання';
+    console.error(err)
+    createError.value = err.response?.data?.message || 'Помилка створення обладнання'
   } finally {
-    creating.value = false;
+    creating.value = false
   }
-};
+}
 
 const startEdit = (equipment) => {
-  editingEquipmentId.value = equipment.id;
-  editError.value = null;
+  editingEquipmentId.value = equipment.id
+  editError.value = null
   editForm.value = {
     name: equipment.name || '',
     description: equipment.description || '',
-    is_active: !!equipment.is_active,
-  };
-};
+    is_active: !!equipment.is_active
+  }
+}
 
 const cancelEdit = () => {
-  editingEquipmentId.value = null;
-  editError.value = null;
-};
+  editingEquipmentId.value = null
+  editError.value = null
+}
 
 const updateEquipment = async (equipment) => {
-  savingEdit.value = true;
-  editError.value = null;
+  savingEdit.value = true
+  editError.value = null
   try {
     await equipmentApi.update(equipment.id, {
       name: editForm.value.name,
       description: editForm.value.description || null,
-      is_active: editForm.value.is_active,
-    });
-    await fetchEquipments();
-    editingEquipmentId.value = null;
+      is_active: editForm.value.is_active
+    })
+    await fetchEquipments()
+    editingEquipmentId.value = null
   } catch (err) {
-    console.error(err);
-    editError.value = err.response?.data?.message || 'Не вдалося оновити обладнання';
+    console.error(err)
+    editError.value = err.response?.data?.message || 'Не вдалося оновити обладнання'
   } finally {
-    savingEdit.value = false;
+    savingEdit.value = false
   }
-};
+}
 
 const deleteEquipment = async (equipment) => {
-  if (!window.confirm(`Видалити обладнання "${equipment.name}"?`)) return;
-  editError.value = null;
+  if (!window.confirm(`Видалити обладнання "${equipment.name}"?`)) return
+  editError.value = null
   try {
-    await equipmentApi.delete(equipment.id);
-    await fetchEquipments();
+    await equipmentApi.delete(equipment.id)
+    await fetchEquipments()
   } catch (err) {
-    console.error(err);
-    editError.value = err.response?.data?.message || 'Не вдалося видалити обладнання';
+    console.error(err)
+    editError.value = err.response?.data?.message || 'Не вдалося видалити обладнання'
   }
-};
+}
 
 watch(selectedClinicId, async () => {
-  await fetchEquipments();
-});
+  await fetchEquipments()
+})
 
 onMounted(async () => {
-  await loadClinics();
-  await fetchEquipments();
-});
+  await loadClinics()
+  await fetchEquipments()
+})
 </script>
 
 <template>
@@ -272,14 +272,21 @@ onMounted(async () => {
                 <span v-else class="text-text/70">{{ equipment.description || '—' }}</span>
               </td>
               <td class="py-2 px-3">
-                <label v-if="editingEquipmentId === equipment.id" class="inline-flex items-center gap-2 text-xs text-text/80">
+                <label
+                  v-if="editingEquipmentId === equipment.id"
+                  class="inline-flex items-center gap-2 text-xs text-text/80"
+                >
                   <input v-model="editForm.is_active" type="checkbox" class="accent-emerald-500" />
                   {{ editForm.is_active ? 'Активне' : 'Неактивне' }}
                 </label>
                 <span
                   v-else
                   class="px-2 py-1 rounded-full text-xs"
-                  :class="equipment.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-card/80 text-text/70'"
+                  :class="
+                    equipment.is_active
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-card/80 text-text/70'
+                  "
                 >
                   {{ equipment.is_active ? 'Активне' : 'Неактивне' }}
                 </span>
@@ -293,11 +300,23 @@ onMounted(async () => {
                   >
                     {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
                   </button>
-                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">Скасувати</button>
+                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">
+                    Скасувати
+                  </button>
                 </div>
                 <div v-else class="flex justify-end gap-3">
-                  <button class="text-emerald-300 hover:text-emerald-200" @click="startEdit(equipment)">Редагувати</button>
-                  <button class="text-red-400 hover:text-red-300" @click="deleteEquipment(equipment)">Видалити</button>
+                  <button
+                    class="text-emerald-300 hover:text-emerald-200"
+                    @click="startEdit(equipment)"
+                  >
+                    Редагувати
+                  </button>
+                  <button
+                    class="text-red-400 hover:text-red-300"
+                    @click="deleteEquipment(equipment)"
+                  >
+                    Видалити
+                  </button>
                 </div>
               </td>
             </tr>

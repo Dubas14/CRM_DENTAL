@@ -2,27 +2,27 @@
   <div ref="gridRef" class="base-grid"></div>
 </template>
 
-<script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import Grid from 'tui-grid';
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import Grid from 'tui-grid'
 
 const props = defineProps({
   columns: {
     type: Array,
-    required: true,
+    required: true
   },
   data: {
     type: Array,
-    default: () => [],
+    default: () => []
   },
   options: {
     type: Object,
-    default: () => ({}),
-  },
-});
+    default: () => ({})
+  }
+})
 
-const gridRef = ref(null);
-let gridInstance = null;
+const gridRef = ref(null)
+let gridInstance = null
 
 onMounted(() => {
   gridInstance = new Grid({
@@ -35,21 +35,21 @@ onMounted(() => {
     rowHeaders: [],
     usageStatistics: false,
     columnOptions: {
-      resizable: true,
+      resizable: true
     },
-    ...props.options,
-  });
-});
+    ...props.options
+  })
+})
 
 watch(
   () => props.data,
   (nextData) => {
-    gridInstance?.resetData(nextData);
+    gridInstance?.resetData(nextData)
   },
   { deep: true }
-);
+)
 
 onBeforeUnmount(() => {
-  gridInstance?.destroy();
-});
+  gridInstance?.destroy()
+})
 </script>

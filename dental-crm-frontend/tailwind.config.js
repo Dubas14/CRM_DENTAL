@@ -1,10 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-  content: [
-    "./index.html",
-    "./src/**/*.{vue,js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -19,9 +16,9 @@ export default {
         'border-strong': 'rgb(var(--border-strong) / <alpha-value>)',
         'text-main': 'rgb(var(--text-main) / <alpha-value>)',
         'text-muted': 'rgb(var(--text-muted) / <alpha-value>)',
-        accent: 'rgb(var(--accent) / <alpha-value>)',
-      },
-    },
+        accent: 'rgb(var(--accent) / <alpha-value>)'
+      }
+    }
   },
-  plugins: [],
+  plugins: []
 }

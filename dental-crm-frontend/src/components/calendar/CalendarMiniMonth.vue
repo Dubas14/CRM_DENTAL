@@ -48,7 +48,7 @@
           class="rounded-md px-1.5 py-1 transition"
           :class="[
             day.isCurrentMonth ? 'text-text/90' : 'text-text/40',
-            day.isSelected ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-card/70',
+            day.isSelected ? 'bg-emerald-500/20 text-emerald-200' : 'hover:bg-card/70'
           ]"
           @click="selectDay(day.date)"
         >
@@ -63,7 +63,9 @@
         :key="month"
         type="button"
         class="month-item rounded-lg border border-transparent px-3 py-2 text-center text-[13px] font-medium text-text/70 transition hover:bg-white/10"
-        :class="isSelectedMonth(index) ? 'border-emerald-500/70 bg-emerald-500/15 text-emerald-100' : ''"
+        :class="
+          isSelectedMonth(index) ? 'border-emerald-500/70 bg-emerald-500/15 text-emerald-100' : ''
+        "
         @click="selectMonth(index)"
       >
         {{ month }}
@@ -76,7 +78,11 @@
         :key="year"
         type="button"
         class="rounded-lg px-2 py-1.5 transition hover:bg-emerald-600/10 hover:text-emerald-600"
-        :class="year === currentYear ? 'border border-emerald-500/60 bg-emerald-600/15 text-emerald-100 font-semibold' : 'text-text/90'"
+        :class="
+          year === currentYear
+            ? 'border border-emerald-500/60 bg-emerald-600/15 text-emerald-100 font-semibold'
+            : 'text-text/90'
+        "
         @click="selectYear(year)"
       >
         {{ year }}
@@ -85,14 +91,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   currentDate: {
     type: Date,
-    required: true,
-  },
+    required: true
+  }
 })
 
 const emit = defineEmits(['select-date'])
@@ -100,7 +106,9 @@ const emit = defineEmits(['select-date'])
 const weekDays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'НД']
 const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long' })
 const capitalize = (value) => value.charAt(0).toUpperCase() + value.slice(1)
-const months = Array.from({ length: 12 }, (_, index) => capitalize(monthFormatter.format(new Date(2020, index, 1))))
+const months = Array.from({ length: 12 }, (_, index) =>
+  capitalize(monthFormatter.format(new Date(2020, index, 1)))
+)
 
 const mode = ref('day')
 const viewDate = ref(props.currentDate ? new Date(props.currentDate) : new Date())
@@ -146,16 +154,17 @@ const calendarDays = computed(() => {
     const date = new Date(start)
     date.setDate(start.getDate() + i)
     const isCurrentMonth = date.getMonth() === base.getMonth()
-    const isSelected = date.getFullYear() === selected.getFullYear()
-      && date.getMonth() === selected.getMonth()
-      && date.getDate() === selected.getDate()
+    const isSelected =
+      date.getFullYear() === selected.getFullYear() &&
+      date.getMonth() === selected.getMonth() &&
+      date.getDate() === selected.getDate()
 
     days.push({
       key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
       label: date.getDate(),
       date,
       isCurrentMonth,
-      isSelected,
+      isSelected
     })
   }
   return days
@@ -205,7 +214,10 @@ const selectDay = (date) => {
   const selectedDate = new Date(date)
   emit('select-date', selectedDate)
   mode.value = 'day'
-  if (selectedDate.getMonth() !== viewMonth.value || selectedDate.getFullYear() !== viewYear.value) {
+  if (
+    selectedDate.getMonth() !== viewMonth.value ||
+    selectedDate.getFullYear() !== viewYear.value
+  ) {
     viewDate.value = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
   }
 }
@@ -230,10 +242,9 @@ const selectYear = (year) => {
   mode.value = 'month'
 }
 
-const isSelectedMonth = (monthIndex) => (
-  currentDateNormalized.value.getMonth() === monthIndex
-  && currentDateNormalized.value.getFullYear() === viewYear.value
-)
+const isSelectedMonth = (monthIndex) =>
+  currentDateNormalized.value.getMonth() === monthIndex &&
+  currentDateNormalized.value.getFullYear() === viewYear.value
 
 watch(
   () => props.currentDate,

@@ -1,5 +1,5 @@
-import DatePicker from 'tui-date-picker';
-import TimePicker from 'tui-time-picker';
+import DatePicker from 'tui-date-picker'
+import TimePicker from 'tui-time-picker'
 
 const UKRAINIAN_LOCALE = {
   titles: {
@@ -18,24 +18,24 @@ const UKRAINIAN_LOCALE = {
       'Вересень',
       'Жовтень',
       'Листопад',
-      'Грудень',
-    ],
+      'Грудень'
+    ]
   },
   titleFormat: 'MMMM yyyy',
   todayFormat: 'Сьогодні: DD, d MMMM yyyy',
   time: 'Час',
-  date: 'Дата',
-};
+  date: 'Дата'
+}
 
 export const ensureUkLocale = () => {
   if (!DatePicker.localeTexts.uk) {
-    DatePicker.localeTexts.uk = UKRAINIAN_LOCALE;
+    DatePicker.localeTexts.uk = UKRAINIAN_LOCALE
   }
 
   if (!TimePicker.localeTexts.uk) {
     TimePicker.localeTexts.uk = {
       am: 'ДП',
-      pm: 'ПП',
-    };
+      pm: 'ПП'
+    }
   }
-};
+}

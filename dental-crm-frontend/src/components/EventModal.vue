@@ -1,46 +1,46 @@
 <template>
   <EventEditModal
-      v-if="open"
-      :model-value="open"
-      :event-data="event"
-      :doctors="doctors"
-      :default-doctor-id="defaultDoctorId"
-      @update:modelValue="handleUpdate"
-      @save="handleSave"
+    v-if="open"
+    :model-value="open"
+    :event-data="event"
+    :doctors="doctors"
+    :default-doctor-id="defaultDoctorId"
+    @update:modelValue="handleUpdate"
+    @save="handleSave"
   />
 </template>
 
-<script setup>
-import EventEditModal from './EventEditModal.vue';
+<script setup lang="ts">
+import EventEditModal from './EventEditModal.vue'
 
 const props = defineProps({
   open: {
     type: Boolean,
-    default: false,
+    default: false
   },
   event: {
     type: Object,
-    default: () => ({}),
+    default: () => ({})
   },
   doctors: {
     type: Array,
-    default: () => [],
+    default: () => []
   },
   defaultDoctorId: {
     type: [Number, String],
-    default: null,
-  },
-});
+    default: null
+  }
+})
 
-const emit = defineEmits(['save', 'close']);
+const emit = defineEmits(['save', 'close'])
 
 const handleUpdate = (isOpen) => {
   if (!isOpen && props.open) {
-    emit('close');
+    emit('close')
   }
-};
+}
 
 const handleSave = (payload) => {
-  emit('save', payload);
-};
+  emit('save', payload)
+}
 </script>

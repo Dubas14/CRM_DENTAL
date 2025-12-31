@@ -1,27 +1,27 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue';
-import apiClient from '../services/apiClient';
-import { useAuth } from '../composables/useAuth';
-import { usePermissions } from '../composables/usePermissions';
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import apiClient from '../services/apiClient'
+import { useAuth } from '../composables/useAuth'
+import { usePermissions } from '../composables/usePermissions'
 
-const patients = ref([]);
-const clinics = ref([]);
-const loading = ref(true);
-const error = ref(null);
+const patients = ref([])
+const clinics = ref([])
+const loading = ref(true)
+const error = ref(null)
 
-const search = ref('');
-const selectedClinicFilter = ref('');
+const search = ref('')
+const selectedClinicFilter = ref('')
 
 // форма
-const showForm = ref(false);
-const creating = ref(false);
-const formError = ref(null);
+const showForm = ref(false)
+const creating = ref(false)
+const formError = ref(null)
 
-const { user } = useAuth();
-const { isDoctor } = usePermissions();
-const doctorProfile = computed(() => user.value?.doctor || null);
-const doctorClinicId = computed(() => doctorProfile.value?.clinic_id || '');
-const doctorClinic = computed(() => doctorProfile.value?.clinic || null);
+const { user } = useAuth()
+const { isDoctor } = usePermissions()
+const doctorProfile = computed(() => user.value?.doctor || null)
+const doctorClinicId = computed(() => doctorProfile.value?.clinic_id || '')
+const doctorClinic = computed(() => doctorProfile.value?.clinic || null)
 
 const initialFormState = () => ({
   clinic_id: doctorClinicId.value || '',
@@ -30,143 +30,133 @@ const initialFormState = () => ({
   phone: '',
   email: '',
   address: '',
-  note: '',
-});
-const form = ref(initialFormState());
-const currentPage = ref(1);
+  note: ''
+})
+const form = ref(initialFormState())
+const currentPage = ref(1)
 const pagination = ref({
   currentPage: 1,
   lastPage: 1,
   total: 0,
   perPage: 12,
   from: 0,
-  to: 0,
-});
+  to: 0
+})
 
-const totalItems = computed(() => pagination.value.total || patients.value.length);
-const pageCount = computed(() => pagination.value.lastPage || 1);
-const safeCurrentPage = computed(() =>
-  Math.min(Math.max(currentPage.value, 1), pageCount.value)
-);
+const totalItems = computed(() => pagination.value.total || patients.value.length)
+const pageCount = computed(() => pagination.value.lastPage || 1)
+const safeCurrentPage = computed(() => Math.min(Math.max(currentPage.value, 1), pageCount.value))
 
 const pagesToShow = computed(() => {
-  const visible = 5;
-  const half = Math.floor(visible / 2);
-  let start = Math.max(1, safeCurrentPage.value - half);
-  let end = Math.min(pageCount.value, start + visible - 1);
+  const visible = 5
+  const half = Math.floor(visible / 2)
+  let start = Math.max(1, safeCurrentPage.value - half)
+  const end = Math.min(pageCount.value, start + visible - 1)
 
   if (end - start + 1 < visible) {
-    start = Math.max(1, end - visible + 1);
+    start = Math.max(1, end - visible + 1)
   }
 
-  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
-});
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+})
 
 const loadClinics = async () => {
   if (isDoctor.value) {
-    clinics.value = doctorClinic.value ? [doctorClinic.value] : [];
-    form.value.clinic_id = doctorClinicId.value || '';
-    selectedClinicFilter.value = doctorClinicId.value
-        ? String(doctorClinicId.value)
-        : '';
-    return;
+    clinics.value = doctorClinic.value ? [doctorClinic.value] : []
+    form.value.clinic_id = doctorClinicId.value || ''
+    selectedClinicFilter.value = doctorClinicId.value ? String(doctorClinicId.value) : ''
+    return
   }
-  const { data } = await apiClient.get('/clinics');
-  clinics.value = data;
-};
+  const { data } = await apiClient.get('/clinics')
+  clinics.value = data
+}
 
 const loadPatients = async () => {
-  loading.value = true;
-  error.value = null;
+  loading.value = true
+  error.value = null
 
   try {
-    const params = { page: currentPage.value, per_page: 12 };
-    if (search.value) params.search = search.value;
+    const params = { page: currentPage.value, per_page: 12 }
+    if (search.value) params.search = search.value
     if (isDoctor.value && doctorClinicId.value) {
-      params.clinic_id = doctorClinicId.value;
+      params.clinic_id = doctorClinicId.value
     } else if (selectedClinicFilter.value) {
-      params.clinic_id = selectedClinicFilter.value;
+      params.clinic_id = selectedClinicFilter.value
     }
 
-    const { data } = await apiClient.get('/patients', { params });
+    const { data } = await apiClient.get('/patients', { params })
     // бо ми повернули paginate, беремо data.data
-    patients.value = data.data ?? data;
+    patients.value = data.data ?? data
     pagination.value = {
       currentPage: data.current_page ?? 1,
       lastPage: data.last_page ?? 1,
       total: data.total ?? patients.value.length,
       perPage: data.per_page ?? 12,
       from: data.from ?? (patients.value.length ? 1 : 0),
-      to: data.to ?? patients.value.length,
-    };
-    currentPage.value = pagination.value.currentPage;
+      to: data.to ?? patients.value.length
+    }
+    currentPage.value = pagination.value.currentPage
   } catch (e) {
-    console.error(e);
-    error.value =
-        e.response?.data?.message ||
-        e.message ||
-        'Помилка завантаження пацієнтів';
+    console.error(e)
+    error.value = e.response?.data?.message || e.message || 'Помилка завантаження пацієнтів'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const createPatient = async () => {
-  formError.value = null;
-  creating.value = true;
+  formError.value = null
+  creating.value = true
 
   try {
-    const payload = { ...form.value };
+    const payload = { ...form.value }
 
     if (isDoctor.value && doctorClinicId.value) {
-      payload.clinic_id = doctorClinicId.value;
+      payload.clinic_id = doctorClinicId.value
     }
 
-    await apiClient.post('/patients', payload);
-    currentPage.value = 1;
-    await loadPatients();
+    await apiClient.post('/patients', payload)
+    currentPage.value = 1
+    await loadPatients()
 
-    form.value = initialFormState();
-    showForm.value = false;
+    form.value = initialFormState()
+    showForm.value = false
   } catch (e) {
-    console.error(e);
+    console.error(e)
     if (e.response?.data?.errors) {
-      const first = Object.values(e.response.data.errors)[0];
-      formError.value = Array.isArray(first) ? first[0] : String(first);
+      const first = Object.values(e.response.data.errors)[0]
+      formError.value = Array.isArray(first) ? first[0] : String(first)
     } else {
-      formError.value =
-          e.response?.data?.message ||
-          e.message ||
-          'Не вдалося створити пацієнта';
+      formError.value = e.response?.data?.message || e.message || 'Не вдалося створити пацієнта'
     }
   } finally {
-    creating.value = false;
+    creating.value = false
   }
-};
+}
 const validatePhone = (event) => {
   // Замінюємо все, що не є цифрою, плюсом, дужками або дефісом на пустоту
-  let val = event.target.value.replace(/[^0-9+\-() ]/g, '');
-  form.value.phone = val;
+  const val = event.target.value.replace(/[^0-9+\-() ]/g, '')
+  form.value.phone = val
   // Синхронізуємо значення в полі (інколи v-model не встигає)
-  event.target.value = val;
-};
+  event.target.value = val
+}
 
 onMounted(async () => {
-  await loadClinics();
-  await loadPatients();
-});
+  await loadClinics()
+  await loadPatients()
+})
 
 const applyFilters = async () => {
-  currentPage.value = 1;
-  await loadPatients();
-};
+  currentPage.value = 1
+  await loadPatients()
+}
 
 const goToPage = async (page) => {
-  const nextPage = Math.min(Math.max(page, 1), pageCount.value);
-  if (nextPage === currentPage.value) return;
-  currentPage.value = nextPage;
-  await loadPatients();
-};
+  const nextPage = Math.min(Math.max(page, 1), pageCount.value)
+  if (nextPage === currentPage.value) return
+  currentPage.value = nextPage
+  await loadPatients()
+}
 </script>
 
 <template>
@@ -181,16 +171,16 @@ const goToPage = async (page) => {
 
       <div class="flex items-center gap-2">
         <button
-            type="button"
-            class="px-3 py-2 rounded-lg border border-emerald-500/50 text-sm text-emerald-300 hover:bg-emerald-500/10"
-            @click="showForm = !showForm"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-emerald-500/50 text-sm text-emerald-300 hover:bg-emerald-500/10"
+          @click="showForm = !showForm"
         >
           {{ showForm ? 'Приховати форму' : 'Новий пацієнт' }}
         </button>
         <button
-            type="button"
-            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-            @click="loadPatients"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
+          @click="loadPatients"
         >
           Оновити
         </button>
@@ -201,16 +191,16 @@ const goToPage = async (page) => {
     <div class="flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
         <input
-            v-model="search"
-            type="text"
-            placeholder="Пошук (ПІБ / телефон / email)"
-            class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-            @keyup.enter="applyFilters"
+          v-model="search"
+          type="text"
+          placeholder="Пошук (ПІБ / телефон / email)"
+          class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+          @keyup.enter="applyFilters"
         />
         <button
-            type="button"
-            class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-            @click="applyFilters"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
+          @click="applyFilters"
         >
           Знайти
         </button>
@@ -219,9 +209,9 @@ const goToPage = async (page) => {
       <label v-if="!isDoctor" class="text-sm text-text/80">
         Клініка:
         <select
-            v-model="selectedClinicFilter"
-            @change="applyFilters"
-            class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
+          v-model="selectedClinicFilter"
+          @change="applyFilters"
+          class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
         >
           <option value="">Усі</option>
           <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -236,24 +226,20 @@ const goToPage = async (page) => {
 
     <!-- форма створення -->
     <div
-        v-if="showForm"
-        class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
+      v-if="showForm"
+      class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
       <h2 class="text-lg font-semibold">Новий пацієнт</h2>
 
-      <div v-if="formError" class="text-sm text-red-400">
-        ❌ {{ formError }}
-      </div>
+      <div v-if="formError" class="text-sm text-red-400">❌ {{ formError }}</div>
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createPatient">
         <div v-if="!isDoctor">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Клініка *
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Клініка * </label>
           <select
-              v-model="form.clinic_id"
-              required
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            v-model="form.clinic_id"
+            required
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           >
             <option value="" disabled>Оберіть клініку</option>
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -262,24 +248,22 @@ const goToPage = async (page) => {
           </select>
         </div>
         <div v-else>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Клініка
-          </label>
-          <div class="w-full rounded-lg bg-card shadow-sm shadow-black/10 dark:shadow-black/40 px-3 py-2 text-sm text-text/90">
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Клініка </label>
+          <div
+            class="w-full rounded-lg bg-card shadow-sm shadow-black/10 dark:shadow-black/40 px-3 py-2 text-sm text-text/90"
+          >
             {{ doctorClinic?.name || '—' }}
           </div>
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            ПІБ *
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> ПІБ * </label>
           <input
-              v-model="form.full_name"
-              type="text"
-              required
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              placeholder="Петренко Олег Олегович"
+            v-model="form.full_name"
+            type="text"
+            required
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            placeholder="Петренко Олег Олегович"
           />
         </div>
 
@@ -288,73 +272,65 @@ const goToPage = async (page) => {
             Дата народження
           </label>
           <input
-              v-model="form.birth_date"
-              type="date"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            v-model="form.birth_date"
+            type="date"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Телефон
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Телефон </label>
           <input
-              v-model="form.phone"
-              @input="validatePhone"
-              type="tel"
-              class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
-              placeholder="+380..."
+            v-model="form.phone"
+            @input="validatePhone"
+            type="tel"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
+            placeholder="+380..."
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Email
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
           <input
-              v-model="form.email"
-              type="email"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              placeholder="patient@example.com"
+            v-model="form.email"
+            type="email"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            placeholder="patient@example.com"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Адреса
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Адреса </label>
           <input
-              v-model="form.address"
-              type="text"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              placeholder="місто, вулиця, будинок"
+            v-model="form.address"
+            type="text"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            placeholder="місто, вулиця, будинок"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-            Примітка
-          </label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Примітка </label>
           <textarea
-              v-model="form.note"
-              rows="2"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              placeholder="Коментар адміністратора, особливості пацієнта..."
+            v-model="form.note"
+            rows="2"
+            class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+            placeholder="Коментар адміністратора, особливості пацієнта..."
           ></textarea>
         </div>
 
         <div class="md:col-span-2 flex justify-end gap-2">
           <button
-              type="button"
-              class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
-              @click="showForm = false"
+            type="button"
+            class="px-3 py-2 rounded-lg border border-border/80 text-sm text-text/80 hover:bg-card/80"
+            @click="showForm = false"
           >
             Скасувати
           </button>
           <button
-              type="submit"
-              :disabled="creating"
-              class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
+            type="submit"
+            :disabled="creating"
+            class="px-4 py-2 rounded-lg bg-emerald-500 text-sm font-semibold text-text hover:bg-emerald-400 disabled:opacity-60"
           >
             {{ creating ? 'Збереження...' : 'Зберегти' }}
           </button>
@@ -363,13 +339,9 @@ const goToPage = async (page) => {
     </div>
 
     <!-- список -->
-    <div v-if="loading" class="text-text/80">
-      Завантаження пацієнтів...
-    </div>
+    <div v-if="loading" class="text-text/80">Завантаження пацієнтів...</div>
 
-    <div v-else-if="error" class="text-red-400">
-      ❌ {{ error }}
-    </div>
+    <div v-else-if="error" class="text-red-400">❌ {{ error }}</div>
 
     <div v-else>
       <div v-if="patients.length === 0" class="text-text/70 text-sm">
@@ -377,8 +349,8 @@ const goToPage = async (page) => {
       </div>
 
       <div
-          v-else
-          class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
+        v-else
+        class="overflow-hidden rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40"
       >
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-border/60 text-sm">
@@ -391,11 +363,7 @@ const goToPage = async (page) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-border/40">
-              <tr
-                v-for="patient in patients"
-                :key="patient.id"
-                class="transition hover:bg-card/70"
-              >
+              <tr v-for="patient in patients" :key="patient.id" class="transition hover:bg-card/70">
                 <td class="px-4 py-3 font-medium text-emerald-300">
                   <RouterLink
                     :to="{ name: 'patient-details', params: { id: patient.id } }"
@@ -423,9 +391,7 @@ const goToPage = async (page) => {
         v-if="pageCount > 1"
         class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
       >
-        <p>
-          Показано {{ pagination.from }}–{{ pagination.to }} з {{ totalItems }}
-        </p>
+        <p>Показано {{ pagination.from }}–{{ pagination.to }} з {{ totalItems }}</p>
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -441,7 +407,11 @@ const goToPage = async (page) => {
             :key="page"
             type="button"
             class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
-            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            :class="
+              page === safeCurrentPage
+                ? 'border-accent bg-accent text-card'
+                : 'border-border bg-card text-text hover:bg-card/70'
+            "
             @click="goToPage(page)"
           >
             {{ page }}

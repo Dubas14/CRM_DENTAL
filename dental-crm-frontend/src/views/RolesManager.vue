@@ -1,149 +1,153 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue';
-import { debounce } from 'lodash-es';
-import roleApi from '../services/roleApi';
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import { debounce } from 'lodash-es'
+import roleApi from '../services/roleApi'
 
-const roles = ref([]);
-const users = ref([]);
-const editableRoles = ref({});
-const loading = ref(false);
-const error = ref(null);
-const saving = ref({});
-const searchQuery = ref('');
-const currentPage = ref(1);
-const perPage = 12;
-const totalPages = ref(1);
-const totalItems = ref(0);
+const roles = ref([])
+const users = ref([])
+const editableRoles = ref({})
+const loading = ref(false)
+const error = ref(null)
+const saving = ref({})
+const searchQuery = ref('')
+const currentPage = ref(1)
+const perPage = 12
+const totalPages = ref(1)
+const totalItems = ref(0)
 const pagination = ref({
   currentPage: 1,
   lastPage: 1,
   total: 0,
   perPage,
   from: 0,
-  to: 0,
-});
+  to: 0
+})
 
 const safeCurrentPage = computed(() =>
   Math.min(Math.max(currentPage.value, 1), totalPages.value || 1)
-);
+)
 
 const pagesToShow = computed(() => {
-  const visible = 5;
-  const half = Math.floor(visible / 2);
-  let start = Math.max(1, safeCurrentPage.value - half);
-  let end = Math.min(totalPages.value, start + visible - 1);
+  const visible = 5
+  const half = Math.floor(visible / 2)
+  let start = Math.max(1, safeCurrentPage.value - half)
+  const end = Math.min(totalPages.value, start + visible - 1)
 
   if (end - start + 1 < visible) {
-    start = Math.max(1, end - visible + 1);
+    start = Math.max(1, end - visible + 1)
   }
 
-  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
-});
+  return Array.from({ length: end - start + 1 }, (_, idx) => start + idx)
+})
 
 const displayFrom = computed(() => {
-  if (!totalItems.value) return 0;
-  return pagination.value.from ?? (safeCurrentPage.value - 1) * perPage + 1;
-});
+  if (!totalItems.value) return 0
+  return pagination.value.from ?? (safeCurrentPage.value - 1) * perPage + 1
+})
 
 const displayTo = computed(() => {
-  if (!totalItems.value) return 0;
-  return pagination.value.to ?? Math.min(safeCurrentPage.value * perPage, totalItems.value);
-});
+  if (!totalItems.value) return 0
+  return pagination.value.to ?? Math.min(safeCurrentPage.value * perPage, totalItems.value)
+})
 
 const fetchRoles = async () => {
-  const { data } = await roleApi.listRoles();
-  roles.value = data.roles ?? [];
-};
+  const { data } = await roleApi.listRoles()
+  roles.value = data.roles ?? []
+}
 
 const fetchUsers = async () => {
-  loading.value = true;
-  error.value = null;
+  loading.value = true
+  error.value = null
   try {
     const { data } = await roleApi.listUsers({
       page: currentPage.value,
       per_page: perPage,
-      search: searchQuery.value || undefined,
-    });
-    users.value = data.data ?? data;
+      search: searchQuery.value || undefined
+    })
+    users.value = data.data ?? data
     editableRoles.value = users.value.reduce((acc, user) => {
-      acc[user.id] = (user.roles || []).map((role) => role.name);
-      return acc;
-    }, {});
-    const meta = data.meta ?? data ?? {};
-    totalPages.value = meta.last_page ?? 1;
-    totalItems.value = meta.total ?? users.value.length;
-    currentPage.value = meta.current_page ?? currentPage.value;
+      acc[user.id] = (user.roles || []).map((role) => role.name)
+      return acc
+    }, {})
+    const meta = data.meta ?? data ?? {}
+    totalPages.value = meta.last_page ?? 1
+    totalItems.value = meta.total ?? users.value.length
+    currentPage.value = meta.current_page ?? currentPage.value
     pagination.value = {
       currentPage: currentPage.value,
       lastPage: totalPages.value,
       total: totalItems.value,
       perPage,
       from: meta.from ?? (users.value.length ? (currentPage.value - 1) * perPage + 1 : 0),
-      to: meta.to ?? (users.value.length ? Math.min(currentPage.value * perPage, totalItems.value) : 0),
-    };
+      to:
+        meta.to ??
+        (users.value.length ? Math.min(currentPage.value * perPage, totalItems.value) : 0)
+    }
   } catch (err) {
-    console.error(err);
-    error.value = 'Не вдалося завантажити користувачів';
+    console.error(err)
+    error.value = 'Не вдалося завантажити користувачів'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const displayName = (user) => {
   if (user.first_name || user.last_name) {
-    return `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    return `${user.first_name || ''} ${user.last_name || ''}`.trim()
   }
-  return user.name || user.email;
-};
+  return user.name || user.email
+}
 
 const updateUserRoles = async (userId) => {
-  saving.value[userId] = true;
+  saving.value[userId] = true
   try {
-    const { data } = await roleApi.updateUserRoles(userId, editableRoles.value[userId]);
-    editableRoles.value[userId] = data.roles ?? editableRoles.value[userId];
+    const { data } = await roleApi.updateUserRoles(userId, editableRoles.value[userId])
+    editableRoles.value[userId] = data.roles ?? editableRoles.value[userId]
   } catch (err) {
-    console.error(err);
-    error.value = err.response?.data?.message || 'Не вдалося оновити ролі';
+    console.error(err)
+    error.value = err.response?.data?.message || 'Не вдалося оновити ролі'
   } finally {
-    saving.value[userId] = false;
+    saving.value[userId] = false
   }
-};
+}
 
 onMounted(async () => {
-  await fetchRoles();
-  await fetchUsers();
-});
+  await fetchRoles()
+  await fetchUsers()
+})
 
 const debouncedSearch = debounce(() => {
-  currentPage.value = 1;
-  fetchUsers();
-}, 300);
+  currentPage.value = 1
+  fetchUsers()
+}, 300)
 
 const onSearchInput = () => {
-  debouncedSearch();
-};
+  debouncedSearch()
+}
 
 const goToPage = (page) => {
-  const nextPage = Math.min(Math.max(page, 1), totalPages.value);
-  if (nextPage === currentPage.value) return;
-  currentPage.value = nextPage;
-  fetchUsers();
-};
+  const nextPage = Math.min(Math.max(page, 1), totalPages.value)
+  if (nextPage === currentPage.value) return
+  currentPage.value = nextPage
+  fetchUsers()
+}
 </script>
 
 <template>
   <div class="space-y-6">
     <header>
       <h1 class="text-2xl font-semibold">Ролі користувачів</h1>
-      <p class="text-sm text-text/70">
-        Призначайте ролі відповідно до ієрархії доступів.
-      </p>
+      <p class="text-sm text-text/70">Призначайте ролі відповідно до ієрархії доступів.</p>
     </header>
 
-    <section class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
+    <section
+      class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
+    >
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-[220px]">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Пошук користувача</label>
+          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+            >Пошук користувача</label
+          >
           <input
             v-model="searchQuery"
             type="text"
@@ -207,9 +211,7 @@ const goToPage = (page) => {
         v-if="totalPages > 1"
         class="flex flex-wrap items-center justify-between gap-3 text-sm text-text/70"
       >
-        <p>
-          Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}
-        </p>
+        <p>Показано {{ displayFrom }}–{{ displayTo }} з {{ totalItems }}</p>
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -225,7 +227,11 @@ const goToPage = (page) => {
             :key="page"
             type="button"
             class="inline-flex min-w-[40px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm transition"
-            :class="page === safeCurrentPage ? 'border-accent bg-accent text-card' : 'border-border bg-card text-text hover:bg-card/70'"
+            :class="
+              page === safeCurrentPage
+                ? 'border-accent bg-accent text-card'
+                : 'border-border bg-card text-text hover:bg-card/70'
+            "
             @click="goToPage(page)"
           >
             {{ page }}

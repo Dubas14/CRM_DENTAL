@@ -1,6 +1,6 @@
-<script setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import calendarApi from '../services/calendarApi';
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import calendarApi from '../services/calendarApi'
 
 const props = defineProps({
   doctorId: { type: [Number, String], required: true },
@@ -13,94 +13,114 @@ const props = defineProps({
   durationMinutes: { type: Number, default: null },
   autoLoad: { type: Boolean, default: true },
   disabled: { type: Boolean, default: false },
-  refreshToken: { type: Number, default: 0 },
-});
+  refreshToken: { type: Number, default: 0 }
+})
 
-const emit = defineEmits(['select-slot']);
+const emit = defineEmits(['select-slot'])
 
-const slots = ref([]);
-const recommended = ref([]);
-const loading = ref(false);
-const error = ref(null);
-const reason = ref(null);
-const slotRoom = ref(null);
-const slotEquipment = ref(null);
-const slotAssistantId = ref(null);
+const slots = ref([])
+const recommended = ref([])
+const loading = ref(false)
+const error = ref(null)
+const reason = ref(null)
+const slotRoom = ref(null)
+const slotEquipment = ref(null)
+const slotAssistantId = ref(null)
 
-const hasNoSlots = computed(() => !loading.value && slots.value.length === 0);
-const normalizedReason = computed(() => (reason.value ? String(reason.value).toLowerCase() : null));
-const isNoSchedule = computed(() => normalizedReason.value === 'no_schedule');
+// hasNoSlots removed
+const normalizedReason = computed(() => (reason.value ? String(reason.value).toLowerCase() : null))
+const isNoSchedule = computed(() => normalizedReason.value === 'no_schedule')
 const slotAssistantName = computed(() => {
-  if (!slotAssistantId.value) return null;
-  const match = props.assistants.find((assistant) => Number(assistant.id) === Number(slotAssistantId.value));
-  if (!match) return `#${slotAssistantId.value}`;
-  return match.full_name || match.name || `${match.first_name || ''} ${match.last_name || ''}`.trim() || `#${match.id}`;
-});
+  if (!slotAssistantId.value) return null
+  const match = props.assistants.find(
+    (assistant) => Number(assistant.id) === Number(slotAssistantId.value)
+  )
+  if (!match) return `#${slotAssistantId.value}`
+  return (
+    match.full_name ||
+    match.name ||
+    `${match.first_name || ''} ${match.last_name || ''}`.trim() ||
+    `#${match.id}`
+  )
+})
 
 const loadSlots = async () => {
-  if (!props.date || !props.doctorId) return;
-  loading.value = true;
-  error.value = null;
-  reason.value = null;
+  if (!props.date || !props.doctorId) return
+  loading.value = true
+  error.value = null
+  reason.value = null
   try {
     const { data } = await calendarApi.getDoctorSlots(props.doctorId, {
       date: props.date,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
       room_id: props.roomId || undefined,
-      assistant_id: props.assistantId || undefined,
-    });
-    slots.value = data.slots || [];
-    reason.value = data.reason || null;
-    slotRoom.value = data.room || null;
-    slotEquipment.value = data.equipment || null;
-    slotAssistantId.value = data.assistant_id || null;
+      assistant_id: props.assistantId || undefined
+    })
+    slots.value = data.slots || []
+    reason.value = data.reason || null
+    slotRoom.value = data.room || null
+    slotEquipment.value = data.equipment || null
+    slotAssistantId.value = data.assistant_id || null
     if (recommended.value.length === 0) {
-      await loadRecommended();
+      await loadRecommended()
     }
   } catch (e) {
-    error.value = e.response?.data?.message || e.message;
+    error.value = e.response?.data?.message || e.message
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const loadRecommended = async () => {
-  if (!props.date || !props.doctorId) return;
+  if (!props.date || !props.doctorId) return
   try {
     const { data } = await calendarApi.getRecommendedSlots(props.doctorId, {
       from_date: props.date,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
       room_id: props.roomId || undefined,
-      assistant_id: props.assistantId || undefined,
-    });
-    recommended.value = data.slots || [];
+      assistant_id: props.assistantId || undefined
+    })
+    recommended.value = data.slots || []
   } catch (e) {
     // не блокуємо основний UI
-    console.error('Не вдалося отримати рекомендації', e);
+    console.error('Не вдалося отримати рекомендації', e)
   }
-};
+}
 
-const formatSlot = (slot) => `${slot.start} – ${slot.end}`;
+const formatSlot = (slot) => `${slot.start} – ${slot.end}`
 
-watch(() => [props.doctorId, props.date, props.procedureId, props.equipmentId, props.roomId, props.assistantId], () => {
-  if (props.autoLoad && !props.disabled) {
-    loadSlots();
+watch(
+  () => [
+    props.doctorId,
+    props.date,
+    props.procedureId,
+    props.equipmentId,
+    props.roomId,
+    props.assistantId
+  ],
+  () => {
+    if (props.autoLoad && !props.disabled) {
+      loadSlots()
+    }
   }
-});
+)
 
-watch(() => props.refreshToken, () => {
-  if (props.autoLoad && !props.disabled) {
-    loadSlots();
+watch(
+  () => props.refreshToken,
+  () => {
+    if (props.autoLoad && !props.disabled) {
+      loadSlots()
+    }
   }
-});
+)
 
 onMounted(() => {
   if (props.autoLoad && !props.disabled) {
-    loadSlots();
+    loadSlots()
   }
-});
+})
 </script>
 
 <template>
@@ -119,20 +139,36 @@ onMounted(() => {
       </button>
     </div>
 
-    <div v-if="slotRoom || slotEquipment || slotAssistantId" class="text-xs text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
-      <span v-if="slotRoom" class="mr-3">Кабінет: <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span>
-      <span v-if="slotEquipment" class="mr-3">Обладнання: <strong class="text-amber-300">{{ slotEquipment.name || `#${slotEquipment.id}` }}</strong></span>
-      <span v-if="slotAssistantId">Асистент: <strong class="text-indigo-300">{{ slotAssistantName }}</strong></span>
+    <div
+      v-if="slotRoom || slotEquipment || slotAssistantId"
+      class="text-xs text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
+    >
+      <span v-if="slotRoom" class="mr-3"
+        >Кабінет:
+        <strong class="text-sky-300">{{ slotRoom.name || `#${slotRoom.id}` }}</strong></span
+      >
+      <span v-if="slotEquipment" class="mr-3"
+        >Обладнання:
+        <strong class="text-amber-300">{{
+          slotEquipment.name || `#${slotEquipment.id}`
+        }}</strong></span
+      >
+      <span v-if="slotAssistantId"
+        >Асистент: <strong class="text-indigo-300">{{ slotAssistantName }}</strong></span
+      >
     </div>
 
-    <div v-if="error" class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3">
+    <div
+      v-if="error"
+      class="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-lg p-3"
+    >
       {{ error }}
     </div>
 
     <div class="relative space-y-3">
       <div
-          v-if="loading"
-          class="absolute right-0 -top-1 text-xs text-emerald-300 flex items-center gap-2 animate-pulse"
+        v-if="loading"
+        class="absolute right-0 -top-1 text-xs text-emerald-300 flex items-center gap-2 animate-pulse"
       >
         <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
         <span>Оновлення...</span>
@@ -152,11 +188,20 @@ onMounted(() => {
 
       <div v-else-if="loading" class="text-sm text-text/70">Завантаження слотів...</div>
 
-      <div v-else class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
+      <div
+        v-else
+        class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
+      >
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
-        <p v-if="isNoSchedule" class="text-xs text-amber-400">Лікар вихідний. Налаштуйте графік лікаря.</p>
-        <p v-else-if="reason" class="text-xs uppercase tracking-wide text-amber-400">Причина: {{ reason }}</p>
-        <p v-else class="text-xs text-text/70">Обрати іншу дату або подивіться рекомендації нижче.</p>
+        <p v-if="isNoSchedule" class="text-xs text-amber-400">
+          Лікар вихідний. Налаштуйте графік лікаря.
+        </p>
+        <p v-else-if="reason" class="text-xs uppercase tracking-wide text-amber-400">
+          Причина: {{ reason }}
+        </p>
+        <p v-else class="text-xs text-text/70">
+          Обрати іншу дату або подивіться рекомендації нижче.
+        </p>
       </div>
 
       <div class="border-t border-border pt-3 mt-3 space-y-2">
@@ -167,7 +212,9 @@ onMounted(() => {
             type="button"
             :disabled="disabled"
             @click="loadRecommended"
-          >Оновити</button>
+          >
+            Оновити
+          </button>
         </div>
 
         <div v-if="recommended.length" class="flex flex-wrap gap-2">

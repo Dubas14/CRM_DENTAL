@@ -15,22 +15,26 @@
           <div
             v-for="block in inactiveBlocks"
             :key="block.key"
-            class="hour--inactive absolute left-0 right-0 bg-bg/60"
+            class="absolute left-0 right-0 bg-slate-100/40 dark:bg-slate-900/40"
+            :class="{ 'opacity-100': block.type === 'non-work', 'opacity-50': block.type !== 'non-work' }"
             :style="{ top: `${block.top}px`, height: `${block.height}px` }"
-          ></div>
+          >
+             <!-- Stripe pattern for non-working hours -->
+             <div v-if="block.type === 'non-work'" class="w-full h-full opacity-30" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #00000008 10px, #00000008 20px);"></div>
+          </div>
         </div>
 
         <div class="absolute inset-0 pointer-events-none">
           <div
-              v-for="line in gridLines"
-              :key="line.index"
-              class="absolute left-0 right-0 border-t"
-              :class="{
-    'calendar-grid-strong': line.type === 'hour',
-    'calendar-grid-medium': line.type === 'half',
-    'calendar-grid-light': line.type === 'quarter',
-  }"
-              :style="{ top: `${line.top}px` }"
+            v-for="line in gridLines"
+            :key="line.index"
+            class="absolute left-0 right-0"
+            :class="{
+              'border-t border-slate-200 dark:border-slate-700': line.type === 'hour',
+              'border-t border-slate-100 dark:border-slate-800 border-dashed': line.type === 'half',
+              'border-t border-slate-50 dark:border-slate-800/50 border-dotted': line.type === 'quarter'
+            }"
+            :style="{ top: `${line.top}px` }"
           />
         </div>
 
@@ -41,7 +45,7 @@
             top: `${hoverSlot.top}px`,
             left: `${hoverSlot.left}px`,
             width: `${hoverSlot.width}px`,
-            height: `${hoverSlot.height}px`,
+            height: `${hoverSlot.height}px`
           }"
         >
           <div class="h-full w-full rounded-md bg-sky-500/15 ring-1 ring-sky-400/30"></div>
@@ -60,7 +64,7 @@
             :active-start-hour="activeStartHour"
             :active-end-hour="activeEndHour"
             :hour-height="hourHeight"
-            :base-date="column.date || date"
+            :base-date="normalizeDate(column.date) || date"
             :snap-minutes="snapMinutes"
             :interactive="interactive"
             @select-slot="handleSelectSlot"
@@ -69,101 +73,238 @@
             @draft-start="handleDraftStart"
             @draft-update="handleDraftUpdate"
             @draft-end="handleDraftEnd"
+            @contextmenu="handleContextMenu"
           />
         </div>
 
-        <CalendarNowLine
-          v-if="showNowLine"
-          :top="nowLineTop"
-          :label="nowLabel"
-        />
+        <CalendarNowLine v-if="showNowLine" :top="nowLineTop" :label="nowLabel" :show-head="true" />
       </div>
     </div>
+    
+    <CalendarContextMenu
+      v-if="contextMenu.visible"
+      :visible="contextMenu.visible"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :title="contextMenu.title"
+      :actions="contextMenu.actions"
+      @close="closeContextMenu"
+      @action="handleContextAction"
+    />
   </div>
 </template>
 
-<script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
 import CalendarTimeGrid from './CalendarTimeGrid.vue'
 import CalendarDoctorColumn from './CalendarDoctorColumn.vue'
 import CalendarNowLine from './CalendarNowLine.vue'
+import CalendarContextMenu from './CalendarContextMenu.vue'
+import { Trash2, Edit, CheckCircle, XCircle, Clock } from 'lucide-vue-next'
+
+// ... existing interfaces ...
+
+interface CalendarItem {
+  id: string | number
+  title: string
+  startAt: string | Date
+  endAt: string | Date
+  doctorId: string | number
+  type?: string
+  status?: string
+  isReadOnly?: boolean
+}
+
+interface Doctor {
+  id: string | number
+  name: string
+  date?: string | Date
+}
+
+interface Column {
+  id: string | number
+  date?: string | Date
+  width?: number
+}
+
+interface DragState {
+  id: string | number
+  type: 'move' | 'resize-start' | 'resize-end'
+  pointerId: number
+  captureTarget: HTMLElement | null
+  originStart: Date | string
+  originEnd: Date | string
+  originDoctorId: string | number
+  originBaseDate: Date
+  startX: number
+  startY: number
+  columnRects: { columnId: string | number; rect: DOMRect; baseDate: Date | null }[]
+  draftStart: Date
+  draftEnd: Date
+  draftDoctorId: string | number
+}
+
+interface DraftState {
+  doctorId: string | number
+  startMinutes: number
+  endMinutes: number
+  baseDate: Date
+  startAt: Date
+  endAt: Date
+}
 
 const props = defineProps({
   date: {
     type: Date,
-    required: true,
+    required: true
   },
   doctors: {
-    type: Array,
-    default: () => [],
+    type: Array as PropType<Doctor[]>,
+    default: () => []
   },
   columns: {
-    type: Array,
-    default: null,
+    type: Array as PropType<Column[]>,
+    default: null
   },
   groupBy: {
     type: String,
-    default: 'doctor',
+    default: 'doctor'
   },
   viewMode: {
     type: String,
-    default: 'day',
+    default: 'day'
   },
   items: {
-    type: Array,
-    default: () => [],
+    type: Array as PropType<CalendarItem[]>,
+    default: () => []
   },
   startHour: {
     type: Number,
-    default: 8,
+    default: 8
   },
   endHour: {
     type: Number,
-    default: 22,
+    default: 22
+  },
+  workDayStart: {
+    type: Number,
+    default: 9
+  },
+  workDayEnd: {
+    type: Number,
+    default: 18
   },
   activeStartHour: {
     type: Number,
-    default: null,
+    default: null
   },
   activeEndHour: {
     type: Number,
-    default: null,
+    default: null
   },
   hourHeight: {
     type: Number,
-    default: 64,
+    default: 64
   },
   snapMinutes: {
     type: Number,
-    default: 15,
+    default: 15
   },
   showDoctorHeader: {
     type: Boolean,
-    default: true,
+    default: true
   },
   interactive: {
     type: Boolean,
-    default: true,
-  },
+    default: true
+  }
 })
 
-const emit = defineEmits(['select-slot', 'appointment-click', 'appointment-update', 'appointment-drag-start', 'appointment-drag-end'])
+const emit = defineEmits([
+  'select-slot',
+  'appointment-click',
+  'appointment-update',
+  'appointment-drag-start',
+  'appointment-drag-end'
+])
 
-const columnsWrapper = ref(null)
+const columnsWrapper = ref<HTMLElement | null>(null)
 const columnRefs = ref(new Map())
-const dragState = ref(null)
-const animationFrame = ref(null)
-const pendingMoveEvent = ref(null)
-const draftState = ref(null)
+const dragState = ref<DragState | null>(null)
+const animationFrame = ref<number | null>(null)
+const pendingMoveEvent = ref<PointerEvent | null>(null)
+const draftState = ref<DraftState | null>(null)
 const hoverSlot = ref({
   visible: false,
   top: 0,
   left: 0,
   width: 0,
-  height: 0,
+  height: 0
 })
 const nowTick = ref(Date.now())
-const nowInterval = ref(null)
+const nowInterval = ref<ReturnType<typeof setInterval> | null>(null)
+
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  title: '',
+  item: null as CalendarItem | null,
+  actions: [] as any[]
+})
+
+const handleContextMenu = ({ event, item }: { event: MouseEvent, item: CalendarItem }) => {
+  event.preventDefault()
+  
+  const actions = []
+  
+  if (item.type === 'appointment') {
+     // Status actions
+     if (item.status !== 'done') {
+        actions.push({ key: 'set_arrived', label: 'Пацієнт прийшов', icon: CheckCircle })
+        actions.push({ key: 'set_done', label: 'Завершити прийом', icon: CheckCircle })
+     }
+     
+     actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
+     
+     if (item.status !== 'cancelled') {
+        actions.push({ key: 'cancel', label: 'Скасувати', icon: XCircle, danger: true })
+     }
+  } else if (item.type === 'block') {
+     actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
+     actions.push({ key: 'delete', label: 'Видалити', icon: Trash2, danger: true })
+  }
+
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    title: item.title,
+    item,
+    actions
+  }
+}
+
+const closeContextMenu = () => {
+  contextMenu.value.visible = false
+}
+
+const handleContextAction = (key: string) => {
+  const item = contextMenu.value.item
+  if (!item) return
+  
+  if (key === 'edit') {
+    emit('appointment-click', item)
+  } else if (key === 'set_arrived') {
+    emit('appointment-update', { id: item.id, status: 'arrived' })
+  } else if (key === 'set_done') {
+    emit('appointment-update', { id: item.id, status: 'done' })
+  } else if (key === 'cancel') {
+    emit('appointment-update', { id: item.id, status: 'cancelled' })
+  } else if (key === 'delete') {
+     emit('appointment-update', { id: item.id, _delete: true }) 
+  }
+}
 
 const pixelsPerMinute = computed(() => props.hourHeight / 60)
 const activeMinutesRange = computed(() => {
@@ -173,6 +314,8 @@ const activeMinutesRange = computed(() => {
   const max = Math.min((props.endHour - props.startHour) * 60, (activeEnd - props.startHour) * 60)
   return { min, max }
 })
+
+
 
 const gridLines = computed(() => {
   const lines = []
@@ -184,11 +327,7 @@ const gridLines = computed(() => {
     lines.push({
       index: minutes,
       top: minutes * pixelsPerMinute.value,
-      type: isHour
-          ? 'hour'
-          : isHalfHour
-              ? 'half'
-              : 'quarter',
+      type: isHour ? 'hour' : isHalfHour ? 'half' : 'quarter'
     })
   }
   return lines
@@ -196,6 +335,30 @@ const gridLines = computed(() => {
 
 const inactiveBlocks = computed(() => {
   const blocks = []
+  
+  // Non-working hours (Morning)
+  if (props.workDayStart > props.startHour) {
+     const height = (props.workDayStart - props.startHour) * props.hourHeight
+     blocks.push({
+       key: 'non-work-morning',
+       top: 0,
+       height,
+       type: 'non-work'
+     })
+  }
+
+  // Non-working hours (Evening)
+  if (props.workDayEnd < props.endHour) {
+     const top = (props.workDayEnd - props.startHour) * props.hourHeight
+     const height = (props.endHour - props.workDayEnd) * props.hourHeight
+     blocks.push({
+       key: 'non-work-evening',
+       top,
+       height,
+       type: 'non-work'
+     })
+  }
+  
   const activeStart = props.activeStartHour ?? props.startHour
   const activeEnd = props.activeEndHour ?? props.endHour
   if (activeStart > props.startHour) {
@@ -203,6 +366,7 @@ const inactiveBlocks = computed(() => {
       key: 'inactive-start',
       top: 0,
       height: (activeStart - props.startHour) * props.hourHeight,
+      type: 'inactive'
     })
   }
   if (activeEnd < props.endHour) {
@@ -210,6 +374,7 @@ const inactiveBlocks = computed(() => {
       key: 'inactive-end',
       top: (activeEnd - props.startHour) * props.hourHeight,
       height: (props.endHour - activeEnd) * props.hourHeight,
+      type: 'inactive'
     })
   }
   return blocks
@@ -222,7 +387,13 @@ const resolvedColumns = computed(() => {
 
 const resolvedGroupBy = computed(() => (props.viewMode === 'week' ? 'date' : props.groupBy))
 
-const resolveGroupKey = (item) => {
+const normalizeDate = (value: string | Date | undefined): Date | null => {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const resolveGroupKey = (item: CalendarItem): string | null => {
   if (resolvedGroupBy.value === 'date') {
     const normalized = normalizeDate(item.startAt)
     if (!normalized) return null
@@ -231,38 +402,108 @@ const resolveGroupKey = (item) => {
     const day = `${normalized.getDate()}`.padStart(2, '0')
     return `${year}-${month}-${day}`
   }
-  return item.doctorId || null
+  return String(item.doctorId || '') || null
+}
+
+const formatDateKey = (date: Date): string | null => {
+  if (!date) return null
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getMinutesFromStart = (date: string | Date | undefined): number => {
+  const normalized = normalizeDate(date)
+  if (!normalized) return 0
+  const minutes = normalized.getHours() * 60 + normalized.getMinutes()
+  const startMinutes = props.startHour * 60
+  return Math.max(0, minutes - startMinutes)
 }
 
 const itemsByColumn = computed(() => {
-  const map = {}
+  const map: Record<string, any[]> = {}
   resolvedColumns.value.forEach((column) => {
-    map[column.id] = []
+    map[String(column.id)] = []
+    if (column.date) {
+      const key = formatDateKey(new Date(column.date))
+      if (key) map[key] = []
+    }
   })
 
   props.items.forEach((item) => {
     const isDragging = dragState.value?.id === item.id
-    const activeItem = isDragging
-      ? { ...item, startAt: dragState.value.draftStart, endAt: dragState.value.draftEnd, doctorId: dragState.value.draftDoctorId }
+
+    // 1. If dragging, we process the ORIGINAL item as a "Source Ghost" first
+    if (isDragging) {
+      const groupKey = resolveGroupKey(item)
+      if (groupKey && map[groupKey] !== undefined) { // Check undefined to allow generic push if map key exists
+          if (!map[groupKey]) map[groupKey] = []
+          
+          const startMinutes = getMinutesFromStart(item.startAt)
+          const endMinutes = getMinutesFromStart(item.endAt)
+          const height = Math.max(
+            (endMinutes - startMinutes) * pixelsPerMinute.value,
+            pixelsPerMinute.value * props.snapMinutes
+          )
+          
+          map[groupKey].push({
+            item: item,
+            top: startMinutes * pixelsPerMinute.value,
+            height,
+            isDragging: false,
+            isDragSource: true // New flag for styling
+          })
+      }
+    }
+
+    // 2. Determine the item to render (either the normal item or the Drag Snap Copy)
+    const activeItem = isDragging && dragState.value
+      ? {
+          ...item,
+          startAt: dragState.value.draftStart,
+          endAt: dragState.value.draftEnd,
+          doctorId: dragState.value.draftDoctorId,
+          isReadOnly: true // Prevent interaction with the snap copy itself while dragging
+        }
       : item
+      
+    // If it's the original item being dragged, we ALREADY pushed the ghost above.
+    // Now we push the "Snap Copy".
+    // If not dragging, we push the normal item.
 
     const groupKey = resolveGroupKey(activeItem)
-    if (!groupKey || !map[groupKey]) return
-    const startMinutes = getMinutesFromStart(activeItem.startAt)
-    const endMinutes = getMinutesFromStart(activeItem.endAt)
-    const height = Math.max((endMinutes - startMinutes) * pixelsPerMinute.value, pixelsPerMinute.value * props.snapMinutes)
-    map[groupKey].push({
-      item: activeItem,
-      top: startMinutes * pixelsPerMinute.value,
-      height,
-      isDragging,
-    })
+    if (!groupKey || !map[groupKey]) {
+      // Try to find if we are in week view and grouping by date
+       if (resolvedGroupBy.value === 'date' && groupKey) {
+         if (!map[groupKey]) map[groupKey] = [] // dynamically create if week view
+       } else {
+         return
+       }
+    }
+    
+    if (groupKey && map[groupKey]) {
+      const startMinutes = getMinutesFromStart(activeItem.startAt)
+      const endMinutes = getMinutesFromStart(activeItem.endAt)
+      const height = Math.max(
+        (endMinutes - startMinutes) * pixelsPerMinute.value,
+        pixelsPerMinute.value * props.snapMinutes
+      )
+      map[groupKey].push({
+        item: activeItem,
+        top: startMinutes * pixelsPerMinute.value,
+        height,
+        isDragging: isDragging // This is the active moving one
+      })
+    }
   })
 
   if (draftState.value) {
-    const draftKey = resolvedGroupBy.value === 'date'
-      ? formatDateKey(draftState.value.baseDate)
-      : draftState.value.doctorId
+    const draftKey =
+      resolvedGroupBy.value === 'date'
+        ? formatDateKey(draftState.value.baseDate)
+        : String(draftState.value.doctorId)
+    
     if (draftKey && map[draftKey]) {
       const startMinutes = draftState.value.startMinutes
       const endMinutes = draftState.value.endMinutes
@@ -274,17 +515,20 @@ const itemsByColumn = computed(() => {
           startAt: draftState.value.startAt,
           endAt: draftState.value.endAt,
           doctorId: draftState.value.doctorId,
-          isReadOnly: true,
+          isReadOnly: true
         },
         top: startMinutes * pixelsPerMinute.value,
-        height: Math.max((endMinutes - startMinutes) * pixelsPerMinute.value, pixelsPerMinute.value * props.snapMinutes),
-        isDragging: true,
+        height: Math.max(
+          (endMinutes - startMinutes) * pixelsPerMinute.value,
+          pixelsPerMinute.value * props.snapMinutes
+        ),
+        isDragging: true
       })
     }
   }
 
   Object.values(map).forEach((entries) => {
-    const overlapCounts = new Map()
+    const overlapCounts = new Map<number, number>()
     entries.forEach((entry) => {
       const index = overlapCounts.get(entry.top) || 0
       entry.stackOffset = index * 3
@@ -298,9 +542,9 @@ const itemsByColumn = computed(() => {
 const isToday = computed(() => {
   const now = new Date()
   return (
-    now.getFullYear() === props.date.getFullYear()
-    && now.getMonth() === props.date.getMonth()
-    && now.getDate() === props.date.getDate()
+    now.getFullYear() === props.date.getFullYear() &&
+    now.getMonth() === props.date.getMonth() &&
+    now.getDate() === props.date.getDate()
   )
 })
 
@@ -318,7 +562,7 @@ const nowLabel = computed(() => {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 })
 
-const setColumnRef = (doctorId, instance) => {
+const setColumnRef = (doctorId: string | number, instance: any) => {
   if (!instance) {
     columnRefs.value.delete(doctorId)
     return
@@ -326,47 +570,28 @@ const setColumnRef = (doctorId, instance) => {
   columnRefs.value.set(doctorId, instance)
 }
 
-const normalizeDate = (value) => {
-  if (!value) return null
-  const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const parseDateKey = (key) => {
+const parseDateKey = (key: string): Date | null => {
   if (typeof key !== 'string') return null
   const parsed = new Date(`${key}T00:00:00`)
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const formatDateKey = (date) => {
-  if (!date) return null
-  const year = date.getFullYear()
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const getMinutesFromStart = (date) => {
-  const normalized = normalizeDate(date)
-  if (!normalized) return 0
-  const minutes = normalized.getHours() * 60 + normalized.getMinutes()
-  const startMinutes = props.startHour * 60
-  return Math.max(0, minutes - startMinutes)
-}
-
-const getDateFromMinutesForBase = (baseDate, minutes) => {
+const getDateFromMinutesForBase = (baseDate: Date | string | undefined, minutes: number): Date => {
   const base = new Date(baseDate || props.date)
   base.setHours(props.startHour, 0, 0, 0)
   base.setMinutes(base.getMinutes() + minutes)
   return base
 }
 
-const handleSelectSlot = ({ doctorId, minutesFromStart, baseDate }) => {
+const handleSelectSlot = ({ doctorId, minutesFromStart, baseDate }: { doctorId: string | number, minutesFromStart: number, baseDate?: Date }) => {
   if (!props.interactive) return
   const range = activeMinutesRange.value
   if (minutesFromStart < range.min || minutesFromStart + props.snapMinutes > range.max) return
   const start = getDateFromMinutesForBase(baseDate || props.date, minutesFromStart)
-  const end = getDateFromMinutesForBase(baseDate || props.date, minutesFromStart + props.snapMinutes * 2)
+  const end = getDateFromMinutesForBase(
+    baseDate || props.date,
+    minutesFromStart + props.snapMinutes * 2
+  )
   emit('select-slot', { doctorId, start, end })
 }
 
@@ -377,12 +602,12 @@ const buildColumnRects = () => {
       const body = instance?.bodyRef?.value
       if (!body) return null
       const rect = body.getBoundingClientRect()
-      return { columnId: column.id, rect, baseDate: column.date || parseDateKey(column.id) }
+      return { columnId: column.id, rect, baseDate: column.date ? new Date(column.date) : parseDateKey(String(column.id)) }
     })
-    .filter(Boolean)
+    .filter((v): v is { columnId: string | number, rect: DOMRect, baseDate: Date | null } => Boolean(v))
 }
 
-const handleInteractionStart = ({ item, type, pointerEvent }) => {
+const handleInteractionStart = ({ item, type, pointerEvent }: { item: CalendarItem, type: DragState['type'], pointerEvent: PointerEvent }) => {
   if (!props.interactive) return
   if (!pointerEvent) return
   pointerEvent.preventDefault()
@@ -391,7 +616,7 @@ const handleInteractionStart = ({ item, type, pointerEvent }) => {
   const columnRects = buildColumnRects()
   if (!columnRects.length) return
 
-  const captureTarget = pointerEvent.target
+  const captureTarget = pointerEvent.target as HTMLElement
   if (captureTarget?.setPointerCapture) {
     captureTarget.setPointerCapture(pointerEvent.pointerId)
   }
@@ -408,9 +633,9 @@ const handleInteractionStart = ({ item, type, pointerEvent }) => {
     startX: pointerEvent.clientX,
     startY: pointerEvent.clientY,
     columnRects,
-    draftStart: item.startAt,
-    draftEnd: item.endAt,
-    draftDoctorId: item.doctorId,
+    draftStart: normalizeDate(item.startAt)!,
+    draftEnd: normalizeDate(item.endAt)!,
+    draftDoctorId: item.doctorId
   }
 
   emit('appointment-drag-start', item)
@@ -419,17 +644,17 @@ const handleInteractionStart = ({ item, type, pointerEvent }) => {
   window.addEventListener('pointerup', handlePointerEnd)
 }
 
-const resolveColumnAt = (x, columnRects, fallbackColumnId) => {
+const resolveColumnAt = (x: number, columnRects: { columnId: string | number, rect: DOMRect }[], fallbackColumnId: string | number) => {
   const found = columnRects.find(({ rect }) => x >= rect.left && x <= rect.right)
-  return found?.columnId || fallbackColumnId
+  return found?.columnId ?? fallbackColumnId
 }
 
-const snapToMinutes = (minutes) => {
+const snapToMinutes = (minutes: number) => {
   const snap = props.snapMinutes
   return Math.round(minutes / snap) * snap
 }
 
-const clampMinutesRange = (startMinutes, endMinutes) => {
+const clampMinutesRange = (startMinutes: number, endMinutes: number) => {
   const { min, max } = activeMinutesRange.value
   const duration = endMinutes - startMinutes
   let nextStart = Math.max(min, Math.min(startMinutes, max - duration))
@@ -441,14 +666,20 @@ const clampMinutesRange = (startMinutes, endMinutes) => {
   return { startMinutes: nextStart, endMinutes: nextEnd }
 }
 
-const resolveBaseDateFromColumn = (columnId) => {
+const resolveBaseDateFromColumn = (columnId: string | number): Date => {
   if (props.viewMode !== 'week') return props.date
-  return parseDateKey(columnId) || props.date
+  // if columnId is date string
+  if (typeof columnId === 'string' && columnId.match(/^\d{4}-\d{2}-\d{2}$/)) {
+     return parseDateKey(columnId) || props.date
+  }
+  return props.date
 }
 
-const processPointerMove = (event) => {
+const processPointerMove = (event: PointerEvent) => {
   if (!dragState.value) return
-  const deltaMinutes = snapToMinutes((event.clientY - dragState.value.startY) / pixelsPerMinute.value)
+  const deltaMinutes = snapToMinutes(
+    (event.clientY - dragState.value.startY) / pixelsPerMinute.value
+  )
   const originStartMinutes = getMinutesFromStart(dragState.value.originStart)
   const originEndMinutes = getMinutesFromStart(dragState.value.originEnd)
 
@@ -475,24 +706,30 @@ const processPointerMove = (event) => {
     startMinutes = originStartMinutes
   }
 
-  const fallbackColumnId = props.viewMode === 'week'
-    ? formatDateKey(dragState.value.originBaseDate)
-    : dragState.value.originDoctorId
-  const columnId = dragState.value.type === 'move'
-    ? resolveColumnAt(event.clientX, dragState.value.columnRects, fallbackColumnId)
-    : fallbackColumnId
+  const fallbackColumnId =
+    props.viewMode === 'week'
+      ? formatDateKey(dragState.value.originBaseDate)
+      : dragState.value.originDoctorId
+      
+  const columnId =
+    dragState.value.type === 'move'
+      ? resolveColumnAt(event.clientX, dragState.value.columnRects, fallbackColumnId!)
+      : fallbackColumnId!
+      
   const doctorId = props.viewMode === 'week' ? dragState.value.originDoctorId : columnId
-  const baseDate = props.viewMode === 'week' && dragState.value.type === 'move'
-    ? resolveBaseDateFromColumn(columnId)
-    : dragState.value.originBaseDate
+  const baseDate =
+    props.viewMode === 'week' && dragState.value.type === 'move'
+      ? resolveBaseDateFromColumn(columnId)
+      : dragState.value.originBaseDate
 
   dragState.value.draftStart = getDateFromMinutesForBase(baseDate, startMinutes)
   dragState.value.draftEnd = getDateFromMinutesForBase(baseDate, endMinutes)
   dragState.value.draftDoctorId = doctorId
 }
 
-const handlePointerMove = (event) => {
-  pendingMoveEvent.value = event
+const handlePointerMove = (event: Event) => {
+  const ptrEvent = event as PointerEvent
+  pendingMoveEvent.value = ptrEvent
   if (animationFrame.value) return
   animationFrame.value = requestAnimationFrame(() => {
     animationFrame.value = null
@@ -509,10 +746,10 @@ const handlePointerEnd = () => {
     id: dragState.value.id,
     startAt: dragState.value.draftStart,
     endAt: dragState.value.draftEnd,
-    doctorId: dragState.value.draftDoctorId,
+    doctorId: dragState.value.draftDoctorId
   }
 
-  const captureTarget = dragState.value.captureTarget
+  const captureTarget = dragState.value.captureTarget as HTMLElement
   if (captureTarget?.releasePointerCapture) {
     captureTarget.releasePointerCapture(dragState.value.pointerId)
   }
@@ -525,10 +762,12 @@ const handlePointerEnd = () => {
   window.removeEventListener('pointerup', handlePointerEnd)
 }
 
-const computeHoverSlot = (event, columnRects) => {
+const computeHoverSlot = (event: MouseEvent, columnRects: { columnId: string | number, rect: DOMRect, baseDate: Date | null }[]) => {
   const wrapperRect = columnsWrapper.value?.getBoundingClientRect()
   if (!wrapperRect) return null
-  const hovered = columnRects.find(({ rect }) => event.clientX >= rect.left && event.clientX <= rect.right)
+  const hovered = columnRects.find(
+    ({ rect }: { rect: DOMRect }) => event.clientX >= rect.left && event.clientX <= rect.right
+  )
   if (!hovered) return null
 
   const offsetY = event.clientY - hovered.rect.top
@@ -542,11 +781,11 @@ const computeHoverSlot = (event, columnRects) => {
     top: hovered.rect.top - wrapperRect.top + top,
     left: hovered.rect.left - wrapperRect.left,
     width: hovered.rect.width,
-    height: props.snapMinutes * pixelsPerMinute.value,
+    height: props.snapMinutes * pixelsPerMinute.value
   }
 }
 
-const handleHoverMove = (event) => {
+const handleHoverMove = (event: MouseEvent) => {
   if (!props.interactive || !columnsWrapper.value) return
   const columnRects = buildColumnRects()
   if (!columnRects.length) return
@@ -562,27 +801,31 @@ const clearHover = () => {
   hoverSlot.value.visible = false
 }
 
-const updateDraftState = (payload) => {
+const updateDraftState = (payload: { doctorId: string | number, startMinutes: number, endMinutes: number, baseDate: Date }) => {
   const { doctorId, startMinutes, endMinutes, baseDate } = payload
   const startAt = getDateFromMinutesForBase(baseDate, startMinutes)
   const endAt = getDateFromMinutesForBase(baseDate, endMinutes)
   draftState.value = { doctorId, startMinutes, endMinutes, baseDate, startAt, endAt }
 }
 
-const handleDraftStart = (payload) => {
+const handleDraftStart = (payload: { doctorId: string | number, startMinutes: number, endMinutes: number, baseDate: Date }) => {
   if (!props.interactive) return
   updateDraftState(payload)
 }
 
-const handleDraftUpdate = (payload) => {
+const handleDraftUpdate = (payload: { doctorId: string | number, startMinutes: number, endMinutes: number, baseDate: Date }) => {
   if (!props.interactive || !draftState.value) return
   updateDraftState(payload)
 }
 
-const handleDraftEnd = (payload) => {
+const handleDraftEnd = (payload: { doctorId: string | number, startMinutes: number, endMinutes: number, baseDate: Date }) => {
   if (!props.interactive) return
   updateDraftState(payload)
-  emit('select-slot', { doctorId: payload.doctorId, start: draftState.value.startAt, end: draftState.value.endAt })
+  emit('select-slot', {
+    doctorId: payload.doctorId,
+    start: draftState.value!.startAt,
+    end: draftState.value!.endAt
+  })
   draftState.value = null
 }
 
@@ -590,7 +833,7 @@ watch(
   () => props.items,
   () => {
     if (!dragState.value) return
-    const current = props.items.find((item) => item.id === dragState.value.id)
+    const current = props.items.find((item) => item.id === dragState.value?.id)
     if (!current) {
       dragState.value = null
     }
@@ -612,7 +855,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.hour--inactive {
-  opacity: 0.35;
-}
+/* No specific styles needed anymore, handled by Tailwind classes */
 </style>

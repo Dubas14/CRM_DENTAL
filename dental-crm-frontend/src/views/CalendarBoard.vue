@@ -31,7 +31,9 @@
         />
 
         <div class="flex min-h-0 flex-1 min-w-0">
-          <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30 dark:border-border/30">
+          <div
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30 dark:border-border/30"
+          >
             <div class="shrink-0 border-b border-border/60 px-4 py-3 dark:border-border/30">
               <CalendarHeader
                 :current-date="currentDate"
@@ -46,14 +48,23 @@
               />
             </div>
             <div class="flex min-h-0 flex-1 overflow-hidden">
-              <div v-if="!currentClinicId" class="flex h-full flex-1 items-center justify-center text-text/60">
+              <div
+                v-if="!currentClinicId"
+                class="flex h-full flex-1 items-center justify-center text-text/60"
+              >
                 ⬅ Будь ласка, оберіть клініку зі списку зліва
               </div>
-              <div v-else-if="!selectedDoctorId" class="flex h-full flex-1 items-center justify-center text-text/60">
+              <div
+                v-else-if="!selectedDoctorId"
+                class="flex h-full flex-1 items-center justify-center text-text/60"
+              >
                 ⬅ Оберіть лікаря зі списку зліва
               </div>
               <div v-else class="flex min-h-0 flex-1 flex-col">
-                <div v-if="view === 'week'" class="flex border-b calendar-grid-strong calendar-all-day-divider bg-card/30 text-xs font-semibold text-text/70">
+                <div
+                  v-if="view === 'week'"
+                  class="flex border-b calendar-grid-strong calendar-all-day-divider bg-card/30 text-xs font-semibold text-text/70"
+                >
                   <div class="w-16 shrink-0"></div>
                   <div class="flex min-w-0 flex-1" :style="{ minWidth: `${weekMinWidth}px` }">
                     <div
@@ -128,7 +139,9 @@
                 </div>
 
                 <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <div class="grid grid-cols-7 border-b calendar-grid-strong text-center text-xs font-semibold text-text/70">
+                  <div
+                    class="grid grid-cols-7 border-b calendar-grid-strong text-center text-xs font-semibold text-text/70"
+                  >
                     <div
                       v-for="day in monthWeekdays"
                       :key="day"
@@ -150,7 +163,7 @@
                         :class="[
                           cell.isCurrentMonth ? 'text-text/90' : 'text-text/40',
                           cell.isSelected ? 'bg-emerald-500/15 ring-1 ring-emerald-500/40' : '',
-                          index >= 7 ? 'calendar-week-divider' : '',
+                          index >= 7 ? 'calendar-week-divider' : ''
                         ]"
                         @click="handleMonthDayClick(cell.date)"
                       >
@@ -159,7 +172,7 @@
                             class="text-sm font-semibold"
                             :class="[
                               cell.isToday ? 'text-emerald-300' : '',
-                              cell.isWeekend ? 'text-rose-600 dark:text-rose-400' : '',
+                              cell.isWeekend ? 'text-rose-600 dark:text-rose-400' : ''
                             ]"
                           >
                             {{ cell.label }}
@@ -220,7 +233,9 @@
       class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-6"
       @click.self="closeMonthEvents"
     >
-      <div class="w-full max-w-md rounded-xl border border-border/60 bg-card p-4 shadow-xl dark:border-border/40">
+      <div
+        class="w-full max-w-md rounded-xl border border-border/60 bg-card p-4 shadow-xl dark:border-border/40"
+      >
         <div class="flex items-center justify-between gap-3">
           <div>
             <p class="text-sm font-semibold text-text">Події дня</p>
@@ -256,7 +271,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CalendarBoard from '../components/calendar/CalendarBoard.vue'
@@ -322,7 +337,9 @@ const selectedDoctor = computed(() =>
 const filteredDoctors = computed(() => (selectedDoctor.value ? [selectedDoctor.value] : []))
 const filteredCalendarItems = computed(() => {
   if (!selectedDoctorId.value) return []
-  return calendarItems.value.filter((item) => Number(item.doctorId) === Number(selectedDoctorId.value))
+  return calendarItems.value.filter(
+    (item) => Number(item.doctorId) === Number(selectedDoctorId.value)
+  )
 })
 
 const toDate = (value) => {
@@ -362,7 +379,7 @@ const formatTimeHM = (date) => {
 
 const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')
 
-const formatDateWithParts = (date, options) => (
+const formatDateWithParts = (date, options) =>
   new Intl.DateTimeFormat('uk-UA', options)
     .formatToParts(date)
     .map((part) => {
@@ -370,7 +387,6 @@ const formatDateWithParts = (date, options) => (
       return part.value
     })
     .join('')
-)
 
 const weekStart = computed(() => {
   const base = new Date(currentDate.value)
@@ -380,15 +396,15 @@ const weekStart = computed(() => {
   return base
 })
 
-const weekDays = computed(() => (
+const weekDays = computed(() =>
   Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekStart.value)
     date.setDate(weekStart.value.getDate() + index)
     return date
   })
-))
+)
 
-const weekColumns = computed(() => (
+const weekColumns = computed(() =>
   weekDays.value.map((date) => {
     const weekday = formatDateWithParts(date, { weekday: 'short' })
     const dayLabel = formatDateWithParts(date, { day: 'numeric', month: 'long' })
@@ -400,10 +416,10 @@ const weekColumns = computed(() => (
       weekday,
       dayLabel,
       isSunday: date.getDay() === 0,
-      is_active: true,
+      is_active: true
     }
   })
-))
+)
 
 const weekMinWidth = computed(() => 64 + weekColumns.value.length * WEEK_COLUMN_WIDTH)
 
@@ -418,7 +434,11 @@ const monthWeekdays = computed(() => {
 
 const monthEventsLabel = computed(() => {
   if (!monthEventsDate.value) return ''
-  return formatDateWithParts(monthEventsDate.value, { day: 'numeric', month: 'long', year: 'numeric' })
+  return formatDateWithParts(monthEventsDate.value, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
 })
 
 const itemsByDate = computed(() => {
@@ -451,14 +471,17 @@ const monthCells = computed(() => {
     date.setDate(start.getDate() + index)
     const key = formatDateOnly(date)
     const isCurrentMonth = date.getMonth() === base.getMonth()
-    const isSelected = date.getFullYear() === currentDate.value.getFullYear()
-      && date.getMonth() === currentDate.value.getMonth()
-      && date.getDate() === currentDate.value.getDate()
+    const isSelected =
+      date.getFullYear() === currentDate.value.getFullYear() &&
+      date.getMonth() === currentDate.value.getMonth() &&
+      date.getDate() === currentDate.value.getDate()
     const isToday = (() => {
       const now = new Date()
-      return date.getFullYear() === now.getFullYear()
-        && date.getMonth() === now.getMonth()
-        && date.getDate() === now.getDate()
+      return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      )
     })()
 
     return {
@@ -469,7 +492,7 @@ const monthCells = computed(() => {
       isSelected,
       isToday,
       isWeekend: date.getDay() === 0 || date.getDay() === 6,
-      items: itemsByDate.value[key] || [],
+      items: itemsByDate.value[key] || []
     }
   })
 })
@@ -521,7 +544,7 @@ const mapBlockToItem = (block) => {
     endAt,
     doctorId,
     isReadOnly: false,
-    raw: block,
+    raw: block
   }
 }
 
@@ -541,12 +564,14 @@ const mapAppointmentToItem = (appt) => {
     doctorId,
     status: appt.status,
     isReadOnly: appt.status === 'done',
-    raw: appt,
+    raw: appt
   }
 }
 
 const updateCalendarItem = (updated) => {
-  calendarItems.value = calendarItems.value.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+  calendarItems.value = calendarItems.value.map((item) =>
+    item.id === updated.id ? { ...item, ...updated } : item
+  )
 }
 
 const getAppointmentDurationMinutes = (startAt, endAt) => {
@@ -563,10 +588,11 @@ const isDoctorActive = (doctorId) => {
 }
 
 const hasOverlap = (itemId, doctorId, startAt, endAt) => {
-  const isBlockingBlock = (item) => (
-    item?.type === 'block'
-    && (item.raw?.is_blocking === true || item.raw?.blocking === true || item.raw?.type === 'room_block')
-  )
+  const isBlockingBlock = (item) =>
+    item?.type === 'block' &&
+    (item.raw?.is_blocking === true ||
+      item.raw?.blocking === true ||
+      item.raw?.type === 'room_block')
   return calendarItems.value.some((item) => {
     if (item.id === itemId) return false
     if (item.doctorId !== doctorId) return false
@@ -592,7 +618,7 @@ const isDropAllowed = async (appointment, doctorId, startAt, endAt) => {
       room_id: appointment?.room_id || appointment?.room?.id || undefined,
       equipment_id: appointment?.equipment_id || appointment?.equipment?.id || undefined,
       assistant_id: appointment?.assistant_id || appointment?.assistant?.id || undefined,
-      duration_minutes: durationMinutes,
+      duration_minutes: durationMinutes
     })
     const slots = Array.isArray(data?.slots) ? data.slots : []
     const allowed = new Set(slots.map((slot) => slot.start))
@@ -608,7 +634,7 @@ const loadClinics = async () => {
   try {
     if (user.value?.global_role === 'super_admin') {
       const { data } = await clinicApi.list()
-      clinics.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+      clinics.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     } else {
       const { data } = await clinicApi.listMine()
       clinics.value = (data.clinics || []).map((c) => ({ id: c.clinic_id, name: c.clinic_name }))
@@ -632,7 +658,11 @@ const fetchEvents = async () => {
   try {
     const [blocksResponse, appointmentsResponse] = await Promise.all([
       calendarApi.getCalendarBlocks({ clinic_id: currentClinicId.value, from, to }),
-      calendarApi.getAppointments({ clinic_id: currentClinicId.value, from_date: from, to_date: to }),
+      calendarApi.getAppointments({
+        clinic_id: currentClinicId.value,
+        from_date: from,
+        to_date: to
+      })
     ])
 
     const blocksData = blocksResponse.data?.data || blocksResponse.data || []
@@ -648,7 +678,9 @@ const fetchEvents = async () => {
   }
 
   if (pendingAppointmentId.value) {
-    const target = calendarItems.value.find((item) => item.id === pendingAppointmentId.value && item.type === 'appointment')
+    const target = calendarItems.value.find(
+      (item) => item.id === pendingAppointmentId.value && item.type === 'appointment'
+    )
     if (target) {
       selectedAppointment.value = target.raw
       isAppointmentModalOpen.value = true
@@ -681,7 +713,7 @@ const saveEvent = async (payload) => {
     start_at: formatDateTime(payload.start),
     end_at: formatDateTime(payload.end),
     note: payload.note ?? payload.title ?? '',
-    doctor_id: payloadToSave.doctor_id,
+    doctor_id: payloadToSave.doctor_id
   }
 
   try {
@@ -790,7 +822,7 @@ const createDefaultEvent = ({ start, end, doctorId }) => {
     end: e,
     doctor_id: doctorId || selectedDoctorId.value || defaultDoctorId.value,
     type: 'personal_block',
-    note: '',
+    note: ''
   }
 }
 
@@ -803,7 +835,9 @@ const loadDoctors = async () => {
 
   try {
     loadingDoctors.value = true
-    const { data } = await apiClient.get('/doctors', { params: { clinic_id: currentClinicId.value } })
+    const { data } = await apiClient.get('/doctors', {
+      params: { clinic_id: currentClinicId.value }
+    })
     doctors.value = (data?.data || data || []).filter(Boolean)
     if (!doctors.value.length) {
       selectedDoctorId.value = null
@@ -815,10 +849,12 @@ const loadDoctors = async () => {
       return
     }
 
-    const hasSelected = selectedDoctorId.value
-      && doctors.value.some((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
+    const hasSelected =
+      selectedDoctorId.value &&
+      doctors.value.some((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
     if (!hasSelected) {
-      selectedDoctorId.value = selectedDoctorId.value || defaultDoctorId.value || doctors.value[0].id
+      selectedDoctorId.value =
+        selectedDoctorId.value || defaultDoctorId.value || doctors.value[0].id
     }
   } catch (error) {
     console.error(error)
@@ -838,8 +874,11 @@ const loadProcedures = async () => {
 
   try {
     const { data } = await procedureApi.list({ clinic_id: currentClinicId.value })
-    procedures.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
-    if (selectedProcedureId.value && !procedures.value.some((proc) => Number(proc.id) === Number(selectedProcedureId.value))) {
+    procedures.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    if (
+      selectedProcedureId.value &&
+      !procedures.value.some((proc) => Number(proc.id) === Number(selectedProcedureId.value))
+    ) {
       selectedProcedureId.value = null
     }
   } catch (error) {
@@ -886,7 +925,7 @@ const handleAppointmentClick = (item) => {
     end: item.endAt,
     doctor_id: item.doctorId,
     note: item.raw?.note || '',
-    type: item.raw?.type || 'personal_block',
+    type: item.raw?.type || 'personal_block'
   })
 }
 
@@ -894,9 +933,9 @@ const handleAppointmentUpdate = async ({ id, startAt, endAt, doctorId }) => {
   const item = calendarItems.value.find((entry) => entry.id === id)
   if (!item || item.type !== 'appointment') return
   if (
-    item.startAt.getTime() === startAt.getTime()
-    && item.endAt.getTime() === endAt.getTime()
-    && item.doctorId === doctorId
+    item.startAt.getTime() === startAt.getTime() &&
+    item.endAt.getTime() === endAt.getTime() &&
+    item.doctorId === doctorId
   ) {
     return
   }
@@ -946,7 +985,7 @@ const handleAppointmentUpdate = async ({ id, startAt, endAt, doctorId }) => {
     const { data } = await calendarApi.updateAppointment(item.id, {
       doctor_id: doctorId,
       start_at: formatDateTime(startAt),
-      end_at: formatDateTime(endAt),
+      end_at: formatDateTime(endAt)
     })
 
     const updatedAppointment = data?.data || data?.appointment || data
@@ -1058,11 +1097,14 @@ watch(currentDate, () => {
   fetchEvents()
 })
 
-watch(() => route.query, () => {
-  handleCloseModal()
-  handleCloseAppointmentModal()
-  closeMonthEvents()
-  applyRouteSelection()
-  fetchEvents()
-})
+watch(
+  () => route.query,
+  () => {
+    handleCloseModal()
+    handleCloseAppointmentModal()
+    closeMonthEvents()
+    applyRouteSelection()
+    fetchEvents()
+  }
+)
 </script>
