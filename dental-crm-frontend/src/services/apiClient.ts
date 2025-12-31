@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { addRetryInterceptor } from '@/utils/retryHelper'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost/api',
@@ -7,6 +8,13 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json'
   }
+})
+
+// Додати retry логіку для мережевих помилок
+addRetryInterceptor(apiClient, {
+  maxRetries: 2,
+  retryDelay: 1000,
+  retryableStatuses: [408, 429, 500, 502, 503, 504]
 })
 
 // Приватні допоміжні функції
@@ -60,6 +68,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     const { response, config } = error
 
+    // Network error
     if (!response) {
       console.error('Network error - no internet or server down')
       return Promise.reject(error)
@@ -67,26 +76,26 @@ apiClient.interceptors.response.use(
 
     const { status, data } = response
 
-    switch (status) {
-      case 401:
-        console.warn('Unauthorized - clearing token')
-        clearAuthTokenLocal()
-        // Автоматичний редирект на логін
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login'
-        }
-        break
-      case 403:
-        console.warn('Forbidden:', config.url)
-        break
-      case 404:
-        console.warn('Not found:', config.url)
-        break
-      case 422:
-        console.warn('Validation error:', data?.errors || data?.message)
-        break
-      default:
-        console.error(`API Error ${status}:`, data?.message || 'Unknown error')
+    // Handle 401 Unauthorized
+    if (status === 401) {
+      console.warn('Unauthorized - clearing token')
+      clearAuthTokenLocal()
+      
+      // Автоматичний редирект на логін (тільки якщо не на сторінці логіна)
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+    }
+
+    // Log errors in development
+    if (import.meta.env.DEV) {
+      console.group(`API Error ${status}: ${config?.url}`)
+      console.error('Status:', status)
+      console.error('Message:', data?.message)
+      if (data?.errors) {
+        console.error('Validation Errors:', data.errors)
+      }
+      console.groupEnd()
     }
 
     return Promise.reject(error)

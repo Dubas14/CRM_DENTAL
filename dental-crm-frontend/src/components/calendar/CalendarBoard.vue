@@ -7,9 +7,9 @@
 
       <div
         ref="columnsWrapper"
-        class="relative flex flex-1 min-w-0 bg-bg/40"
-        @mousemove="handleHoverMove"
-        @mouseleave="clearHover"
+        class="relative flex flex-1 min-w-0 bg-bg/40 touch-none"
+        @pointermove="handleHoverMove"
+        @pointerleave="clearHover"
       >
         <div class="absolute inset-0 pointer-events-none">
           <div
@@ -599,7 +599,7 @@ const buildColumnRects = () => {
   return resolvedColumns.value
     .map((column) => {
       const instance = columnRefs.value.get(column.id)
-      const body = instance?.bodyRef?.value
+      const body = instance?.bodyRef?.value || instance?.bodyRef
       if (!body) return null
       const rect = body.getBoundingClientRect()
       return { columnId: column.id, rect, baseDate: column.date ? new Date(column.date) : parseDateKey(String(column.id)) }
@@ -687,8 +687,9 @@ const processPointerMove = (event: PointerEvent) => {
   let endMinutes = originEndMinutes
 
   if (dragState.value.type === 'move') {
-    startMinutes = originStartMinutes + deltaMinutes
-    endMinutes = originEndMinutes + deltaMinutes
+    startMinutes = Math.round((originStartMinutes + deltaMinutes) / props.snapMinutes) * props.snapMinutes
+    const duration = originEndMinutes - originStartMinutes
+    endMinutes = startMinutes + duration
     const clamped = clampMinutesRange(startMinutes, endMinutes)
     startMinutes = clamped.startMinutes
     endMinutes = clamped.endMinutes

@@ -974,13 +974,6 @@ const handleAppointmentUpdate = async ({ id, startAt, endAt, doctorId }) => {
     return
   }
 
-  const slotAllowed = await isDropAllowed(item.raw, doctorId, startAt, endAt)
-  if (!slotAllowed) {
-    toastError('Лікар недоступний у вибраний час')
-    updateCalendarItem(original)
-    return
-  }
-
   try {
     const { data } = await calendarApi.updateAppointment(item.id, {
       doctor_id: doctorId,

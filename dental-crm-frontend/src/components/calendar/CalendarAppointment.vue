@@ -1,10 +1,10 @@
 <template>
   <div
-    class="absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group"
+    class="absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group touch-none"
     :class="[
       backgroundClass,
       cursorClass,
-      isDragging ? 'z-20 ring-2 ring-emerald-400/50 shadow-lg scale-[1.02]' : 'z-10',
+      isDragging ? 'ring-2 ring-sky-400 shadow-lg scale-[1.02]' : '',
       isDragSource ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'
     ]"
     :style="styleObject"
@@ -15,11 +15,13 @@
     <!-- Resize Handles -->
     <div
       v-if="showResizeHandles"
-      class="pointer-events-none absolute left-0 right-0 top-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/5"
+      class="absolute left-0 right-0 top-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/10 z-20"
+      @pointerdown.stop="(e: PointerEvent) => emit('interaction-start', { item, type: 'resize-start', pointerEvent: e })"
     ></div>
     <div
       v-if="showResizeHandles"
-      class="pointer-events-none absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/5"
+      class="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/10 z-20"
+      @pointerdown.stop="(e: PointerEvent) => emit('interaction-start', { item, type: 'resize-end', pointerEvent: e })"
     ></div>
 
     <div class="flex flex-col h-full overflow-hidden">

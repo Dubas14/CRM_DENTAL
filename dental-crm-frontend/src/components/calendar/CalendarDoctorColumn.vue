@@ -241,7 +241,10 @@ const handlePointerDown = (event: PointerEvent) => {
   if (props.doctor?.is_active === false) return
   if (event.button !== 0) return
   const target = event.target as HTMLElement
-  if (target?.closest?.('[data-calendar-item]')) return
+  // Check if we hit an appointment or something inside it
+  if (target?.closest?.('[data-calendar-item="appointment"]')) {
+     return
+  }
   const currentTarget = event.currentTarget as HTMLElement
   if (!bodyRef.value || !currentTarget) return
 
