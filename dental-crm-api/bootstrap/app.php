@@ -12,8 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // API rate limiting
+        // CORS + API rate limiting
+        // Important: CORS must run early so even error responses (4xx/5xx) include CORS headers.
         $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
         ]);
     })

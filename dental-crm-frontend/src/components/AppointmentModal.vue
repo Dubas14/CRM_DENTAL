@@ -31,6 +31,11 @@ const loading = ref(false)
 const appointmentSaving = ref(false)
 const followUpSaving = ref(false)
 
+// UI state (no business-logic changes)
+const rescheduleMode = ref<'slots' | 'smart'>('slots')
+const showDetails = ref(false)
+const showFollowUp = ref(false)
+
 const statuses = [
   { id: 'healthy', label: 'Здоровий' },
   { id: 'caries', label: 'Карієс' },
@@ -102,6 +107,23 @@ const isReadOnly = computed(() => status.value === 'done')
 const doctorName = computed(() => {
   const doctor = getProp('doctor')
   return doctor?.full_name || doctor?.name || getProp('doctor_name') || '—'
+})
+
+const periodLabel = computed(() => {
+  const start = appointmentForm.value.start_at || appointmentDetails.value.start
+  const end = appointmentForm.value.end_at || appointmentDetails.value.end
+  if (!start || !end) return '—'
+  try {
+    const startDt = new Date(start)
+    const endDt = new Date(end)
+    if (Number.isNaN(startDt.getTime()) || Number.isNaN(endDt.getTime())) return '—'
+    const date = startDt.toLocaleDateString('uk-UA')
+    const startTime = startDt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+    const endTime = endDt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
+    return `${date} • ${startTime} – ${endTime}`
+  } catch {
+    return '—'
+  }
 })
 const appointmentDetails = computed(() => ({
   procedure: getProp('procedure')?.name || getProp('procedure_name'),
@@ -411,6 +433,7 @@ watch(
           </p>
         </div>
         <button
+          type="button"
           @click="$emit('close')"
           class="text-text/70 hover:text-text text-2xl leading-none transition-colors"
         >
@@ -420,147 +443,250 @@ watch(
 
       <!-- Тіло форми -->
       <div class="p-6 overflow-y-auto custom-scrollbar space-y-4">
-        <div class="grid grid-cols-2 gap-4 text-sm text-text/80">
-          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
-            <p class="text-xs uppercase tracking-wide text-text/70">Лікар</p>
-            <p class="font-semibold text-text">{{ doctorName }}</p>
+        <!-- Summary (compact, no duplicates) -->
+        <section
+          class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-2"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="space-y-0.5">
+              <p class="text-xs uppercase tracking-wide text-text/60">Поточний запис</p>
+              <p class="text-sm font-semibold text-text">{{ periodLabel }}</p>
+            </div>
+            <span class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
+              Статус: {{ status || '—' }}
+            </span>
           </div>
-          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
-            <p class="text-xs uppercase tracking-wide text-text/70">Період</p>
-            <p class="font-semibold text-text">
-              {{
-                appointmentDetails.start ? new Date(appointmentDetails.start).toLocaleString() : '—'
-              }}
-            </p>
-          </div>
-          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
-            <p class="text-xs uppercase tracking-wide text-text/70">Процедура</p>
-            <p class="font-semibold text-text">{{ appointmentDetails.procedure || '—' }}</p>
-          </div>
-          <div class="bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
-            <p class="text-xs uppercase tracking-wide text-text/70">Статус</p>
-            <p class="font-semibold text-text">{{ status || '—' }}</p>
-          </div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-4 text-sm text-text/80">
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Лікар</label>
-            <select
-              v-model="appointmentForm.doctor_id"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              :disabled="loadingLookups || isReadOnly"
-            >
-              <option value="">-- Оберіть лікаря --</option>
-              <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
-                {{ doc.full_name || doc.name || doc.email }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Процедура</label>
-            <select
-              v-model="appointmentForm.procedure_id"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              :disabled="loadingLookups || isReadOnly"
-            >
-              <option value="">-- Оберіть процедуру --</option>
-              <option v-for="proc in procedures" :key="proc.id" :value="proc.id">
-                {{ proc.name }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Кабінет</label>
-            <select
-              v-model="appointmentForm.room_id"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              :disabled="loadingLookups || isReadOnly"
-            >
-              <option value="">-- Оберіть кабінет --</option>
-              <option v-for="room in rooms" :key="room.id" :value="room.id">
-                {{ room.name }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"
-              >Обладнання</label
-            >
-            <select
-              v-model="appointmentForm.equipment_id"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              :disabled="loadingLookups || isReadOnly"
-            >
-              <option value="">-- Оберіть обладнання --</option>
-              <option v-for="equipment in equipments" :key="equipment.id" :value="equipment.id">
-                {{ equipment.name }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Асистент</label>
-            <select
-              v-model="appointmentForm.assistant_id"
-              class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-              :disabled="loadingLookups || isReadOnly"
-            >
-              <option value="">-- Оберіть асистента --</option>
-              <option v-for="assistant in assistants" :key="assistant.id" :value="assistant.id">
-                {{ assistant.full_name || assistant.name || assistant.email }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">Період</label>
-            <div class="grid grid-cols-2 gap-2">
-              <input
-                v-model="appointmentForm.start_at"
-                type="datetime-local"
-                class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
-                :disabled="isReadOnly"
-              />
-              <input
-                v-model="appointmentForm.end_at"
-                type="datetime-local"
-                class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
-                :disabled="isReadOnly"
-              />
+          <div class="grid gap-2 sm:grid-cols-2 text-sm text-text/80">
+            <div class="rounded-lg bg-bg/40 border border-border/40 p-3">
+              <p class="text-xs uppercase tracking-wide text-text/60">Лікар</p>
+              <p class="font-semibold text-text">{{ doctorName }}</p>
+            </div>
+            <div class="rounded-lg bg-bg/40 border border-border/40 p-3">
+              <p class="text-xs uppercase tracking-wide text-text/60">Процедура</p>
+              <p class="font-semibold text-text">{{ appointmentDetails.procedure || '—' }}</p>
             </div>
           </div>
-        </div>
 
-        <div class="bg-card/60 rounded-lg border border-border/40 p-4">
-          <p class="text-sm font-semibold text-text mb-2">Рекомендований підбір часу</p>
-          <SmartSlotPicker
-            :doctor-id="slotPickerDoctorId"
-            :procedure-id="slotPickerProcedureId"
-            :from-date="slotPickerDate || undefined"
-            @select="applySlotToForm"
-          />
-        </div>
-
-        <div class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-sm font-semibold text-text">Вільні слоти для переносу</p>
-            <span class="text-xs text-text/60">Покажемо тільки доступні варіанти</span>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span v-if="appointmentDetails.room" class="bg-card/80 px-2 py-1 rounded text-text/80">
+              Кабінет: {{ appointmentDetails.room }}
+            </span>
+            <span
+              v-if="appointmentDetails.equipment"
+              class="bg-card/80 px-2 py-1 rounded text-text/80"
+            >
+              Обладнання: {{ appointmentDetails.equipment }}
+            </span>
+            <span
+              v-if="appointmentDetails.assistant"
+              class="bg-card/80 px-2 py-1 rounded text-text/80"
+            >
+              Асистент: {{ appointmentDetails.assistant }}
+            </span>
           </div>
-          <p v-if="!slotPickerDoctorId || !slotPickerDate" class="text-xs text-text/60">
-            Оберіть лікаря та дату, щоб побачити доступні слоти.
-          </p>
-          <CalendarSlotPicker
-            v-else
-            :doctor-id="slotPickerDoctorId"
-            :procedure-id="slotPickerProcedureId"
-            :room-id="slotPickerRoomId"
-            :equipment-id="slotPickerEquipmentId"
-            :assistant-id="slotPickerAssistantId"
-            :assistants="assistants"
-            :date="slotPickerDate"
-            :disabled="isReadOnly"
-            @select-slot="applySlotToForm"
-          />
-        </div>
+        </section>
+
+        <!-- Reschedule -->
+        <section class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-text">Перенести / підібрати час</p>
+              <p class="text-xs text-text/60">Оберіть один режим підбору, щоб не дублювати блоки</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-lg border text-xs transition"
+                :class="
+                  rescheduleMode === 'slots'
+                    ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
+                    : 'border-border/70 bg-card/50 text-text/70 hover:text-text'
+                "
+                @click="rescheduleMode = 'slots'"
+              >
+                Слоти
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-lg border text-xs transition"
+                :class="
+                  rescheduleMode === 'smart'
+                    ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
+                    : 'border-border/70 bg-card/50 text-text/70 hover:text-text'
+                "
+                @click="rescheduleMode = 'smart'"
+              >
+                Рекомендації
+              </button>
+            </div>
+          </div>
+
+          <div v-if="rescheduleMode === 'smart'" class="space-y-2">
+            <p class="text-xs text-text/60">Найближчі доступні варіанти</p>
+            <SmartSlotPicker
+              :doctor-id="slotPickerDoctorId"
+              :procedure-id="slotPickerProcedureId"
+              :from-date="slotPickerDate || undefined"
+              @select="applySlotToForm"
+            />
+          </div>
+
+          <div v-else class="space-y-2">
+            <p v-if="!slotPickerDoctorId || !slotPickerDate" class="text-xs text-text/60">
+              Оберіть лікаря та дату (у деталях), щоб побачити доступні слоти.
+            </p>
+            <CalendarSlotPicker
+              v-else
+              :doctor-id="slotPickerDoctorId"
+              :procedure-id="slotPickerProcedureId"
+              :room-id="slotPickerRoomId"
+              :equipment-id="slotPickerEquipmentId"
+              :assistant-id="slotPickerAssistantId"
+              :assistants="assistants"
+              :date="slotPickerDate"
+              :disabled="isReadOnly"
+              @select-slot="applySlotToForm"
+            />
+          </div>
+        </section>
+
+        <!-- Details (collapsed by default to remove visual duplicates) -->
+        <details
+          class="bg-card/60 rounded-lg border border-border/40 p-4"
+          :open="showDetails"
+          @toggle="showDetails = ($event.target as HTMLDetailsElement).open"
+        >
+          <summary class="cursor-pointer select-none text-sm font-semibold text-text">
+            Деталі запису (лікар/процедура/ресурси/період)
+          </summary>
+
+          <div class="mt-4 grid gap-4 text-sm text-text/80 sm:grid-cols-2">
+            <div>
+              <label for="appointment-doctor" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+                >Лікар</label
+              >
+              <select
+                id="appointment-doctor"
+                name="doctor_id"
+                v-model="appointmentForm.doctor_id"
+                class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+                :disabled="loadingLookups || isReadOnly"
+              >
+                <option value="">-- Оберіть лікаря --</option>
+                <option v-for="doc in doctors" :key="doc.id" :value="doc.id">
+                  {{ doc.full_name || doc.name || doc.email }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="appointment-procedure" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+                >Процедура</label
+              >
+              <select
+                id="appointment-procedure"
+                name="procedure_id"
+                v-model="appointmentForm.procedure_id"
+                class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+                :disabled="loadingLookups || isReadOnly"
+              >
+                <option value="">-- Оберіть процедуру --</option>
+                <option v-for="proc in procedures" :key="proc.id" :value="proc.id">
+                  {{ proc.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="appointment-room" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+                >Кабінет</label
+              >
+              <select
+                id="appointment-room"
+                name="room_id"
+                v-model="appointmentForm.room_id"
+                class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+                :disabled="loadingLookups || isReadOnly"
+              >
+                <option value="">-- Оберіть кабінет --</option>
+                <option v-for="room in rooms" :key="room.id" :value="room.id">
+                  {{ room.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                for="appointment-equipment"
+                class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+              >
+                Обладнання
+              </label>
+              <select
+                id="appointment-equipment"
+                name="equipment_id"
+                v-model="appointmentForm.equipment_id"
+                class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+                :disabled="loadingLookups || isReadOnly"
+              >
+                <option value="">-- Оберіть обладнання --</option>
+                <option v-for="equipment in equipments" :key="equipment.id" :value="equipment.id">
+                  {{ equipment.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                for="appointment-assistant"
+                class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+              >
+                Асистент
+              </label>
+              <select
+                id="appointment-assistant"
+                name="assistant_id"
+                v-model="appointmentForm.assistant_id"
+                class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
+                :disabled="loadingLookups || isReadOnly"
+              >
+                <option value="">-- Оберіть асистента --</option>
+                <option v-for="assistant in assistants" :key="assistant.id" :value="assistant.id">
+                  {{ assistant.full_name || assistant.name || assistant.email }}
+                </option>
+              </select>
+            </div>
+
+            <div class="sm:col-span-2">
+              <p class="block text-xs uppercase tracking-wide text-text/70 mb-1">Період</p>
+              <div class="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label for="appointment-start" class="sr-only">Початок</label>
+                  <input
+                    id="appointment-start"
+                    name="start_at"
+                    v-model="appointmentForm.start_at"
+                    type="datetime-local"
+                    class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
+                    :disabled="isReadOnly"
+                  />
+                </div>
+                <div>
+                  <label for="appointment-end" class="sr-only">Кінець</label>
+                  <input
+                    id="appointment-end"
+                    name="end_at"
+                    v-model="appointmentForm.end_at"
+                    type="datetime-local"
+                    class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
+                    :disabled="isReadOnly"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
 
         <div
           v-if="appointmentDetails.isFollowUp"
@@ -570,20 +696,32 @@ watch(
           <span>Повторний візит</span>
         </div>
 
-        <div class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <p class="text-sm font-semibold text-text">Запланувати наступний прийом</p>
-            <span class="text-xs text-text/60">Для пацієнта {{ patientName }}</span>
-          </div>
+        <details
+          class="bg-card/60 rounded-lg border border-border/40 p-4 space-y-3"
+          :open="showFollowUp"
+          @toggle="showFollowUp = ($event.target as HTMLDetailsElement).open"
+        >
+          <summary
+            class="cursor-pointer select-none text-sm font-semibold text-text flex items-center justify-between gap-3"
+          >
+            <span>Запланувати наступний прийом</span>
+            <span class="text-xs text-text/60 font-normal">Для пацієнта {{ patientName }}</span>
+          </summary>
           <div class="grid grid-cols-2 gap-2">
+            <label for="followup-start" class="sr-only">Початок</label>
             <input
               v-model="followUpForm.start_at"
+              id="followup-start"
+              name="follow_up_start_at"
               type="datetime-local"
               class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
               :disabled="!patientId"
             />
+            <label for="followup-end" class="sr-only">Кінець</label>
             <input
               v-model="followUpForm.end_at"
+              id="followup-end"
+              name="follow_up_end_at"
               type="datetime-local"
               class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors text-sm"
               :disabled="!patientId"
@@ -596,7 +734,7 @@ watch(
           >
             {{ followUpSaving ? 'Збереження...' : 'Запланувати' }}
           </button>
-        </div>
+        </details>
 
         <div
           v-if="status === 'done'"
@@ -626,18 +764,26 @@ watch(
         <div v-else class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-text/70 mb-1">Зуб №</label>
+              <label for="treatment-tooth-number" class="block text-sm font-medium text-text/70 mb-1"
+                >Зуб №</label
+              >
               <input
                 v-model="form.tooth_number"
+                id="treatment-tooth-number"
+                name="tooth_number"
                 type="number"
                 placeholder="Напр. 46"
                 class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-text/70 mb-1">Статус</label>
+              <label for="treatment-tooth-status" class="block text-sm font-medium text-text/70 mb-1"
+                >Статус</label
+              >
               <select
                 v-model="form.update_tooth_status"
+                id="treatment-tooth-status"
+                name="update_tooth_status"
                 class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="">-- Не змінювати --</option>
@@ -646,25 +792,37 @@ watch(
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-text/70 mb-1">Діагноз *</label>
+            <label for="treatment-diagnosis" class="block text-sm font-medium text-text/70 mb-1"
+              >Діагноз *</label
+            >
             <input
               v-model="form.diagnosis"
+              id="treatment-diagnosis"
+              name="diagnosis"
               type="text"
               class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-text/70 mb-1">Скарги</label>
+            <label for="treatment-complaints" class="block text-sm font-medium text-text/70 mb-1"
+              >Скарги</label
+            >
             <textarea
               v-model="form.complaints"
+              id="treatment-complaints"
+              name="complaints"
               rows="2"
               class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"
             ></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-text/70 mb-1">Лікування *</label>
+            <label for="treatment-treatment" class="block text-sm font-medium text-text/70 mb-1"
+              >Лікування *</label
+            >
             <textarea
               v-model="form.treatment"
+              id="treatment-treatment"
+              name="treatment"
               rows="3"
               class="w-full bg-bg border border-border/80 rounded-lg p-2 text-text outline-none focus:border-emerald-500 transition-colors"
             ></textarea>
