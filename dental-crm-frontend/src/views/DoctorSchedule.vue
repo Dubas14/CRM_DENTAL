@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { debounce } from 'lodash-es'
 import apiClient from '../services/apiClient'
 import calendarApi from '../services/calendarApi'
 import { useAuth } from '../composables/useAuth'
@@ -14,6 +15,9 @@ import AppointmentCancellationCard from '../components/AppointmentCancellationCa
 import assistantApi from '../services/assistantApi'
 import clinicApi from '../services/clinicApi'
 import procedureApi from '../services/procedureApi'
+import doctorApi from '../services/doctorApi'
+import roomApi from '../services/roomApi'
+import equipmentApi from '../services/equipmentApi'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,6 +52,15 @@ const loadingRooms = ref(false)
 const loadingEquipments = ref(false)
 const loadingAssistants = ref(false)
 
+// Guards to prevent concurrent requests
+const isFetchingDoctors = ref(false)
+const isFetchingProcedures = ref(false)
+const isFetchingRooms = ref(false)
+const isFetchingEquipments = ref(false)
+const isFetchingAssistants = ref(false)
+const isFetchingAppointments = ref(false)
+const isFetchingCalendarBlocks = ref(false)
+
 const error = ref(null)
 
 const appointments = ref([])
@@ -56,6 +69,9 @@ const appointmentsError = ref(null)
 
 const slotsRefreshToken = ref(0)
 const cancellationTarget = ref(null)
+
+// Request guard to prevent concurrent requests
+let isRefreshing = false
 
 // ---- Calendar blocks ----
 const calendarBlocks = ref([])
@@ -227,25 +243,35 @@ const queryClinicId = computed(() => parseQueryNumber(route.query.clinic || rout
 const queryDate = computed(() => (typeof route.query.date === 'string' ? route.query.date : null))
 
 const applyQuerySelections = () => {
-  if (queryDate.value) {
+  let changed = false
+  
+  if (queryDate.value && selectedDate.value !== queryDate.value) {
     selectedDate.value = queryDate.value
+    changed = true
   }
 
   if (
     queryClinicId.value &&
     clinics.value.some((clinic) => Number(clinic.id) === Number(queryClinicId.value))
   ) {
-    selectedClinicId.value = String(queryClinicId.value)
+    if (selectedClinicId.value !== String(queryClinicId.value)) {
+      selectedClinicId.value = String(queryClinicId.value)
+      changed = true
+    }
   }
 
   if (!isDoctor.value && queryDoctorId.value) {
     const doctorExists = doctors.value.some(
       (doctor) => Number(doctor.id) === Number(queryDoctorId.value)
     )
-    if (doctorExists) {
+    if (doctorExists && selectedDoctorId.value !== String(queryDoctorId.value)) {
       selectedDoctorId.value = String(queryDoctorId.value)
+      changed = true
     }
   }
+  
+  // Only trigger refresh if something actually changed
+  // The watch on selectedDoctorId/selectedDate will handle the refresh with debounce
 }
 
 // Фіксація лікаря для доктора
@@ -379,6 +405,8 @@ const loadLinkedPatient = async () => {
 }
 
 const loadDoctors = async (clinicIdValue = clinicId.value) => {
+  if (isFetchingDoctors.value) return
+  isFetchingDoctors.value = true
   loadingDoctors.value = true
   try {
     if (!clinicIdValue) {
@@ -386,7 +414,7 @@ const loadDoctors = async (clinicIdValue = clinicId.value) => {
       selectedDoctorId.value = ''
       return
     }
-    const { data } = await apiClient.get('/doctors', { params: { clinic_id: clinicIdValue } })
+    const { data } = await doctorApi.list({ clinic_id: clinicIdValue })
     doctors.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     if (isDoctor.value && doctorProfile.value?.id) {
       selectedDoctorId.value = String(doctorProfile.value.id)
@@ -404,10 +432,13 @@ const loadDoctors = async (clinicIdValue = clinicId.value) => {
     error.value = 'Помилка завантаження лікарів'
   } finally {
     loadingDoctors.value = false
+    isFetchingDoctors.value = false
   }
 }
 
 const loadProcedures = async (clinicIdValue = clinicId.value) => {
+  if (isFetchingProcedures.value) return
+  isFetchingProcedures.value = true
   loadingProcedures.value = true
   try {
     if (!clinicIdValue) {
@@ -427,6 +458,7 @@ const loadProcedures = async (clinicIdValue = clinicId.value) => {
     console.error('Не вдалося завантажити процедури', e)
   } finally {
     loadingProcedures.value = false
+    isFetchingProcedures.value = false
   }
 }
 
@@ -450,37 +482,45 @@ const loadClinics = async () => {
 }
 
 const loadRooms = async () => {
+  if (isFetchingRooms.value) return
   rooms.value = []
   if (!clinicId.value) return
+  isFetchingRooms.value = true
   loadingRooms.value = true
   try {
-    const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } })
+    const { data } = await roomApi.list({ clinic_id: clinicId.value })
     rooms.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
   } catch (e) {
     console.warn('Rooms endpoint недоступний або помилка', e)
   } finally {
     loadingRooms.value = false
+    isFetchingRooms.value = false
   }
 }
 
 const loadEquipments = async () => {
+  if (isFetchingEquipments.value) return
   equipments.value = []
   if (!clinicId.value) return
+  isFetchingEquipments.value = true
   loadingEquipments.value = true
   try {
     // ⚠️ Якщо твій бек має інший шлях (наприклад /equipment) — зміни тут 1 рядок.
-    const { data } = await apiClient.get('/equipments', { params: { clinic_id: clinicId.value } })
+    const { data } = await equipmentApi.list({ clinic_id: clinicId.value })
     equipments.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
   } catch (e) {
     console.warn('Equipments endpoint недоступний або помилка', e)
   } finally {
     loadingEquipments.value = false
+    isFetchingEquipments.value = false
   }
 }
 
 const loadAssistants = async () => {
+  if (isFetchingAssistants.value) return
   assistants.value = []
   if (!clinicId.value) return
+  isFetchingAssistants.value = true
   loadingAssistants.value = true
   try {
     const { data } = await assistantApi.list({ clinic_id: clinicId.value })
@@ -489,12 +529,15 @@ const loadAssistants = async () => {
     console.warn('Assistants endpoint недоступний або помилка', e)
   } finally {
     loadingAssistants.value = false
+    isFetchingAssistants.value = false
   }
 }
 
 const loadAppointments = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return
+  if (isFetchingAppointments.value) return
 
+  isFetchingAppointments.value = true
   if (!silent) loadingAppointments.value = true
   appointmentsError.value = null
 
@@ -508,12 +551,16 @@ const loadAppointments = async (silent = false) => {
     if (!silent) appointmentsError.value = 'Не вдалося завантажити записи'
   } finally {
     if (!silent) loadingAppointments.value = false
+    isFetchingAppointments.value = false
   }
 }
 
 const loadCalendarBlocks = async (silent = false) => {
   if (!selectedDoctorId.value || !selectedDate.value) return
   if (!clinicId.value) return
+  if (isFetchingCalendarBlocks.value) return
+
+  isFetchingCalendarBlocks.value = true
   if (!silent) loadingCalendarBlocks.value = true
   calendarBlocksError.value = null
   try {
@@ -528,14 +575,25 @@ const loadCalendarBlocks = async (silent = false) => {
     if (!silent) calendarBlocksError.value = 'Не вдалося завантажити блоки.'
   } finally {
     if (!silent) loadingCalendarBlocks.value = false
+    isFetchingCalendarBlocks.value = false
   }
 }
 
 const refreshScheduleData = async (silent = false) => {
-  slotsRefreshToken.value += 1
-  await loadCalendarBlocks(silent)
-  await loadAppointments(silent)
+  if (!selectedDoctorId.value || !selectedDate.value) return
+  if (isRefreshing) return // Prevent concurrent requests
+  isRefreshing = true
+  try {
+    slotsRefreshToken.value += 1
+    await loadCalendarBlocks(silent)
+    await loadAppointments(silent)
+  } finally {
+    isRefreshing = false
+  }
 }
+
+// Debounced version to prevent too many requests
+const debouncedRefreshScheduleData = debounce(refreshScheduleData, 500)
 
 const selectSlot = (slot) => {
   bookingSlot.value = slot
@@ -786,7 +844,9 @@ watch(
 watch(
   () => [selectedDoctorId.value, selectedDate.value],
   () => {
-    refreshScheduleData()
+    if (selectedDoctorId.value && selectedDate.value) {
+      debouncedRefreshScheduleData()
+    }
   }
 )
 
@@ -869,9 +929,16 @@ onUnmounted(() => {
       class="flex flex-wrap items-end gap-4 rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4"
     >
       <div v-if="showClinicSelector" class="flex flex-col gap-1 min-w-[200px]">
-        <span class="text-xs uppercase tracking-wide text-text/70">Клініка</span>
+        <label
+          for="doctor-schedule-clinic"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
+          Клініка
+        </label>
         <select
           v-model="selectedClinicId"
+          id="doctor-schedule-clinic"
+          name="clinic_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
         >
           <option value="" disabled>Оберіть клініку</option>
@@ -882,9 +949,16 @@ onUnmounted(() => {
       </div>
 
       <div v-if="!isDoctor" class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-text/70">Лікар</span>
+        <label
+          for="doctor-schedule-doctor"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
+          Лікар
+        </label>
         <select
           v-model="selectedDoctorId"
+          id="doctor-schedule-doctor"
+          name="doctor_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           :disabled="loadingDoctors"
         >
@@ -904,18 +978,32 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-text/70">Дата</span>
+        <label
+          for="doctor-schedule-date"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
+          Дата
+        </label>
         <input
           v-model="selectedDate"
+          id="doctor-schedule-date"
+          name="date"
           type="date"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
         />
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-text/70">Процедура</span>
+        <label
+          for="doctor-schedule-procedure"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
+          Процедура
+        </label>
         <select
           v-model="selectedProcedureId"
+          id="doctor-schedule-procedure"
+          name="procedure_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           :disabled="loadingProcedures"
         >
@@ -927,11 +1015,16 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[200px]">
-        <span class="text-xs uppercase tracking-wide text-text/70">
+        <label
+          for="doctor-schedule-room"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
           Кабінет<span v-if="requiresRoom" class="text-rose-400"> *</span>
-        </span>
+        </label>
         <select
           v-model="selectedRoomId"
+          id="doctor-schedule-room"
+          name="room_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           :disabled="loadingRooms || !rooms.length"
         >
@@ -946,9 +1039,16 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-text/70">Обладнання</span>
+        <label
+          for="doctor-schedule-equipment"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
+          Обладнання
+        </label>
         <select
           v-model="selectedEquipmentId"
+          id="doctor-schedule-equipment"
+          name="equipment_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           :disabled="loadingEquipments || !equipments.length"
         >
@@ -960,11 +1060,16 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <span class="text-xs uppercase tracking-wide text-text/70">
+        <label
+          for="doctor-schedule-assistant"
+          class="text-xs uppercase tracking-wide text-text/70"
+        >
           Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
-        </span>
+        </label>
         <select
           v-model="selectedAssistantId"
+          id="doctor-schedule-assistant"
+          name="assistant_id"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           :disabled="loadingAssistants || !assistants.length"
         >
@@ -980,11 +1085,21 @@ onUnmounted(() => {
 
       <div class="flex flex-col gap-2">
         <label class="flex items-center gap-2 text-sm text-text/80">
-          <input v-model="isFollowUp" type="checkbox" class="accent-emerald-500" />
+          <input
+            v-model="isFollowUp"
+            name="is_follow_up"
+            type="checkbox"
+            class="accent-emerald-500"
+          />
           <span>Повторний</span>
         </label>
         <label class="flex items-center gap-2 text-sm text-text/80">
-          <input v-model="allowSoftConflicts" type="checkbox" class="accent-emerald-500" />
+          <input
+            v-model="allowSoftConflicts"
+            name="allow_soft_conflicts"
+            type="checkbox"
+            class="accent-emerald-500"
+          />
           <span>Дозволити soft</span>
         </label>
       </div>

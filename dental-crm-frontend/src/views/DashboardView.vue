@@ -158,8 +158,15 @@ const getFallbackData = () => {
   }
 }
 
+// Guard to prevent concurrent requests
+let isFetchingStats = false
+
 // ПОКРАЩЕНА ВЕРСІЯ loadStats (перейменована для уникнення конфлікту)
 const loadStatsEnhanced = async () => {
+  // Prevent concurrent requests
+  if (isFetchingStats) return
+  isFetchingStats = true
+
   // Скидаємо помилки
   errors.value = { patients: null, appointments: null, general: null }
 
@@ -331,6 +338,7 @@ const loadStatsEnhanced = async () => {
     loading.value = false
     skeletonStates.value = { stats: false, appointments: false, chart: false }
     forceRefreshFlag.value = false
+    isFetchingStats = false
   }
 }
 

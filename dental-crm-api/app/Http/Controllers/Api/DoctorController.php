@@ -41,9 +41,13 @@ class DoctorController extends Controller
             $query->where('clinic_id', $request->integer('clinic_id'));
         }
 
+        // пагінація
+        $perPage = $request->integer('per_page', 15);
+        $perPage = min(max($perPage, 1), 100); // обмеження 1-100
+
         return $query
             ->orderBy('full_name')
-            ->get();
+            ->paginate($perPage);
     }
 
     public function store(Request $request)

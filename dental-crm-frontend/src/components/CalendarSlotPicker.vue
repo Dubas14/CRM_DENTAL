@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import calendarApi from '../services/calendarApi'
 
 const props = defineProps({
@@ -27,9 +28,29 @@ const slotRoom = ref(null)
 const slotEquipment = ref(null)
 const slotAssistantId = ref(null)
 
+// Guard to prevent concurrent requests
+const isFetchingSlots = ref(false)
+
 // hasNoSlots removed
 const normalizedReason = computed(() => (reason.value ? String(reason.value).toLowerCase() : null))
 const isNoSchedule = computed(() => normalizedReason.value === 'no_schedule')
+const isNoRoomCompatibility = computed(() => normalizedReason.value === 'no_room_compatibility')
+
+const reasonMessage = computed(() => {
+  if (isNoSchedule.value) {
+    return 'Лікар вихідний. Налаштуйте графік лікаря.'
+  }
+  if (isNoRoomCompatibility.value) {
+    return 'Немає доступних сумісних кабінетів для вибраної процедури. Оберіть іншу процедуру або кабінет.'
+  }
+  if (normalizedReason.value === 'room_incompatible') {
+    return 'Вибраний кабінет несумісний з процедурою. Оберіть інший кабінет.'
+  }
+  if (reason.value) {
+    return `Причина: ${reason.value}`
+  }
+  return 'Обрати іншу дату або подивіться рекомендації нижче.'
+})
 const slotAssistantName = computed(() => {
   if (!slotAssistantId.value) return null
   const match = props.assistants.find(
@@ -45,7 +66,8 @@ const slotAssistantName = computed(() => {
 })
 
 const loadSlots = async () => {
-  if (!props.date || !props.doctorId) return
+  if (!props.date || !props.doctorId || isFetchingSlots.value) return
+  isFetchingSlots.value = true
   loading.value = true
   error.value = null
   reason.value = null
@@ -69,8 +91,12 @@ const loadSlots = async () => {
     error.value = e.response?.data?.message || e.message
   } finally {
     loading.value = false
+    isFetchingSlots.value = false
   }
 }
+
+// Debounced version to prevent rate limiting
+const debouncedLoadSlots = debounce(loadSlots, 500)
 
 const loadRecommended = async () => {
   if (!props.date || !props.doctorId) return
@@ -102,7 +128,7 @@ watch(
   ],
   () => {
     if (props.autoLoad && !props.disabled) {
-      loadSlots()
+      debouncedLoadSlots()
     }
   }
 )
@@ -111,6 +137,7 @@ watch(
   () => props.refreshToken,
   () => {
     if (props.autoLoad && !props.disabled) {
+      // For refresh token, load immediately (not debounced) as it's intentional refresh
       loadSlots()
     }
   }
@@ -118,7 +145,8 @@ watch(
 
 onMounted(() => {
   if (props.autoLoad && !props.disabled) {
-    loadSlots()
+    // Initial load - use debounced version to avoid immediate rate limit
+    debouncedLoadSlots()
   }
 })
 </script>
@@ -193,14 +221,8 @@ onMounted(() => {
         class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
       >
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
-        <p v-if="isNoSchedule" class="text-xs text-amber-400">
-          Лікар вихідний. Налаштуйте графік лікаря.
-        </p>
-        <p v-else-if="reason" class="text-xs uppercase tracking-wide text-amber-400">
-          Причина: {{ reason }}
-        </p>
-        <p v-else class="text-xs text-text/70">
-          Обрати іншу дату або подивіться рекомендації нижче.
+        <p class="text-xs text-amber-400">
+          {{ reasonMessage }}
         </p>
       </div>
 

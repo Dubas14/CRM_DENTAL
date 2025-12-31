@@ -55,6 +55,7 @@ const cancelAppointment = async () => {
       <span class="text-sm text-text/80">Коментар до скасування</span>
       <textarea
         v-model="comment"
+        name="comment"
         rows="2"
         class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
         placeholder="Причина або інструкції для адміністратора"

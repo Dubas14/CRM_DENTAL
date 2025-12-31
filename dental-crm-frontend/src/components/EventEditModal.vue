@@ -17,9 +17,11 @@
 
       <div class="mt-6 grid gap-6">
         <div>
-          <label class="text-sm text-text/70">Назва</label>
+          <label for="event-edit-title" class="text-sm text-text/70">Назва</label>
           <input
             v-model="form.title"
+            id="event-edit-title"
+            name="title"
             type="text"
             class="mt-2 w-full rounded-lg border border-border/80 bg-bg px-3 py-2 text-sm"
             placeholder="Наприклад, консультація"
@@ -27,9 +29,11 @@
         </div>
 
         <div>
-          <label class="text-sm text-text/70">Лікар</label>
+          <label for="event-edit-doctor" class="text-sm text-text/70">Лікар</label>
           <select
             v-model="form.doctor_id"
+            id="event-edit-doctor"
+            name="doctor_id"
             class="mt-2 w-full rounded-lg border border-border/80 bg-bg px-3 py-2 text-sm text-text"
           >
             <option :value="''">-- Оберіть лікаря --</option>
@@ -41,8 +45,15 @@
 
         <div class="grid gap-6 md:grid-cols-2">
           <div>
-            <label class="text-sm text-text/70">Дата</label>
-            <input ref="dateInputRef" type="text" class="sr-only" readonly />
+            <label for="event-edit-date" class="text-sm text-text/70">Дата</label>
+            <input
+              id="event-edit-date"
+              name="date"
+              ref="dateInputRef"
+              type="text"
+              class="sr-only"
+              readonly
+            />
             <div ref="datePickerRef" class="mt-3"></div>
           </div>
           <div class="grid gap-6">

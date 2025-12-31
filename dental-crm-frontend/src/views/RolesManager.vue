@@ -145,11 +145,13 @@ const goToPage = (page) => {
     >
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-[220px]">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"
-            >Пошук користувача</label
-          >
+          <label for="roles-search" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Пошук користувача
+          </label>
           <input
             v-model="searchQuery"
+            id="roles-search"
+            name="search"
             type="text"
             placeholder="Імʼя, прізвище або email"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text/90"
@@ -186,6 +188,7 @@ const goToPage = (page) => {
                   >
                     <input
                       v-model="editableRoles[user.id]"
+                      :name="`user_roles[${user.id}][]`"
                       type="checkbox"
                       :value="role"
                       class="rounded border-border/80 bg-bg"

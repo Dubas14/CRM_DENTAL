@@ -96,6 +96,7 @@ const submit = async () => {
         <span class="text-sm text-text/80">ID пацієнта *</span>
         <input
           v-model="form.patient_id"
+          name="patient_id"
           type="number"
           class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
           placeholder="Напр. 42"
@@ -105,6 +106,7 @@ const submit = async () => {
         <span class="text-sm text-text/80">ID лікаря (опц.)</span>
         <input
           v-model="form.doctor_id"
+          name="doctor_id"
           type="number"
           class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
         />
@@ -113,6 +115,7 @@ const submit = async () => {
         <span class="text-sm text-text/80">ID процедури (опц.)</span>
         <input
           v-model="form.procedure_id"
+          name="procedure_id"
           type="number"
           class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
         />
@@ -121,6 +124,7 @@ const submit = async () => {
         <span class="text-sm text-text/80">Бажана дата</span>
         <input
           v-model="form.preferred_date"
+          name="preferred_date"
           type="date"
           class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
         />
@@ -131,6 +135,7 @@ const submit = async () => {
       <span class="text-sm text-text/80">Коментар</span>
       <textarea
         v-model="form.notes"
+        name="notes"
         rows="2"
         class="w-full bg-bg border border-border/80 rounded-lg px-3 py-2 text-text"
       ></textarea>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
@@ -11,6 +12,9 @@ const error = ref(null)
 
 const search = ref('')
 const selectedClinicFilter = ref('')
+
+// Filtered clinics to avoid null values
+const validClinics = computed(() => clinics.value.filter(clinic => clinic && clinic.id))
 
 // форма
 const showForm = ref(false)
@@ -67,11 +71,21 @@ const loadClinics = async () => {
     selectedClinicFilter.value = doctorClinicId.value ? String(doctorClinicId.value) : ''
     return
   }
-  const { data } = await apiClient.get('/clinics')
-  clinics.value = data
+  try {
+    const { data } = await apiClient.get('/clinics')
+    // Handle paginated response
+    clinics.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('Failed to load clinics', e)
+    clinics.value = []
+  }
 }
 
+const isFetchingPatients = ref(false)
+
 const loadPatients = async () => {
+  if (isFetchingPatients.value) return
+  isFetchingPatients.value = true
   loading.value = true
   error.value = null
 
@@ -101,8 +115,11 @@ const loadPatients = async () => {
     error.value = e.response?.data?.message || e.message || 'Помилка завантаження пацієнтів'
   } finally {
     loading.value = false
+    isFetchingPatients.value = false
   }
 }
+
+const debouncedLoadPatients = debounce(loadPatients, 300)
 
 const createPatient = async () => {
   formError.value = null
@@ -190,8 +207,11 @@ const goToPage = async (page) => {
     <!-- фільтри -->
     <div class="flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2">
+        <label for="patients-search" class="sr-only">Пошук</label>
         <input
           v-model="search"
+          id="patients-search"
+          name="search"
           type="text"
           placeholder="Пошук (ПІБ / телефон / email)"
           class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
@@ -210,11 +230,12 @@ const goToPage = async (page) => {
         Клініка:
         <select
           v-model="selectedClinicFilter"
+          name="clinic_id"
           @change="applyFilters"
           class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
         >
           <option value="">Усі</option>
-          <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+          <option v-for="clinic in validClinics" :key="clinic.id" :value="clinic.id">
             {{ clinic.name }} ({{ clinic.city || '—' }})
           </option>
         </select>
@@ -235,14 +256,21 @@ const goToPage = async (page) => {
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createPatient">
         <div v-if="!isDoctor">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Клініка * </label>
+          <label
+            for="patients-create-clinic"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Клініка *
+          </label>
           <select
             v-model="form.clinic_id"
+            id="patients-create-clinic"
+            name="clinic_id"
             required
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           >
             <option value="" disabled>Оберіть клініку</option>
-            <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+            <option v-for="clinic in validClinics" :key="clinic.id" :value="clinic.id">
               {{ clinic.name }} ({{ clinic.city || '—' }})
             </option>
           </select>
@@ -257,9 +285,16 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> ПІБ * </label>
+          <label
+            for="patients-create-full-name"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            ПІБ *
+          </label>
           <input
             v-model="form.full_name"
+            id="patients-create-full-name"
+            name="full_name"
             type="text"
             required
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
@@ -268,20 +303,32 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="patients-create-birth-date"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Дата народження
           </label>
           <input
             v-model="form.birth_date"
+            id="patients-create-birth-date"
+            name="birth_date"
             type="date"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Телефон </label>
+          <label
+            for="patients-create-phone"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Телефон
+          </label>
           <input
             v-model="form.phone"
+            id="patients-create-phone"
+            name="phone"
             @input="validatePhone"
             type="tel"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
@@ -290,9 +337,16 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
+          <label
+            for="patients-create-email"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Email
+          </label>
           <input
             v-model="form.email"
+            id="patients-create-email"
+            name="email"
             type="email"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="patient@example.com"
@@ -300,9 +354,16 @@ const goToPage = async (page) => {
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Адреса </label>
+          <label
+            for="patients-create-address"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Адреса
+          </label>
           <input
             v-model="form.address"
+            id="patients-create-address"
+            name="address"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="місто, вулиця, будинок"
@@ -310,9 +371,16 @@ const goToPage = async (page) => {
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Примітка </label>
+          <label
+            for="patients-create-note"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Примітка
+          </label>
           <textarea
             v-model="form.note"
+            id="patients-create-note"
+            name="note"
             rows="2"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="Коментар адміністратора, особливості пацієнта..."

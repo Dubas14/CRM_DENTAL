@@ -95,8 +95,11 @@ onMounted(async () => {
       </div>
 
       <div class="flex items-center gap-2">
+        <label for="patients-view-search" class="sr-only">Пошук</label>
         <input
           v-model="search"
+          id="patients-view-search"
+          name="search"
           type="text"
           placeholder="Пошук по імені / телефону / email"
           class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
@@ -131,9 +134,16 @@ onMounted(async () => {
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createPatient">
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Клініка * </label>
+          <label
+            for="patients-view-create-clinic"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Клініка *
+          </label>
           <select
             v-model="form.clinic_id"
+            id="patients-view-create-clinic"
+            name="clinic_id"
             required
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           >
@@ -145,9 +155,16 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> ПІБ * </label>
+          <label
+            for="patients-view-create-full-name"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            ПІБ *
+          </label>
           <input
             v-model="form.full_name"
+            id="patients-view-create-full-name"
+            name="full_name"
             type="text"
             required
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
@@ -156,9 +173,16 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Телефон </label>
+          <label
+            for="patients-view-create-phone"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Телефон
+          </label>
           <input
             v-model="form.phone"
+            id="patients-view-create-phone"
+            name="phone"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="+380..."
@@ -166,9 +190,16 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
+          <label
+            for="patients-view-create-email"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Email
+          </label>
           <input
             v-model="form.email"
+            id="patients-view-create-email"
+            name="email"
             type="email"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="patient@example.com"
@@ -176,20 +207,32 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="patients-view-create-birth-date"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Дата народження
           </label>
           <input
             v-model="form.birth_date"
+            id="patients-view-create-birth-date"
+            name="birth_date"
             type="date"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
           />
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Нотатки </label>
+          <label
+            for="patients-view-create-notes"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
+            Нотатки
+          </label>
           <textarea
             v-model="form.notes"
+            id="patients-view-create-notes"
+            name="notes"
             rows="2"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
             placeholder="Алергії, особливості, важливі деталі..."

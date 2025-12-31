@@ -62,7 +62,7 @@ Route::post('/login', function (Request $request) {
         'token' => $token,
         'user' => $user,
     ]);
-});
+})->middleware('throttle:auth');
 
 Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
     // видаляємо поточний токен
@@ -133,7 +133,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('doctors/{doctor}/appointments', [AppointmentController::class, 'doctorAppointments']);
     Route::get('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'index']);
     Route::put('doctors/{doctor}/procedures', [DoctorProcedureController::class, 'update']);
-    Route::get('booking-suggestions', [BookingSuggestionController::class, 'index']);
 
     Route::apiResource('calendar-blocks', CalendarBlockController::class);
 

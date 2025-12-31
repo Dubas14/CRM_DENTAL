@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import { debounce } from 'lodash-es'
 import assistantApi from '../services/assistantApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
@@ -103,8 +104,11 @@ const loadClinics = async () => {
   }
 }
 
+const isFetchingAssistants = ref(false)
+
 const fetchAssistants = async () => {
-  if (!selectedClinicId.value) return
+  if (!selectedClinicId.value || isFetchingAssistants.value) return
+  isFetchingAssistants.value = true
   loading.value = true
   error.value = null
   try {
@@ -139,8 +143,11 @@ const fetchAssistants = async () => {
     error.value = 'Не вдалося завантажити асистентів'
   } finally {
     loading.value = false
+    isFetchingAssistants.value = false
   }
 }
+
+const debouncedFetchAssistants = debounce(fetchAssistants, 300)
 
 const resetForm = () => {
   form.value = {
@@ -241,14 +248,18 @@ const assistantClinic = (assistant) => {
   return assistant.clinics?.[0]?.name || '—'
 }
 
-watch(selectedClinicId, async () => {
+watch(selectedClinicId, () => {
   currentPage.value = 1
-  await fetchAssistants()
+  debouncedFetchAssistants()
 })
 
 onMounted(async () => {
   await loadClinics()
-  await fetchAssistants()
+  // fetchAssistants will be called by watch when selectedClinicId is set in loadClinics
+  // Only call directly if selectedClinicId was not set
+  if (!selectedClinicId.value && clinics.value.length) {
+    await fetchAssistants()
+  }
 })
 
 const goToPage = async (page) => {
@@ -275,9 +286,11 @@ const goToPage = async (page) => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
-      <label class="text-xs uppercase text-text/70">Клініка</label>
+      <label for="assistants-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"
+        id="assistants-clinic-filter"
+        name="clinic_id"
         class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
       >
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -294,9 +307,13 @@ const goToPage = async (page) => {
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
+          <label for="assistant-create-clinic" class="block text-xs uppercase text-text/70 mb-1"
+            >Клініка</label
+          >
           <select
             v-model="form.clinic_id"
+            id="assistant-create-clinic"
+            name="clinic_id"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -306,36 +323,52 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Ім'я</label>
+          <label for="assistant-create-first-name" class="block text-xs uppercase text-text/70 mb-1"
+            >Ім'я</label
+          >
           <input
             v-model="form.first_name"
+            id="assistant-create-first-name"
+            name="first_name"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Прізвище</label>
+          <label for="assistant-create-last-name" class="block text-xs uppercase text-text/70 mb-1"
+            >Прізвище</label
+          >
           <input
             v-model="form.last_name"
+            id="assistant-create-last-name"
+            name="last_name"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Email</label>
+          <label for="assistant-create-email" class="block text-xs uppercase text-text/70 mb-1"
+            >Email</label
+          >
           <input
             v-model="form.email"
+            id="assistant-create-email"
+            name="email"
             type="email"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Пароль</label>
+          <label for="assistant-create-password" class="block text-xs uppercase text-text/70 mb-1"
+            >Пароль</label
+          >
           <input
             v-model="form.password"
+            id="assistant-create-password"
+            name="password"
             type="password"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
@@ -377,14 +410,20 @@ const goToPage = async (page) => {
             >
               <td class="py-2 px-3">
                 <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
+                  <label :for="`assistant-edit-first-name-${assistant.id}`" class="sr-only">Ім'я</label>
                   <input
                     v-model="editForm.first_name"
+                    :id="`assistant-edit-first-name-${assistant.id}`"
+                    name="first_name"
                     type="text"
                     placeholder="Ім'я"
                     class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                   />
+                  <label :for="`assistant-edit-last-name-${assistant.id}`" class="sr-only">Прізвище</label>
                   <input
                     v-model="editForm.last_name"
+                    :id="`assistant-edit-last-name-${assistant.id}`"
+                    name="last_name"
                     type="text"
                     placeholder="Прізвище"
                     class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
@@ -394,14 +433,22 @@ const goToPage = async (page) => {
               </td>
               <td class="py-2 px-3">
                 <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
+                  <label :for="`assistant-edit-email-${assistant.id}`" class="sr-only">Email</label>
                   <input
                     v-model="editForm.email"
+                    :id="`assistant-edit-email-${assistant.id}`"
+                    name="email"
                     type="email"
                     placeholder="Email"
                     class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                   />
+                  <label :for="`assistant-edit-password-${assistant.id}`" class="sr-only">
+                    Новий пароль
+                  </label>
                   <input
                     v-model="editForm.password"
+                    :id="`assistant-edit-password-${assistant.id}`"
+                    name="password"
                     type="password"
                     placeholder="Новий пароль (опційно)"
                     class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"

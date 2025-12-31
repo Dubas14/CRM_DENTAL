@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import clinicApi from '../services/clinicApi'
 import apiClient from '../services/apiClient'
+import roomApi from '../services/roomApi'
 import { useAuth } from '../composables/useAuth'
 
 const { user } = useAuth()
@@ -59,9 +60,7 @@ const loadRooms = async () => {
   loadingRooms.value = true
   errorRooms.value = null
   try {
-    const { data } = await apiClient.get('/rooms', {
-      params: { clinic_id: selectedClinicId.value }
-    })
+    const { data } = await roomApi.list({ clinic_id: selectedClinicId.value })
     rooms.value = data.data ?? data
   } catch (err) {
     console.error(err)
@@ -181,9 +180,16 @@ onMounted(async () => {
     </header>
 
     <section class="rounded-xl bg-card/40 shadow-sm shadow-black/10 dark:shadow-black/40 p-4">
-      <label class="block text-xs uppercase tracking-wide text-text/70 mb-2">Клініка</label>
+      <label
+        for="clinic-settings-clinic"
+        class="block text-xs uppercase tracking-wide text-text/70 mb-2"
+      >
+        Клініка
+      </label>
       <select
         v-model="selectedClinicId"
+        id="clinic-settings-clinic"
+        name="clinic_id"
         class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm w-full md:w-72"
       >
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -206,27 +212,42 @@ onMounted(async () => {
         <div v-else class="space-y-3">
           <div class="space-y-2">
             <div class="grid md:grid-cols-2 gap-3">
+              <label for="clinic-settings-room-name" class="sr-only">Назва кабінету</label>
               <input
                 v-model="roomForm.name"
+                id="clinic-settings-room-name"
+                name="name"
                 type="text"
                 placeholder="Назва кабінету"
                 class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
               />
+              <label for="clinic-settings-room-equipment" class="sr-only">Обладнання</label>
               <input
                 v-model="roomForm.equipment"
+                id="clinic-settings-room-equipment"
+                name="equipment"
                 type="text"
                 placeholder="Обладнання (опційно)"
                 class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
               />
             </div>
+            <label for="clinic-settings-room-notes" class="sr-only">Нотатки</label>
             <textarea
               v-model="roomForm.notes"
+              id="clinic-settings-room-notes"
+              name="notes"
               rows="2"
               placeholder="Нотатки"
               class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm w-full"
             />
             <label class="flex items-center gap-2 text-sm text-text/80">
-              <input v-model="roomForm.is_active" type="checkbox" class="accent-emerald-500" />
+              <input
+                v-model="roomForm.is_active"
+                id="clinic-settings-room-is-active"
+                name="is_active"
+                type="checkbox"
+                class="accent-emerald-500"
+              />
               Активний кабінет
             </label>
             <button
@@ -256,6 +277,7 @@ onMounted(async () => {
                     <label class="inline-flex items-center gap-2 text-xs text-text/80">
                       <input
                         v-model="room.is_active"
+                        :name="`rooms[${room.id}][is_active]`"
                         type="checkbox"
                         class="accent-emerald-500"
                         @change="toggleRoomActive(room)"
@@ -307,35 +329,57 @@ onMounted(async () => {
             </div>
             <div class="col-span-2">
               <label class="flex items-center gap-2 text-text/80">
-                <input v-model="day.is_working" type="checkbox" class="accent-emerald-500" />
+                <input
+                  v-model="day.is_working"
+                  :id="`clinic-settings-working-${day.weekday}`"
+                  :name="`working_hours[${day.weekday}][is_working]`"
+                  type="checkbox"
+                  class="accent-emerald-500"
+                />
                 Працює
               </label>
             </div>
             <div class="col-span-4 flex items-center gap-2">
+              <label :for="`clinic-settings-start-${day.weekday}`" class="sr-only">Початок</label>
               <input
                 v-model="day.start_time"
+                :id="`clinic-settings-start-${day.weekday}`"
+                :name="`working_hours[${day.weekday}][start_time]`"
                 type="time"
                 class="rounded bg-card border border-border/80 px-2 py-1"
                 :disabled="!day.is_working"
               />
               <span class="text-text/60">—</span>
+              <label :for="`clinic-settings-end-${day.weekday}`" class="sr-only">Кінець</label>
               <input
                 v-model="day.end_time"
+                :id="`clinic-settings-end-${day.weekday}`"
+                :name="`working_hours[${day.weekday}][end_time]`"
                 type="time"
                 class="rounded bg-card border border-border/80 px-2 py-1"
                 :disabled="!day.is_working"
               />
             </div>
             <div class="col-span-4 flex items-center gap-2">
+              <label :for="`clinic-settings-break-start-${day.weekday}`" class="sr-only">
+                Початок перерви
+              </label>
               <input
                 v-model="day.break_start"
+                :id="`clinic-settings-break-start-${day.weekday}`"
+                :name="`working_hours[${day.weekday}][break_start]`"
                 type="time"
                 class="rounded bg-card border border-border/80 px-2 py-1"
                 :disabled="!day.is_working"
               />
               <span class="text-text/60">—</span>
+              <label :for="`clinic-settings-break-end-${day.weekday}`" class="sr-only">
+                Кінець перерви
+              </label>
               <input
                 v-model="day.break_end"
+                :id="`clinic-settings-break-end-${day.weekday}`"
+                :name="`working_hours[${day.weekday}][break_end]`"
                 type="time"
                 class="rounded bg-card border border-border/80 px-2 py-1"
                 :disabled="!day.is_working"

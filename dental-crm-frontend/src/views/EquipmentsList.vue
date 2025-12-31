@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
@@ -48,8 +49,11 @@ const loadClinics = async () => {
   }
 }
 
+const isFetchingEquipments = ref(false)
+
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value) return
+  if (!selectedClinicId.value || isFetchingEquipments.value) return
+  isFetchingEquipments.value = true
   loading.value = true
   error.value = null
   try {
@@ -60,8 +64,11 @@ const fetchEquipments = async () => {
     error.value = 'Не вдалося завантажити обладнання'
   } finally {
     loading.value = false
+    isFetchingEquipments.value = false
   }
 }
+
+const debouncedFetchEquipments = debounce(fetchEquipments, 300)
 
 const resetForm = () => {
   form.value = {
@@ -144,13 +151,17 @@ const deleteEquipment = async (equipment) => {
   }
 }
 
-watch(selectedClinicId, async () => {
-  await fetchEquipments()
+watch(selectedClinicId, () => {
+  debouncedFetchEquipments()
 })
 
 onMounted(async () => {
   await loadClinics()
-  await fetchEquipments()
+  // fetchEquipments will be called by watch when selectedClinicId is set in loadClinics
+  // Only call directly if selectedClinicId was not set
+  if (!selectedClinicId.value && clinics.value.length) {
+    await fetchEquipments()
+  }
 })
 </script>
 
@@ -170,9 +181,11 @@ onMounted(async () => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
-      <label class="text-xs uppercase text-text/70">Клініка</label>
+      <label for="equipments-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"
+        id="equipments-clinic-filter"
+        name="clinic_id"
         class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
       >
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -189,9 +202,13 @@ onMounted(async () => {
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
+          <label for="equipment-create-clinic" class="block text-xs uppercase text-text/70 mb-1"
+            >Клініка</label
+          >
           <select
             v-model="form.clinic_id"
+            id="equipment-create-clinic"
+            name="clinic_id"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -201,9 +218,13 @@ onMounted(async () => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Назва</label>
+          <label for="equipment-create-name" class="block text-xs uppercase text-text/70 mb-1"
+            >Назва</label
+          >
           <input
             v-model="form.name"
+            id="equipment-create-name"
+            name="name"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
@@ -211,16 +232,29 @@ onMounted(async () => {
       </div>
 
       <div>
-        <label class="block text-xs uppercase text-text/70 mb-1">Опис</label>
+        <label
+          for="equipment-create-description"
+          class="block text-xs uppercase text-text/70 mb-1"
+        >
+          Опис
+        </label>
         <textarea
           v-model="form.description"
+          id="equipment-create-description"
+          name="description"
           rows="2"
           class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
         />
       </div>
 
       <label class="flex items-center gap-2 text-sm text-text/80">
-        <input v-model="form.is_active" type="checkbox" class="rounded border-border/80 bg-bg" />
+        <input
+          v-model="form.is_active"
+          id="equipment-create-is-active"
+          name="is_active"
+          type="checkbox"
+          class="rounded border-border/80 bg-bg"
+        />
         Активне обладнання
       </label>
 
@@ -254,18 +288,36 @@ onMounted(async () => {
           <tbody>
             <tr v-for="equipment in equipments" :key="equipment.id" class="border-t border-border">
               <td class="py-2 px-3">
+                <label
+                  v-if="editingEquipmentId === equipment.id"
+                  :for="`equipment-edit-name-${equipment.id}`"
+                  class="sr-only"
+                >
+                  Назва
+                </label>
                 <input
                   v-if="editingEquipmentId === equipment.id"
                   v-model="editForm.name"
+                  :id="`equipment-edit-name-${equipment.id}`"
+                  name="name"
                   type="text"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
                 <span v-else class="text-text/90">{{ equipment.name }}</span>
               </td>
               <td class="py-2 px-3">
+                <label
+                  v-if="editingEquipmentId === equipment.id"
+                  :for="`equipment-edit-description-${equipment.id}`"
+                  class="sr-only"
+                >
+                  Опис
+                </label>
                 <input
                   v-if="editingEquipmentId === equipment.id"
                   v-model="editForm.description"
+                  :id="`equipment-edit-description-${equipment.id}`"
+                  name="description"
                   type="text"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
@@ -276,7 +328,13 @@ onMounted(async () => {
                   v-if="editingEquipmentId === equipment.id"
                   class="inline-flex items-center gap-2 text-xs text-text/80"
                 >
-                  <input v-model="editForm.is_active" type="checkbox" class="accent-emerald-500" />
+                  <input
+                    v-model="editForm.is_active"
+                    :id="`equipment-edit-is-active-${equipment.id}`"
+                    name="is_active"
+                    type="checkbox"
+                    class="accent-emerald-500"
+                  />
                   {{ editForm.is_active ? 'Активне' : 'Неактивне' }}
                 </label>
                 <span

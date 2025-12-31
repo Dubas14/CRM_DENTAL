@@ -30,7 +30,6 @@
       ]"
       :style="{ height: `${bodyHeight}px` }"
       @click="handleBodyClick"
-      @pointerdown="handlePointerDown"
     >
       <CalendarAppointment
         v-for="entry in items"
@@ -40,11 +39,8 @@
         :height="entry.height"
         :stack-offset="entry.stackOffset"
         :read-only="entry.item.isReadOnly"
-        :is-dragging="entry.isDragging"
-        :is-drag-source="entry.isDragSource"
         :interactive="interactive"
         @click="emit('appointment-click', entry.item)"
-        @interaction-start="handleInteractionStart"
         @contextmenu.prevent="(event: MouseEvent) => emit('contextmenu', { event, item: entry.item })"
       />
     </div>
@@ -70,8 +66,6 @@ interface ColumnEntry {
   item: CalendarItem
   top: number
   height: number
-  isDragging: boolean
-  isDragSource?: boolean
   stackOffset?: number
 }
 
@@ -97,25 +91,12 @@ const props = defineProps({
 const emit = defineEmits([
   'select-slot',
   'appointment-click',
-  'interaction-start',
-  'draft-start',
-  'draft-update',
-  'draft-end',
   'contextmenu'
 ])
 
 /* ===================== STATE ===================== */
 
 const bodyRef = ref<HTMLElement | null>(null)
-const draftState = ref<{
-  doctorId: string | number
-  originMinutes: number
-  startMinutes: number
-  endMinutes: number
-  pointerId: number
-  captureTarget: HTMLElement | null
-} | null>(null)
-const suppressClickUntil = ref(0)
 
 /* ===================== COMPUTED ===================== */
 
@@ -161,7 +142,6 @@ const normalizeMinutesFromOffset = (offsetY: number) => {
 const handleBodyClick = (event: MouseEvent) => {
   if (!props.interactive) return
   if (props.doctor?.is_active === false) return
-  if (Date.now() < suppressClickUntil.value) return
   if (!bodyRef.value) return
 
   const rect = (bodyRef.value as HTMLElement).getBoundingClientRect()
@@ -179,117 +159,7 @@ const handleBodyClick = (event: MouseEvent) => {
   })
 }
 
-/* ===================== APPOINTMENT INTERACTION ===================== */
-
-const handleInteractionStart = (payload: any) => {
-  suppressClickUntil.value = Date.now() + 250
-  emit('interaction-start', payload)
-}
-
-/* ===================== DRAFT CREATE (DRAG) ===================== */
-
-const updateDraft = (event: PointerEvent) => {
-  if (!draftState.value || !bodyRef.value) return
-
-  const rect = (bodyRef.value as HTMLElement).getBoundingClientRect()
-  const offsetY = event.clientY - rect.top
-  const currentMinutes = clampMinutes(normalizeMinutesFromOffset(offsetY))
-
-  const origin = (draftState.value as any).originMinutes
-  const startMinutes = Math.min(origin, currentMinutes)
-  const endMinutes = Math.max(startMinutes + props.snapMinutes, currentMinutes + props.snapMinutes)
-
-  ;(draftState.value as any).startMinutes = startMinutes
-  ;(draftState.value as any).endMinutes = clampMinutes(endMinutes)
-
-  emit('draft-update', {
-    doctorId: (draftState.value as any).doctorId,
-    startMinutes: (draftState.value as any).startMinutes,
-    endMinutes: (draftState.value as any).endMinutes,
-    baseDate: props.baseDate
-  })
-}
-
-const finalizeDraft = () => {
-  if (!draftState.value) return
-
-  const ds = draftState.value as any
-  const payload = {
-    doctorId: ds.doctorId,
-    startMinutes: ds.startMinutes,
-    endMinutes: ds.endMinutes,
-    baseDate: props.baseDate
-  }
-
-  const captureTarget = ds.captureTarget
-  if (captureTarget?.releasePointerCapture) {
-    captureTarget.releasePointerCapture(ds.pointerId)
-  }
-
-  emit('draft-end', payload)
-  draftState.value = null
-
-  window.removeEventListener('pointermove', handleDraftMove as any)
-  window.removeEventListener('pointerup', handleDraftEnd as any)
-}
-
-const handleDraftMove = (event: PointerEvent) => updateDraft(event)
-const handleDraftEnd = () => finalizeDraft()
-
-const handlePointerDown = (event: PointerEvent) => {
-  if (!props.interactive) return
-  if (props.doctor?.is_active === false) return
-  if (event.button !== 0) return
-  const target = event.target as HTMLElement
-  // Check if we hit an appointment or something inside it
-  if (target?.closest?.('[data-calendar-item="appointment"]')) {
-     return
-  }
-  const currentTarget = event.currentTarget as HTMLElement
-  if (!bodyRef.value || !currentTarget) return
-
-  suppressClickUntil.value = Date.now() + 250
-
-  const rect = (bodyRef.value as HTMLElement).getBoundingClientRect()
-  const offsetY = event.clientY - rect.top
-  if (offsetY < 0 || offsetY > rect.height) return
-
-  const originMinutes = clampMinutes(normalizeMinutesFromOffset(offsetY))
-  const { min, max } = activeMinutesRange.value
-  if (originMinutes < min || originMinutes + props.snapMinutes > max) return
-
-  const initialDraft = {
-    doctorId: resolvedDoctorId.value as string | number,
-    originMinutes,
-    startMinutes: originMinutes,
-    endMinutes: originMinutes + props.snapMinutes,
-    pointerId: event.pointerId,
-    captureTarget: currentTarget
-  }
-  
-  draftState.value = initialDraft
-
-  if (currentTarget.setPointerCapture) {
-    currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  emit('draft-start', {
-    doctorId: initialDraft.doctorId,
-    startMinutes: initialDraft.startMinutes,
-    endMinutes: initialDraft.endMinutes,
-    baseDate: props.baseDate
-  })
-
-  window.addEventListener('pointermove', handleDraftMove as any)
-  window.addEventListener('pointerup', handleDraftEnd as any)
-}
-
 /* ===================== EXPOSE ===================== */
 
 defineExpose({ bodyRef })
-
-onBeforeUnmount(() => {
-  window.removeEventListener('pointermove', handleDraftMove as any)
-  window.removeEventListener('pointerup', handleDraftEnd as any)
-})
 </script>

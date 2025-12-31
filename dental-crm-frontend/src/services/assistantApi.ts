@@ -1,8 +1,10 @@
 import apiClient from './apiClient'
+import { buildKey, withCacheAndDedupe } from './requestCache'
 
 const assistantApi = {
   list(params) {
-    return apiClient.get('/assistants', { params })
+    const key = buildKey('/assistants', params || {})
+    return withCacheAndDedupe(key, () => apiClient.get('/assistants', { params }))
   },
   create(payload) {
     return apiClient.post('/assistants', payload)

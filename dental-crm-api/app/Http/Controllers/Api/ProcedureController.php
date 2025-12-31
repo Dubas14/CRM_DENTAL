@@ -12,12 +12,14 @@ class ProcedureController extends Controller
     public function index(Request $request)
     {
         $clinicId = $request->query('clinic_id');
+        $perPage = $request->integer('per_page', 50);
+        $perPage = min(max($perPage, 1), 100);
 
         return Procedure::query()
             ->with(['steps', 'rooms'])
             ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId))
             ->orderBy('name')
-            ->get();
+            ->paginate($perPage);
     }
 
     public function store(Request $request)

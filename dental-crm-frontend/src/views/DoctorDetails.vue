@@ -214,9 +214,13 @@ onMounted(loadDoctorProcedures)
 
         <div class="space-y-4">
           <div>
-            <label class="block text-xs uppercase text-text/70 mb-1"> ПІБ </label>
+            <label for="doctor-details-full-name" class="block text-xs uppercase text-text/70 mb-1">
+              ПІБ
+            </label>
             <input
               v-model="form.full_name"
+              id="doctor-details-full-name"
+              name="full_name"
               :disabled="!canEdit"
               type="text"
               class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
@@ -224,9 +228,16 @@ onMounted(loadDoctorProcedures)
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-text/70 mb-1"> Спеціалізація </label>
+            <label
+              for="doctor-details-specialization"
+              class="block text-xs uppercase text-text/70 mb-1"
+            >
+              Спеціалізація
+            </label>
             <input
               v-model="form.specialization"
+              id="doctor-details-specialization"
+              name="specialization"
               :disabled="!canEdit"
               type="text"
               class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
@@ -234,9 +245,13 @@ onMounted(loadDoctorProcedures)
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-text/70 mb-1"> Коротке біо </label>
+            <label for="doctor-details-bio" class="block text-xs uppercase text-text/70 mb-1">
+              Коротке біо
+            </label>
             <textarea
               v-model="form.bio"
+              id="doctor-details-bio"
+              name="bio"
               :disabled="!canEdit"
               rows="3"
               class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text disabled:opacity-70"
@@ -245,9 +260,13 @@ onMounted(loadDoctorProcedures)
 
           <div class="flex flex-wrap items-center gap-4">
             <div>
-              <label class="block text-xs uppercase text-text/70 mb-1"> Колір картки </label>
+              <label for="doctor-details-color" class="block text-xs uppercase text-text/70 mb-1">
+                Колір картки
+              </label>
               <input
                 v-model="form.color"
+                id="doctor-details-color"
+                name="color"
                 :disabled="!canEdit"
                 type="color"
                 class="h-10 w-20 rounded-lg bg-bg border border-border/80"
@@ -255,13 +274,14 @@ onMounted(loadDoctorProcedures)
             </div>
             <div class="flex items-center gap-2 mt-4">
               <input
-                id="active"
+                id="doctor-details-active"
+                name="is_active"
                 v-model="form.is_active"
                 :disabled="!canEdit"
                 type="checkbox"
                 class="h-4 w-4 rounded border-border/70 bg-card"
               />
-              <label for="active" class="text-sm text-text/90"> Активний лікар </label>
+              <label for="doctor-details-active" class="text-sm text-text/90"> Активний лікар </label>
             </div>
           </div>
         </div>
@@ -353,9 +373,14 @@ onMounted(loadDoctorProcedures)
           <tbody>
             <tr v-for="procedure in procedures" :key="procedure.id" class="border-b border-border">
               <td class="py-2 pr-2">
+                <label :for="`doctor-procedure-assigned-${procedure.id}`" class="sr-only">
+                  Активна
+                </label>
                 <input
                   v-model="procedure.is_assigned"
                   :disabled="!canEdit"
+                  :id="`doctor-procedure-assigned-${procedure.id}`"
+                  :name="`procedures[${procedure.id}][is_assigned]`"
                   type="checkbox"
                   class="h-4 w-4 rounded border-border/70 bg-card"
                 />
@@ -365,9 +390,14 @@ onMounted(loadDoctorProcedures)
               <td class="py-2 pr-2 text-text/80">{{ procedure.duration_minutes }} хв</td>
               <td class="py-2 pr-2">
                 <div class="flex items-center gap-2">
+                  <label :for="`doctor-procedure-duration-${procedure.id}`" class="sr-only">
+                    Персональна тривалість (хв)
+                  </label>
                   <input
                     v-model="procedure.custom_duration_minutes"
                     :disabled="!canEdit || !procedure.is_assigned"
+                    :id="`doctor-procedure-duration-${procedure.id}`"
+                    :name="`procedures[${procedure.id}][custom_duration_minutes]`"
                     type="number"
                     min="5"
                     max="480"

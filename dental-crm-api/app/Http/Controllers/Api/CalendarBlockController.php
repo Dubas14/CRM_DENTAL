@@ -45,7 +45,10 @@ class CalendarBlockController extends Controller
             $query->where('start_at', '<=', $to);
         }
 
-        return $query->orderBy('start_at')->get();
+        $perPage = $request->integer('per_page', 100);
+        $perPage = min(max($perPage, 1), 200);
+
+        return $query->orderBy('start_at')->paginate($perPage);
     }
 
     public function store(Request $request)

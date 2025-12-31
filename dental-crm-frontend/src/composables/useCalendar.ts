@@ -6,6 +6,9 @@ import calendarApi from '../services/calendarApi'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
 import assistantApi from '../services/assistantApi'
+import doctorApi from '../services/doctorApi'
+import roomApi from '../services/roomApi'
+import procedureApi from '../services/procedureApi'
 import { useAuth } from './useAuth'
 import { useToast } from './useToast'
 
@@ -477,7 +480,7 @@ export function useCalendar() {
 
   const fetchDoctors = async () => {
     try {
-      const { data } = await apiClient.get('/doctors')
+      const { data } = await doctorApi.list()
       doctors.value = Array.isArray(data) ? data : data?.data || []
       syncSelectedDoctorWithClinic()
       logDiagnostics('fetchDoctors')
@@ -491,7 +494,7 @@ export function useCalendar() {
   const fetchProcedures = async () => {
     try {
       const params = clinicId.value ? { clinic_id: clinicId.value } : undefined
-      const { data } = await apiClient.get('/procedures', { params })
+      const { data } = await procedureApi.list(params || {})
       const list = Array.isArray(data) ? data : data?.data || []
 
       const uniqueProcedures = []
@@ -546,7 +549,7 @@ export function useCalendar() {
         rooms.value = []
         return
       }
-      const { data } = await apiClient.get('/rooms', { params: { clinic_id: clinicId.value } })
+      const { data } = await roomApi.list({ clinic_id: clinicId.value })
       rooms.value = Array.isArray(data) ? data : data?.data || []
       syncSelectedRooms()
     } catch (error) {

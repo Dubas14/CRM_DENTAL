@@ -1,8 +1,10 @@
 import apiClient from './apiClient'
+import { buildKey, withCacheAndDedupe } from './requestCache'
 
 const equipmentApi = {
   list(params) {
-    return apiClient.get('/equipments', { params })
+    const key = buildKey('/equipments', params || {})
+    return withCacheAndDedupe(key, () => apiClient.get('/equipments', { params }))
   },
   create(payload) {
     return apiClient.post('/equipments', payload)

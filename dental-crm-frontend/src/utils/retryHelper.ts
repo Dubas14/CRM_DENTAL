@@ -9,7 +9,8 @@ export interface RetryConfig {
 const defaultRetryConfig: RetryConfig = {
   maxRetries: 3,
   retryDelay: 1000,
-  retryableStatuses: [408, 429, 500, 502, 503, 504]
+  // 429 прибираємо, щоб не дратувати rate-limit додатковими ретраями
+  retryableStatuses: [408, 500, 502, 503, 504]
 }
 
 /**

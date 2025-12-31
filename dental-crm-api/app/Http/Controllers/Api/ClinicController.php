@@ -8,11 +8,14 @@ use Illuminate\Http\Request;
 
 class ClinicController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = $request->integer('per_page', 50);
+        $perPage = min(max($perPage, 1), 100);
+
         return Clinic::query()
             ->orderBy('name')
-            ->get();
+            ->paginate($perPage);
     }
 
     public function store(Request $request)

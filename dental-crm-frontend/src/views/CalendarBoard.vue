@@ -103,9 +103,6 @@
                     view-mode="day"
                     @select-slot="handleSelectSlot"
                     @appointment-click="handleAppointmentClick"
-                    @appointment-update="handleAppointmentUpdate"
-                    @appointment-drag-start="handleAppointmentDragStart"
-                    @appointment-drag-end="handleAppointmentDragEnd"
                   />
                 </div>
 
@@ -131,9 +128,6 @@
                       view-mode="week"
                       @select-slot="handleSelectSlot"
                       @appointment-click="handleAppointmentClick"
-                      @appointment-update="handleAppointmentUpdate"
-                      @appointment-drag-start="handleAppointmentDragStart"
-                      @appointment-drag-end="handleAppointmentDragEnd"
                     />
                   </div>
                 </div>
@@ -274,6 +268,7 @@
 <script setup lang="ts">
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { debounce } from 'lodash-es'
 import CalendarBoard from '../components/calendar/CalendarBoard.vue'
 import CalendarSidebar from '../components/calendar/CalendarSidebar.vue'
 import CalendarHeader from '../components/calendar/CalendarHeader.vue'
@@ -283,6 +278,7 @@ import calendarApi from '../services/calendarApi'
 import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
 import procedureApi from '../services/procedureApi'
+import doctorApi from '../services/doctorApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
@@ -648,9 +644,13 @@ const loadClinics = async () => {
   }
 }
 
-const fetchEvents = async () => {
-  if (!currentClinicId.value) return
+// Guard to prevent concurrent requests
+let isFetchingEvents = false
 
+const fetchEvents = async () => {
+  if (!currentClinicId.value || isFetchingEvents) return
+
+  isFetchingEvents = true
   const { start, end } = getRangeForView(currentDate.value, view.value)
   const from = formatDateOnly(start)
   const to = formatDateOnly(end)
@@ -675,6 +675,8 @@ const fetchEvents = async () => {
   } catch (error) {
     console.error(error)
     toastError('Помилка завантаження даних')
+  } finally {
+    isFetchingEvents = false
   }
 
   if (pendingAppointmentId.value) {
@@ -688,6 +690,9 @@ const fetchEvents = async () => {
     }
   }
 }
+
+// Debounced version for watch handlers
+const debouncedFetchEvents = debounce(fetchEvents, 300)
 
 const saveEvent = async (payload) => {
   if (!currentClinicId.value) {
@@ -835,9 +840,7 @@ const loadDoctors = async () => {
 
   try {
     loadingDoctors.value = true
-    const { data } = await apiClient.get('/doctors', {
-      params: { clinic_id: currentClinicId.value }
-    })
+    const { data } = await doctorApi.list({ clinic_id: currentClinicId.value })
     doctors.value = (data?.data || data || []).filter(Boolean)
     if (!doctors.value.length) {
       selectedDoctorId.value = null
@@ -929,83 +932,6 @@ const handleAppointmentClick = (item) => {
   })
 }
 
-const handleAppointmentUpdate = async ({ id, startAt, endAt, doctorId }) => {
-  const item = calendarItems.value.find((entry) => entry.id === id)
-  if (!item || item.type !== 'appointment') return
-  if (
-    item.startAt.getTime() === startAt.getTime() &&
-    item.endAt.getTime() === endAt.getTime() &&
-    item.doctorId === doctorId
-  ) {
-    return
-  }
-
-  const original = { ...item }
-
-  updateCalendarItem({ ...item, startAt, endAt, doctorId })
-
-  if (!doctorId) {
-    toastError('Неможливо визначити лікаря для запису')
-    updateCalendarItem(original)
-    return
-  }
-
-  if (!isDoctorActive(doctorId)) {
-    toastError('Лікар неактивний')
-    updateCalendarItem(original)
-    return
-  }
-
-  if (!isWithinClinicHours(startAt, endAt)) {
-    toastError('Запис поза робочим часом клініки')
-    updateCalendarItem(original)
-    return
-  }
-
-  if (hasOverlap(item.id, doctorId, startAt, endAt)) {
-    toastError('Перетин записів у лікаря')
-    updateCalendarItem(original)
-    return
-  }
-
-  if (item.raw?.status === 'done') {
-    toastError('Завершений запис не можна переносити')
-    updateCalendarItem(original)
-    return
-  }
-
-  try {
-    const { data } = await calendarApi.updateAppointment(item.id, {
-      doctor_id: doctorId,
-      start_at: formatDateTime(startAt),
-      end_at: formatDateTime(endAt)
-    })
-
-    const updatedAppointment = data?.data || data?.appointment || data
-    if (updatedAppointment) {
-      const mapped = mapAppointmentToItem(updatedAppointment)
-      if (mapped) {
-        updateCalendarItem(mapped)
-      } else {
-        updateCalendarItem({ ...item, startAt, endAt, doctorId, raw: updatedAppointment })
-      }
-    }
-
-    toastSuccess('Запис перенесено')
-  } catch (error) {
-    console.error(error)
-    toastError('Не вдалося перенести запис')
-    updateCalendarItem(original)
-  }
-}
-
-const handleAppointmentDragStart = () => {
-  // Reserved for future availability overlays
-}
-
-const handleAppointmentDragEnd = () => {
-  // Reserved for future availability overlays
-}
 
 const handleClinicSelection = (clinicId) => {
   selectedClinicId.value = clinicId
@@ -1077,17 +1003,17 @@ watch(view, () => {
   handleCloseModal()
   handleCloseAppointmentModal()
   closeMonthEvents()
-  fetchEvents()
+  debouncedFetchEvents()
 })
 
 watch(currentClinicId, () => {
-  fetchEvents()
+  debouncedFetchEvents()
   loadDoctors()
   loadProcedures()
 })
 
 watch(currentDate, () => {
-  fetchEvents()
+  debouncedFetchEvents()
 })
 
 watch(
@@ -1097,7 +1023,7 @@ watch(
     handleCloseAppointmentModal()
     closeMonthEvents()
     applyRouteSelection()
-    fetchEvents()
+    debouncedFetchEvents()
   }
 )
 </script>

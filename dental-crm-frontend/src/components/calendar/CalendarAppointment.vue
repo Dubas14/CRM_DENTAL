@@ -1,28 +1,14 @@
 <template>
   <div
-    class="absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group touch-none"
+    class="absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group"
     :class="[
-      backgroundClass,
-      cursorClass,
-      isDragging ? 'ring-2 ring-sky-400 shadow-lg scale-[1.02]' : '',
-      isDragSource ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'
+      statusClass,
+      cursorClass
     ]"
     :style="styleObject"
     data-calendar-item="appointment"
     @click.stop="handleClick"
-    @pointerdown="handlePointerDown"
   >
-    <!-- Resize Handles -->
-    <div
-      v-if="showResizeHandles"
-      class="absolute left-0 right-0 top-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/10 z-20"
-      @pointerdown.stop="(e: PointerEvent) => emit('interaction-start', { item, type: 'resize-start', pointerEvent: e })"
-    ></div>
-    <div
-      v-if="showResizeHandles"
-      class="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-black/10 z-20"
-      @pointerdown.stop="(e: PointerEvent) => emit('interaction-start', { item, type: 'resize-end', pointerEvent: e })"
-    ></div>
 
     <div class="flex flex-col h-full overflow-hidden">
       <!-- Header: Time & Status -->
@@ -66,10 +52,6 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  isDragging: {
-    type: Boolean,
-    default: false
-  },
   readOnly: {
     type: Boolean,
     default: false
@@ -77,14 +59,10 @@ const props = defineProps({
   interactive: {
     type: Boolean,
     default: true
-  },
-  isDragSource: {
-    type: Boolean,
-    default: false
   }
 })
 
-const emit = defineEmits(['click', 'interaction-start'])
+const emit = defineEmits(['click'])
 
 const normalizeDate = (value: string | Date | undefined): Date | null => {
   if (!value) return null
@@ -106,47 +84,47 @@ const isPast = computed(() => {
   return Boolean(endAt && endAt < new Date())
 })
 
-const backgroundClass = computed(() => {
-  const status = props.item.status || 'planned'
-  
+const statusClass = computed(() => {
   if (props.item.type === 'draft') {
-    return 'bg-sky-50 border-l-sky-400 text-sky-900 border border-sky-200 border-dashed animate-pulse'
+    return 'appointment-draft'
   }
   
   if (props.item.type === 'block') {
-    return 'bg-slate-100 border-l-slate-500 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:border-l-slate-400'
+    return 'appointment-block'
   }
   
-  // Appointment Status Colors
-  if (status === 'done' || status === 'completed') {
-    return 'bg-emerald-50 border-l-emerald-500 text-emerald-900 border-r border-t border-b border-emerald-200/50'
-  }
-  if (status === 'cancelled') {
-    return 'bg-red-50 border-l-red-500 text-red-900 border-r border-t border-b border-red-200/50 line-through decoration-red-900/30'
-  }
-  if (status === 'confirmed') {
-    return 'bg-blue-50 border-l-blue-500 text-blue-900 border-r border-t border-b border-blue-200/50'
-  }
-  if (status === 'arrived') {
-    return 'bg-purple-50 border-l-purple-500 text-purple-900 border-r border-t border-b border-purple-200/50'
-  }
-
-  // Default / Scheduled
-  if (isPast.value) {
-    return 'bg-slate-50 border-l-slate-400 text-slate-600 border-r border-t border-b border-slate-200/50'
+  const status = props.item.status || 'planned'
+  const statusKey = status === 'completed' ? 'done' : status
+  
+  // Map frontend statuses to CSS classes
+  const statusMap: Record<string, string> = {
+    planned: 'appointment-status-planned',
+    scheduled: 'appointment-status-planned',
+    confirmed: 'appointment-status-confirmed',
+    reminded: 'appointment-status-confirmed',
+    waiting: 'appointment-status-waiting',
+    done: 'appointment-status-done',
+    completed: 'appointment-status-done',
+    cancelled: 'appointment-status-cancelled',
+    no_show: 'appointment-status-no-show',
+    arrived: 'appointment-status-arrived'
   }
   
-  return 'bg-white border-l-emerald-500 text-emerald-950 border-r border-t border-b border-emerald-200 shadow-sm'
+  const baseClass = statusMap[statusKey] || 'appointment-status-planned'
+  
+  // Add past modifier for planned/scheduled appointments
+  if ((statusKey === 'planned' || statusKey === 'scheduled') && isPast.value) {
+    return `${baseClass} appointment-status-past`
+  }
+  
+  return baseClass
 })
 
 const cursorClass = computed(() => {
-  if (props.isDragging) return 'cursor-grabbing'
   if (!props.interactive || props.readOnly || props.item.type !== 'appointment')
-    return 'cursor-default'
-  return 'cursor-default group-hover:cursor-grab' // Only show grab on hover to reduce noise
+    return 'appointment-cursor-default'
+  return 'appointment-cursor-pointer'
 })
-
-const showResizeHandles = computed(() => !props.readOnly && props.item.type === 'appointment')
 
 const styleObject = computed(() => ({
   top: `${props.top + props.stackOffset}px`,
@@ -156,22 +134,202 @@ const styleObject = computed(() => ({
 const handleClick = () => {
   emit('click', props.item)
 }
-
-const handlePointerDown = (event: PointerEvent) => {
-  if (!props.interactive || props.readOnly || props.item.type !== 'appointment') return
-  const target = event.currentTarget as HTMLElement
-  const rect = target?.getBoundingClientRect?.()
-  if (!rect) return
-  const offsetY = event.clientY - rect.top
-  const edgeSize = 10
-  if (offsetY <= edgeSize) {
-    emit('interaction-start', { item: props.item, type: 'resize-start', pointerEvent: event })
-    return
-  }
-  if (offsetY >= rect.height - edgeSize) {
-    emit('interaction-start', { item: props.item, type: 'resize-end', pointerEvent: event })
-    return
-  }
-  emit('interaction-start', { item: props.item, type: 'move', pointerEvent: event })
-}
 </script>
+
+<style scoped>
+/* Base appointment styles */
+.appointment-draft {
+  background-color: rgb(224 242 254);
+  border-left: 4px solid rgb(56 189 248);
+  color: rgb(12 74 110);
+  border: 1px dashed rgb(186 230 253);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.appointment-block {
+  background-color: rgb(241 245 249);
+  border-left: 4px solid rgb(100 116 139);
+  color: rgb(51 65 85);
+}
+
+/* Status: Planned/Scheduled */
+.appointment-status-planned {
+  background-color: rgb(255 255 255);
+  border-left: 4px solid rgb(16 185 129);
+  color: rgb(5 46 22);
+  border-right: 1px solid rgba(16, 185, 129, 0.2);
+  border-top: 1px solid rgba(16, 185, 129, 0.2);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.appointment-status-planned.appointment-status-past {
+  background-color: rgb(248 250 252);
+  border-left-color: rgb(148 163 184);
+  color: rgb(71 85 105);
+  border-right-color: rgba(148, 163, 184, 0.2);
+  border-top-color: rgba(148, 163, 184, 0.2);
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Status: Confirmed */
+.appointment-status-confirmed {
+  background-color: rgb(239 246 255);
+  border-left: 4px solid rgb(59 130 246);
+  color: rgb(30 58 138);
+  border-right: 1px solid rgba(59, 130, 246, 0.2);
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Status: Waiting */
+.appointment-status-waiting {
+  background-color: rgb(254 252 232);
+  border-left: 4px solid rgb(234 179 8);
+  color: rgb(113 63 18);
+  border-right: 1px solid rgba(234, 179, 8, 0.2);
+  border-top: 1px solid rgba(234, 179, 8, 0.2);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+/* Status: Done/Completed */
+.appointment-status-done {
+  background-color: rgb(236 253 245);
+  border-left: 4px solid rgb(16 185 129);
+  color: rgb(5 46 22);
+  border-right: 1px solid rgba(16, 185, 129, 0.2);
+  border-top: 1px solid rgba(16, 185, 129, 0.2);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* Status: Cancelled */
+.appointment-status-cancelled {
+  background-color: rgb(254 242 242);
+  border-left: 4px solid rgb(239 68 68);
+  color: rgb(127 29 29);
+  border-right: 1px solid rgba(239, 68, 68, 0.2);
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  text-decoration: line-through;
+  text-decoration-color: rgba(127, 29, 29, 0.3);
+}
+
+/* Status: No Show */
+.appointment-status-no-show {
+  background-color: rgb(255 247 237);
+  border-left: 4px solid rgb(249 115 22);
+  color: rgb(124 45 18);
+  border-right: 1px solid rgba(249, 115, 22, 0.2);
+  border-top: 1px solid rgba(249, 115, 22, 0.2);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+/* Status: Arrived */
+.appointment-status-arrived {
+  background-color: rgb(250 245 255);
+  border-left: 4px solid rgb(168 85 247);
+  color: rgb(88 28 135);
+  border-right: 1px solid rgba(168, 85, 247, 0.2);
+  border-top: 1px solid rgba(168, 85, 247, 0.2);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .appointment-draft {
+    background-color: rgb(30 58 138);
+    border-left-color: rgb(125 211 252);
+    color: rgb(191 219 254);
+    border-color: rgb(56 189 248);
+  }
+
+  .appointment-block {
+    background-color: rgb(30 41 59);
+    border-left-color: rgb(148 163 184);
+    color: rgb(203 213 225);
+  }
+
+  .appointment-status-planned {
+    background-color: rgb(6 78 59);
+    border-left-color: rgb(5 150 105);
+    color: rgb(167 243 208);
+    border-right-color: rgba(5, 150, 105, 0.3);
+    border-top-color: rgba(5, 150, 105, 0.3);
+    border-bottom-color: rgba(5, 150, 105, 0.3);
+  }
+
+  .appointment-status-planned.appointment-status-past {
+    background-color: rgb(30 41 59);
+    border-left-color: rgb(100 116 139);
+    color: rgb(148 163 184);
+    border-right-color: rgba(100, 116, 139, 0.3);
+    border-top-color: rgba(100, 116, 139, 0.3);
+    border-bottom-color: rgba(100, 116, 139, 0.3);
+  }
+
+  .appointment-status-confirmed {
+    background-color: rgb(30 64 175);
+    border-left-color: rgb(96 165 250);
+    color: rgb(191 219 254);
+    border-right-color: rgba(96, 165, 250, 0.3);
+    border-top-color: rgba(96, 165, 250, 0.3);
+    border-bottom-color: rgba(96, 165, 250, 0.3);
+  }
+
+  .appointment-status-waiting {
+    background-color: rgb(113 63 18);
+    border-left-color: rgb(251 191 36);
+    color: rgb(254 243 199);
+    border-right-color: rgba(251, 191, 36, 0.3);
+    border-top-color: rgba(251, 191, 36, 0.3);
+    border-bottom-color: rgba(251, 191, 36, 0.3);
+  }
+
+  .appointment-status-done {
+    background-color: rgb(6 78 59);
+    border-left-color: rgb(52 211 153);
+    color: rgb(167 243 208);
+    border-right-color: rgba(52, 211, 153, 0.3);
+    border-top-color: rgba(52, 211, 153, 0.3);
+    border-bottom-color: rgba(52, 211, 153, 0.3);
+  }
+
+  .appointment-status-cancelled {
+    background-color: rgb(127 29 29);
+    border-left-color: rgb(248 113 113);
+    color: rgb(254 226 226);
+    border-right-color: rgba(248, 113, 113, 0.3);
+    border-top-color: rgba(248, 113, 113, 0.3);
+    border-bottom-color: rgba(248, 113, 113, 0.3);
+    text-decoration-color: rgba(254, 226, 226, 0.4);
+  }
+
+  .appointment-status-no-show {
+    background-color: rgb(124 45 18);
+    border-left-color: rgb(251 146 60);
+    color: rgb(254 215 170);
+    border-right-color: rgba(251, 146, 60, 0.3);
+    border-top-color: rgba(251, 146, 60, 0.3);
+    border-bottom-color: rgba(251, 146, 60, 0.3);
+  }
+
+  .appointment-status-arrived {
+    background-color: rgb(88 28 135);
+    border-left-color: rgb(192 132 252);
+    color: rgb(233 213 255);
+    border-right-color: rgba(192, 132, 252, 0.3);
+    border-top-color: rgba(192, 132, 252, 0.3);
+    border-bottom-color: rgba(192, 132, 252, 0.3);
+  }
+}
+
+/* Cursor classes */
+.appointment-cursor-pointer {
+  cursor: pointer;
+}
+
+.appointment-cursor-default {
+  cursor: default;
+}
+</style>

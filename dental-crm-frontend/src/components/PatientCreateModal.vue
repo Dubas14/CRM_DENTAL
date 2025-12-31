@@ -117,9 +117,16 @@ const submit = async () => {
 
         <form @submit.prevent="submit" class="space-y-4">
           <div v-if="!isDoctor && clinics.length > 0">
-            <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
+            <label
+              for="patient-create-clinic"
+              class="block text-xs uppercase text-text/70 mb-1"
+            >
+              Клініка
+            </label>
             <select
               v-model="form.clinic_id"
+              id="patient-create-clinic"
+              name="clinic_id"
               required
               class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"
             >
@@ -129,11 +136,15 @@ const submit = async () => {
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-text/70 mb-1"
+            <label
+              for="patient-create-full-name"
+              class="block text-xs uppercase text-text/70 mb-1"
               >ПІБ <span class="text-red-400">*</span></label
             >
             <input
               v-model="form.full_name"
+              id="patient-create-full-name"
+              name="full_name"
               type="text"
               class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"
               placeholder="Іванов Іван Іванович"
@@ -142,9 +153,13 @@ const submit = async () => {
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs uppercase text-text/70 mb-1">Телефон</label>
+              <label for="patient-create-phone" class="block text-xs uppercase text-text/70 mb-1"
+                >Телефон</label
+              >
               <input
                 v-model="form.phone"
+                id="patient-create-phone"
+                name="phone"
                 @input="validatePhone"
                 type="text"
                 class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"
@@ -152,9 +167,16 @@ const submit = async () => {
               />
             </div>
             <div>
-              <label class="block text-xs uppercase text-text/70 mb-1">Дата народження</label>
+              <label
+                for="patient-create-birth-date"
+                class="block text-xs uppercase text-text/70 mb-1"
+              >
+                Дата народження
+              </label>
               <input
                 v-model="form.birth_date"
+                id="patient-create-birth-date"
+                name="birth_date"
                 type="date"
                 class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"
               />
@@ -162,9 +184,13 @@ const submit = async () => {
           </div>
 
           <div>
-            <label class="block text-xs uppercase text-text/70 mb-1">Примітка</label>
+            <label for="patient-create-note" class="block text-xs uppercase text-text/70 mb-1"
+              >Примітка</label
+            >
             <textarea
               v-model="form.note"
+              id="patient-create-note"
+              name="note"
               rows="2"
               class="w-full bg-bg border border-border/80 rounded p-2 text-text/90"
             ></textarea>

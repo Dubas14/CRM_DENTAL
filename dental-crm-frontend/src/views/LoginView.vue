@@ -65,7 +65,9 @@ const handleSubmit = async () => {
         <form class="space-y-4" @submit.prevent="handleSubmit">
           <!-- Email -->
           <div>
-            <label class="block text-xs font-medium text-text/80 mb-1"> Email </label>
+            <label for="login-email" class="block text-xs font-medium text-text/80 mb-1">
+              Email
+            </label>
 
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-text/60">
@@ -86,6 +88,8 @@ const handleSubmit = async () => {
 
               <input
                 v-model="email"
+                id="login-email"
+                name="email"
                 type="email"
                 required
                 autocomplete="username"
@@ -138,6 +142,8 @@ const handleSubmit = async () => {
 
               <input
                 v-model="password"
+                id="login-password"
+                name="password"
                 :type="passwordType"
                 required
                 autocomplete="current-password"
@@ -186,9 +192,11 @@ const handleSubmit = async () => {
 
           <!-- Remember me -->
           <div class="flex items-center justify-between">
-            <label class="inline-flex items-center gap-2 select-none">
+            <label class="inline-flex items-center gap-2 select-none" for="login-remember">
               <input
                 v-model="rememberMe"
+                id="login-remember"
+                name="remember_me"
                 type="checkbox"
                 class="h-4 w-4 rounded border-border/70 bg-bg/60 text-emerald-500 focus:ring-emerald-500/50"
               />

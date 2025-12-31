@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Exceptions;
+
+use Exception;
+
+class UnauthorizedException extends Exception
+{
+    public function __construct(string $message = 'У вас немає прав для виконання цієї дії')
+    {
+        parent::__construct($message, 403);
+    }
+
+    public function render($request)
+    {
+        return response()->json([
+            'message' => $this->getMessage(),
+            'error' => 'unauthorized',
+        ], 403);
+    }
+}

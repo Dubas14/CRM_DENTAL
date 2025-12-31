@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import apiClient from '../services/apiClient'
+import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
 
 const { user } = useAuth()
@@ -55,12 +56,14 @@ const loadClinics = async () => {
   error.value = null
 
   try {
-    const { data } = await apiClient.get('/clinics')
-    clinics.value = data
+    const { data } = await clinicApi.list()
+    // Handle paginated response
+    clinics.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     currentPage.value = 1
   } catch (e) {
     console.error(e)
     error.value = e.response?.data?.message || e.message || 'Помилка завантаження клінік'
+    clinics.value = []
   } finally {
     loading.value = false
   }
@@ -73,6 +76,9 @@ const createClinic = async () => {
 
   try {
     const { data } = await apiClient.post('/clinics', form.value)
+
+    // Очищаємо кеш, щоб наступний запит отримав актуальні дані
+    clinicApi.clearCache()
 
     // додаємо в список без додаткового запиту
     clinics.value.push(data)
@@ -162,9 +168,13 @@ watch(
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createClinic">
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Назва * </label>
+          <label for="clinic-create-name" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Назва *
+          </label>
           <input
             v-model="form.name"
+            id="clinic-create-name"
+            name="name"
             type="text"
             required
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -173,11 +183,16 @@ watch(
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-legal-name"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Юридична назва
           </label>
           <input
             v-model="form.legal_name"
+            id="clinic-create-legal-name"
+            name="legal_name"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="ТОВ «Дентал Плюс»"
@@ -185,9 +200,13 @@ watch(
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Місто </label>
+          <label for="clinic-create-city" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Місто
+          </label>
           <input
             v-model="form.city"
+            id="clinic-create-city"
+            name="city"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="Черкаси"
@@ -195,9 +214,13 @@ watch(
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Адреса </label>
+          <label for="clinic-create-address" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Адреса
+          </label>
           <input
             v-model="form.address"
+            id="clinic-create-address"
+            name="address"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="вул. Прикладна, 10"
@@ -205,9 +228,13 @@ watch(
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Телефон </label>
+          <label for="clinic-create-phone" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Телефон
+          </label>
           <input
             v-model="form.phone"
+            id="clinic-create-phone"
+            name="phone"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="+380..."
@@ -215,9 +242,13 @@ watch(
         </div>
 
         <div>
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
+          <label for="clinic-create-email" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Email
+          </label>
           <input
             v-model="form.email"
+            id="clinic-create-email"
+            name="email"
             type="email"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="clinic@example.com"
@@ -225,9 +256,13 @@ watch(
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Сайт </label>
+          <label for="clinic-create-website" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+            Сайт
+          </label>
           <input
             v-model="form.website"
+            id="clinic-create-website"
+            name="website"
             type="text"
             class="w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="https://..."

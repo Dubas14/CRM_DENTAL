@@ -1,8 +1,10 @@
 import apiClient from './apiClient'
+import { buildKey, withCacheAndDedupe } from './requestCache'
 
 const procedureApi = {
   list(params) {
-    return apiClient.get('/procedures', { params })
+    const key = buildKey('/procedures', params || {})
+    return withCacheAndDedupe(key, () => apiClient.get('/procedures', { params }))
   },
   create(payload) {
     return apiClient.post('/procedures', payload)

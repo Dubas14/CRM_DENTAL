@@ -160,47 +160,67 @@ onMounted(loadSchedule)
               {{ weekdayLabels[day.weekday] }}
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-working-${day.weekday}`" class="sr-only">Працює</label>
               <input
                 v-model="day.is_working"
+                :id="`doctor-weekly-working-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][is_working]`"
                 type="checkbox"
                 class="h-4 w-4 rounded border-border/70 bg-card"
               />
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-start-${day.weekday}`" class="sr-only">З</label>
               <input
                 v-model="day.start_time"
+                :id="`doctor-weekly-start-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][start_time]`"
                 :disabled="!day.is_working"
                 type="time"
                 class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
               />
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-end-${day.weekday}`" class="sr-only">До</label>
               <input
                 v-model="day.end_time"
+                :id="`doctor-weekly-end-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][end_time]`"
                 :disabled="!day.is_working"
                 type="time"
                 class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
               />
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-break-start-${day.weekday}`" class="sr-only">Обід з</label>
               <input
                 v-model="day.break_start"
+                :id="`doctor-weekly-break-start-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][break_start]`"
                 :disabled="!day.is_working"
                 type="time"
                 class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
               />
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-break-end-${day.weekday}`" class="sr-only">Обід до</label>
               <input
                 v-model="day.break_end"
+                :id="`doctor-weekly-break-end-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][break_end]`"
                 :disabled="!day.is_working"
                 type="time"
                 class="rounded bg-bg border border-border/80 px-2 py-1 text-sm text-text disabled:opacity-60"
               />
             </td>
             <td class="px-3 py-2">
+              <label :for="`doctor-weekly-slot-${day.weekday}`" class="sr-only">
+                Тривалість слота (хв)
+              </label>
               <input
                 v-model.number="day.slot_duration_minutes"
+                :id="`doctor-weekly-slot-${day.weekday}`"
+                :name="`weekly_schedule[${day.weekday}][slot_duration_minutes]`"
                 type="number"
                 min="5"
                 max="240"

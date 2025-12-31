@@ -5,6 +5,8 @@ import calendarApi from '../services/calendarApi'
 import procedureApi from '../services/procedureApi'
 import equipmentApi from '../services/equipmentApi'
 import assistantApi from '../services/assistantApi'
+import doctorApi from '../services/doctorApi'
+import roomApi from '../services/roomApi'
 import CalendarSlotPicker from './CalendarSlotPicker.vue'
 import SmartSlotPicker from './SmartSlotPicker.vue'
 
@@ -189,9 +191,9 @@ const loadLookupData = async () => {
       equipmentResponse,
       assistantsResponse
     ] = await Promise.all([
-      apiClient.get('/doctors', { params: { clinic_id: props.clinicId } }),
+      doctorApi.list({ clinic_id: props.clinicId }),
       procedureApi.list({ clinic_id: props.clinicId }),
-      apiClient.get('/rooms', { params: { clinic_id: props.clinicId } }),
+      roomApi.list({ clinic_id: props.clinicId }),
       equipmentApi.list({ clinic_id: props.clinicId }),
       assistantApi.list({ clinic_id: props.clinicId })
     ])
@@ -294,6 +296,7 @@ const scheduleFollowUp = async () => {
   }
   followUpSaving.value = true
   try {
+    const startDate = new Date(followUpForm.value.start_at)
     await calendarApi.createAppointment({
       clinic_id: props.clinicId || undefined,
       doctor_id:
@@ -316,8 +319,8 @@ const scheduleFollowUp = async () => {
         getProp('assistant')?.id ||
         null,
       is_follow_up: true,
-      start_at: formatDateTimeApi(new Date(followUpForm.value.start_at)),
-      end_at: formatDateTimeApi(new Date(followUpForm.value.end_at))
+      date: formatDateOnly(startDate),
+      time: formatTimeHM(startDate)
     })
     emit('saved')
     followUpForm.value = { start_at: '', end_at: '' }

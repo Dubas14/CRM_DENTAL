@@ -18,10 +18,15 @@
 
       <div class="mt-4 space-y-4">
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
-            >Оберіть клініку</label
+          <label
+            for="calendar-sidebar-clinic"
+            class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
           >
+            Оберіть клініку
+          </label>
           <select
+            id="calendar-sidebar-clinic"
+            name="clinic_id"
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedClinicId"
             @change="onClinicChange"
@@ -34,10 +39,15 @@
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
-            >Оберіть лікаря</label
+          <label
+            for="calendar-sidebar-doctor"
+            class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
           >
+            Оберіть лікаря
+          </label>
           <select
+            id="calendar-sidebar-doctor"
+            name="doctor_id"
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedDoctorId"
             :disabled="loadingDoctors || !doctors.length || isDoctor"
@@ -51,10 +61,15 @@
         </div>
 
         <div>
-          <label class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
-            >Оберіть процедуру</label
+          <label
+            for="calendar-sidebar-procedure"
+            class="text-[11px] font-semibold uppercase tracking-wide text-text/60"
           >
+            Оберіть процедуру
+          </label>
           <select
+            id="calendar-sidebar-procedure"
+            name="procedure_id"
             class="mt-2 w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-sm text-text/90"
             :value="selectedProcedureId"
             @change="onProcedureChange"

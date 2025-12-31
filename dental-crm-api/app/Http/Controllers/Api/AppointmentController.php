@@ -681,7 +681,11 @@ class AppointmentController extends Controller
             $query->where('clinic_id', $validated['clinic_id']);
         }
 
-        return AppointmentResource::collection($query->get());
+        // пагінація
+        $perPage = $request->integer('per_page', 50); // більший ліміт для календаря
+        $perPage = min(max($perPage, 1), 200);
+
+        return AppointmentResource::collection($query->paginate($perPage));
     }
 
     public function cancel(Request $request, Appointment $appointment)

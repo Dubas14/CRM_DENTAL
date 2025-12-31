@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import apiClient from '../services/apiClient'
+import clinicApi from '../services/clinicApi'
+import doctorApi from '../services/doctorApi'
 import { useAuth } from '../composables/useAuth'
 import { RouterLink } from 'vue-router'
 
@@ -87,7 +89,7 @@ const canCreateDoctor = computed(() => user.value?.global_role === 'super_admin'
 const fetchClinics = async () => {
   loadingClinics.value = true
   try {
-    const { data } = await apiClient.get('/clinics')
+    const { data } = await clinicApi.list()
     clinics.value = data.data ?? data
   } finally {
     loadingClinics.value = false
@@ -98,9 +100,7 @@ const fetchDoctors = async () => {
   loading.value = true
   error.value = null
   try {
-    const { data } = await apiClient.get('/doctors', {
-      params: { page: currentPage.value, per_page: perPage }
-    })
+    const { data } = await doctorApi.list({ page: currentPage.value, per_page: perPage })
     const items = data.data ?? data
     doctors.value = items
     const hasPagination =
@@ -217,9 +217,13 @@ const goToPage = async (page) => {
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> Клініка </label>
+          <label for="doctor-create-clinic" class="block text-xs uppercase text-text/70 mb-1">
+            Клініка
+          </label>
           <select
             v-model="form.clinic_id"
+            id="doctor-create-clinic"
+            name="clinic_id"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -229,45 +233,68 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> ПІБ лікаря </label>
+          <label for="doctor-create-full-name" class="block text-xs uppercase text-text/70 mb-1">
+            ПІБ лікаря
+          </label>
           <input
             v-model="form.full_name"
+            id="doctor-create-full-name"
+            name="full_name"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> Спеціалізація </label>
+          <label
+            for="doctor-create-specialization"
+            class="block text-xs uppercase text-text/70 mb-1"
+          >
+            Спеціалізація
+          </label>
           <input
             v-model="form.specialization"
+            id="doctor-create-specialization"
+            name="specialization"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> Email (логін) </label>
+          <label for="doctor-create-email" class="block text-xs uppercase text-text/70 mb-1">
+            Email (логін)
+          </label>
           <input
             v-model="form.email"
+            id="doctor-create-email"
+            name="email"
             type="email"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> Пароль </label>
+          <label for="doctor-create-password" class="block text-xs uppercase text-text/70 mb-1">
+            Пароль
+          </label>
           <input
             v-model="form.password"
+            id="doctor-create-password"
+            name="password"
             type="password"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1"> Колір картки </label>
+          <label for="doctor-create-color" class="block text-xs uppercase text-text/70 mb-1">
+            Колір картки
+          </label>
           <input
             v-model="form.color"
+            id="doctor-create-color"
+            name="color"
             type="color"
             class="h-10 w-20 rounded-lg bg-bg border border-border/80 px-2 py-1"
           />
@@ -275,9 +302,13 @@ const goToPage = async (page) => {
       </div>
 
       <div>
-        <label class="block text-xs uppercase text-text/70 mb-1"> Коротке біо </label>
+        <label for="doctor-create-bio" class="block text-xs uppercase text-text/70 mb-1">
+          Коротке біо
+        </label>
         <textarea
           v-model="form.bio"
+          id="doctor-create-bio"
+          name="bio"
           rows="2"
           class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
         />

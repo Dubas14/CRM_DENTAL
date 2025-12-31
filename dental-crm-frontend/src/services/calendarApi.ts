@@ -1,4 +1,5 @@
 import apiClient from './apiClient'
+import { buildKey, withCacheAndDedupe } from './requestCache'
 
 function pick(obj, keys) {
   const out = {}
@@ -11,21 +12,30 @@ function pick(obj, keys) {
 const calendarApi = {
   // Availability (slots)
   getDoctorSlots(doctorId, params) {
-    return apiClient.get(`/doctors/${doctorId}/slots`, { params })
+    const key = buildKey(`/doctors/${doctorId}/slots`, params)
+    return withCacheAndDedupe(key, () => apiClient.get(`/doctors/${doctorId}/slots`, { params }))
   },
   getRecommendedSlots(doctorId, params) {
-    return apiClient.get(`/doctors/${doctorId}/recommended-slots`, { params })
+    const key = buildKey(`/doctors/${doctorId}/recommended-slots`, params)
+    return withCacheAndDedupe(key, () =>
+      apiClient.get(`/doctors/${doctorId}/recommended-slots`, { params })
+    )
   },
   getBookingSuggestions(params) {
-    return apiClient.get('/booking-suggestions', { params })
+    const key = buildKey('/booking-suggestions', params)
+    return withCacheAndDedupe(key, () => apiClient.get('/booking-suggestions', { params }))
   },
 
   // Appointments
   getDoctorAppointments(doctorId, params) {
-    return apiClient.get(`/doctors/${doctorId}/appointments`, { params })
+    const key = buildKey(`/doctors/${doctorId}/appointments`, params)
+    return withCacheAndDedupe(key, () =>
+      apiClient.get(`/doctors/${doctorId}/appointments`, { params })
+    )
   },
   getAppointments(params = {}) {
-    return apiClient.get('/appointments', { params })
+    const key = buildKey('/appointments', params)
+    return withCacheAndDedupe(key, () => apiClient.get('/appointments', { params }))
   },
 
   // Calendar blocks
@@ -39,7 +49,8 @@ const calendarApi = {
     }
     delete normalized.from_date
     delete normalized.to_date
-    return apiClient.get('/calendar-blocks', { params: normalized })
+    const key = buildKey('/calendar-blocks', normalized)
+    return withCacheAndDedupe(key, () => apiClient.get('/calendar-blocks', { params: normalized }))
   },
   createCalendarBlock(payload) {
     return apiClient.post('/calendar-blocks', payload)
@@ -169,7 +180,8 @@ const calendarApi = {
     return apiClient.post('/waitlist', payload)
   },
   getWaitlistCandidates(params) {
-    return apiClient.get('/waitlist/candidates', { params })
+    const key = buildKey('/waitlist/candidates', params)
+    return withCacheAndDedupe(key, () => apiClient.get('/waitlist/candidates', { params }))
   },
   markWaitlistBooked(entryId) {
     return apiClient.post(`/waitlist/${entryId}/book`)

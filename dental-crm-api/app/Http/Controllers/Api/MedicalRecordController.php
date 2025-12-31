@@ -19,13 +19,13 @@ class MedicalRecordController extends Controller
     // Додати запис в картку
     public function store(Request $request, Patient $patient)
     {
-        // Валідація (до речі, тут ми виправили doctor_id)
+        // Валідація
         $validated = $request->validate([
             'appointment_id' => 'nullable|exists:appointments,id',
-            'tooth_number'   => 'nullable|integer|min:11|max:85', // Тут ваша помилка
-            'diagnosis'      => 'required|string',
-            'treatment'      => 'required|string',
-            'complaints'     => 'nullable|string',
+            'tooth_number'   => 'nullable|integer|min:11|max:85',
+            'diagnosis'      => 'nullable|string|max:1000',
+            'treatment'      => 'nullable|string|max:1000',
+            'complaints'     => 'nullable|string|max:1000',
             'update_tooth_status' => 'nullable|string'
         ]);
 

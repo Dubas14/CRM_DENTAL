@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import { debounce } from 'lodash-es'
 import procedureApi from '../services/procedureApi'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
@@ -141,14 +142,25 @@ const loadClinics = async () => {
   }
 }
 
+const isFetchingEquipments = ref(false)
+const isFetchingProcedures = ref(false)
+
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value) return
-  const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
-  equipments.value = data.data ?? data
+  if (!selectedClinicId.value || isFetchingEquipments.value) return
+  isFetchingEquipments.value = true
+  try {
+    const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
+    equipments.value = data.data ?? data
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isFetchingEquipments.value = false
+  }
 }
 
 const fetchProcedures = async () => {
-  if (!selectedClinicId.value) return
+  if (!selectedClinicId.value || isFetchingProcedures.value) return
+  isFetchingProcedures.value = true
   loading.value = true
   error.value = null
   try {
@@ -183,8 +195,12 @@ const fetchProcedures = async () => {
     error.value = 'Не вдалося завантажити процедури'
   } finally {
     loading.value = false
+    isFetchingProcedures.value = false
   }
 }
+
+const debouncedFetchProcedures = debounce(fetchProcedures, 300)
+const debouncedFetchEquipments = debounce(fetchEquipments, 300)
 
 const resetForm = () => {
   form.value = {
@@ -281,14 +297,19 @@ const deleteProcedure = async (procedure) => {
   }
 }
 
-watch(selectedClinicId, async () => {
+watch(selectedClinicId, () => {
   currentPage.value = 1
-  await Promise.all([fetchProcedures(), fetchEquipments()])
+  debouncedFetchProcedures()
+  debouncedFetchEquipments()
 })
 
 onMounted(async () => {
   await loadClinics()
-  await Promise.all([fetchProcedures(), fetchEquipments()])
+  // fetch functions will be called by watch when selectedClinicId is set in loadClinics
+  // Only call directly if selectedClinicId was not set
+  if (!selectedClinicId.value && clinics.value.length) {
+    await Promise.all([fetchProcedures(), fetchEquipments()])
+  }
 })
 
 const goToPage = async (page) => {
@@ -315,9 +336,11 @@ const goToPage = async (page) => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
-      <label class="text-xs uppercase text-text/70">Клініка</label>
+      <label for="procedures-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"
+        id="procedures-clinic-filter"
+        name="clinic_id"
         class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
       >
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -334,9 +357,13 @@ const goToPage = async (page) => {
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Клініка</label>
+          <label for="procedure-create-clinic" class="block text-xs uppercase text-text/70 mb-1"
+            >Клініка</label
+          >
           <select
             v-model="form.clinic_id"
+            id="procedure-create-clinic"
+            name="clinic_id"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
@@ -346,27 +373,42 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Назва</label>
+          <label for="procedure-create-name" class="block text-xs uppercase text-text/70 mb-1"
+            >Назва</label
+          >
           <input
             v-model="form.name"
+            id="procedure-create-name"
+            name="name"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Категорія</label>
+          <label for="procedure-create-category" class="block text-xs uppercase text-text/70 mb-1"
+            >Категорія</label
+          >
           <input
             v-model="form.category"
+            id="procedure-create-category"
+            name="category"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           />
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Тривалість (хв)</label>
+          <label
+            for="procedure-create-duration"
+            class="block text-xs uppercase text-text/70 mb-1"
+          >
+            Тривалість (хв)
+          </label>
           <input
             v-model.number="form.duration_minutes"
+            id="procedure-create-duration"
+            name="duration_minutes"
             type="number"
             min="5"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
@@ -374,9 +416,16 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label class="block text-xs uppercase text-text/70 mb-1">Обладнання</label>
+          <label
+            for="procedure-create-equipment"
+            class="block text-xs uppercase text-text/70 mb-1"
+          >
+            Обладнання
+          </label>
           <select
             v-model="form.equipment_id"
+            id="procedure-create-equipment"
+            name="equipment_id"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
           >
             <option value="">Без обладнання</option>
@@ -391,6 +440,8 @@ const goToPage = async (page) => {
         <label class="flex items-center gap-2 text-sm text-text/80">
           <input
             v-model="form.requires_room"
+            id="procedure-create-requires-room"
+            name="requires_room"
             type="checkbox"
             class="rounded border-border/80 bg-bg"
           />
@@ -399,6 +450,8 @@ const goToPage = async (page) => {
         <label class="flex items-center gap-2 text-sm text-text/80">
           <input
             v-model="form.requires_assistant"
+            id="procedure-create-requires-assistant"
+            name="requires_assistant"
             type="checkbox"
             class="rounded border-border/80 bg-bg"
           />
@@ -423,14 +476,22 @@ const goToPage = async (page) => {
           :key="`new-step-${index}`"
           class="flex flex-wrap items-center gap-2"
         >
+          <label :for="`procedure-create-step-name-${index}`" class="sr-only">Назва етапу</label>
           <input
             v-model="step.name"
+            :id="`procedure-create-step-name-${index}`"
+            :name="`steps[${index}][name]`"
             type="text"
             placeholder="Назва етапу"
             class="flex-1 min-w-[180px] rounded-lg bg-bg border border-border/80 px-2 py-1 text-sm text-text"
           />
+          <label :for="`procedure-create-step-duration-${index}`" class="sr-only">
+            Тривалість етапу (хв)
+          </label>
           <input
             v-model.number="step.duration_minutes"
+            :id="`procedure-create-step-duration-${index}`"
+            :name="`steps[${index}][duration_minutes]`"
             type="number"
             min="5"
             class="w-28 rounded-lg bg-bg border border-border/80 px-2 py-1 text-sm text-text"
@@ -483,27 +544,54 @@ const goToPage = async (page) => {
               class="border-t border-border"
             >
               <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-name-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Назва
+                </label>
                 <input
                   v-if="editingProcedureId === procedure.id"
                   v-model="editForm.name"
+                  :id="`procedure-edit-name-${procedure.id}`"
+                  name="name"
                   type="text"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
                 <span v-else class="text-text/90">{{ procedure.name }}</span>
               </td>
               <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-category-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Категорія
+                </label>
                 <input
                   v-if="editingProcedureId === procedure.id"
                   v-model="editForm.category"
+                  :id="`procedure-edit-category-${procedure.id}`"
+                  name="category"
                   type="text"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
                 <span v-else class="text-text/70">{{ procedure.category || '—' }}</span>
               </td>
               <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-duration-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Тривалість (хв)
+                </label>
                 <input
                   v-if="editingProcedureId === procedure.id"
                   v-model.number="editForm.duration_minutes"
+                  :id="`procedure-edit-duration-${procedure.id}`"
+                  name="duration_minutes"
                   type="number"
                   min="5"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
@@ -520,14 +608,30 @@ const goToPage = async (page) => {
                     :key="`edit-step-${index}`"
                     class="flex flex-wrap items-center gap-2"
                   >
+                    <label
+                      :for="`procedure-edit-step-name-${procedure.id}-${index}`"
+                      class="sr-only"
+                    >
+                      Назва етапу
+                    </label>
                     <input
                       v-model="step.name"
+                      :id="`procedure-edit-step-name-${procedure.id}-${index}`"
+                      :name="`steps[${index}][name]`"
                       type="text"
                       placeholder="Назва етапу"
                       class="flex-1 min-w-[160px] rounded-md bg-bg border border-border/80 px-2 py-1 text-xs text-text"
                     />
+                    <label
+                      :for="`procedure-edit-step-duration-${procedure.id}-${index}`"
+                      class="sr-only"
+                    >
+                      Тривалість етапу (хв)
+                    </label>
                     <input
                       v-model.number="step.duration_minutes"
+                      :id="`procedure-edit-step-duration-${procedure.id}-${index}`"
+                      :name="`steps[${index}][duration_minutes]`"
                       type="number"
                       min="5"
                       class="w-24 rounded-md bg-bg border border-border/80 px-2 py-1 text-xs text-text"
@@ -557,9 +661,18 @@ const goToPage = async (page) => {
                 </div>
               </td>
               <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-equipment-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Обладнання
+                </label>
                 <select
                   v-if="editingProcedureId === procedure.id"
                   v-model="editForm.equipment_id"
+                  :id="`procedure-edit-equipment-${procedure.id}`"
+                  name="equipment_id"
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 >
                   <option value="">Без обладнання</option>
@@ -579,6 +692,8 @@ const goToPage = async (page) => {
                   <label class="inline-flex items-center gap-2">
                     <input
                       v-model="editForm.requires_room"
+                      :id="`procedure-edit-requires-room-${procedure.id}`"
+                      name="requires_room"
                       type="checkbox"
                       class="accent-emerald-500"
                     />
@@ -587,6 +702,8 @@ const goToPage = async (page) => {
                   <label class="inline-flex items-center gap-2">
                     <input
                       v-model="editForm.requires_assistant"
+                      :id="`procedure-edit-requires-assistant-${procedure.id}`"
+                      name="requires_assistant"
                       type="checkbox"
                       class="accent-emerald-500"
                     />

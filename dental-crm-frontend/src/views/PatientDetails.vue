@@ -267,18 +267,29 @@ const validatePhone = (event) => {
           <form class="space-y-4" @submit.prevent="savePatient">
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="text-xs uppercase text-text/60 block mb-1">ПІБ</label>
+                <label for="patient-details-full-name" class="text-xs uppercase text-text/60 block mb-1"
+                  >ПІБ</label
+                >
                 <input
                   v-model="form.full_name"
+                  id="patient-details-full-name"
+                  name="full_name"
                   type="text"
                   class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
                   required
                 />
               </div>
               <div>
-                <label class="text-xs uppercase text-text/60 block mb-1">Дата народження</label>
+                <label
+                  for="patient-details-birth-date"
+                  class="text-xs uppercase text-text/60 block mb-1"
+                >
+                  Дата народження
+                </label>
                 <input
                   v-model="form.birth_date"
+                  id="patient-details-birth-date"
+                  name="birth_date"
                   type="date"
                   class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
                 />
@@ -287,9 +298,13 @@ const validatePhone = (event) => {
 
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label class="text-xs uppercase text-text/60 block mb-1">Телефон</label>
+                <label for="patient-details-phone" class="text-xs uppercase text-text/60 block mb-1"
+                  >Телефон</label
+                >
                 <input
                   v-model="form.phone"
+                  id="patient-details-phone"
+                  name="phone"
                   @input="validatePhone"
                   type="tel"
                   class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
@@ -297,9 +312,13 @@ const validatePhone = (event) => {
                 />
               </div>
               <div>
-                <label class="text-xs uppercase text-text/60 block mb-1">Email</label>
+                <label for="patient-details-email" class="text-xs uppercase text-text/60 block mb-1"
+                  >Email</label
+                >
                 <input
                   v-model="form.email"
+                  id="patient-details-email"
+                  name="email"
                   type="email"
                   class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
                 />
@@ -307,9 +326,13 @@ const validatePhone = (event) => {
             </div>
 
             <div>
-              <label class="text-xs uppercase text-text/60 block mb-1">Адреса</label>
+              <label for="patient-details-address" class="text-xs uppercase text-text/60 block mb-1"
+                >Адреса</label
+              >
               <input
                 v-model="form.address"
+                id="patient-details-address"
+                name="address"
                 type="text"
                 class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-text/90"
               />
@@ -346,8 +369,11 @@ const validatePhone = (event) => {
                 </div>
 
                 <div class="flex gap-2 items-start">
+                  <label for="patient-details-new-note" class="sr-only">Нова нотатка</label>
                   <textarea
                     v-model="newNoteText"
+                    id="patient-details-new-note"
+                    name="new_note"
                     rows="1"
                     placeholder="Напишіть нотатку..."
                     class="flex-1 rounded-lg bg-card border border-border/80 px-3 py-2 text-text/90 text-sm focus:ring-1 focus:ring-emerald-500 resize-none"

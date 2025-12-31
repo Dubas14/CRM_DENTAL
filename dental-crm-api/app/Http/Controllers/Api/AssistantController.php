@@ -33,7 +33,10 @@ class AssistantController extends Controller
             $query->whereHas('clinics', fn ($q) => $q->whereIn('clinics.id', $clinicIds));
         }
 
-        return response()->json($query->orderBy('name')->get());
+        $perPage = $request->integer('per_page', 50);
+        $perPage = min(max($perPage, 1), 100);
+
+        return response()->json($query->orderBy('name')->paginate($perPage));
     }
 
     public function store(Request $request)

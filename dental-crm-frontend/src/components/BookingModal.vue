@@ -85,6 +85,7 @@ const handleSmartSlotSelect = (slot) => {
             <span class="text-xs text-text/70">ID пацієнта</span>
             <input
               v-model="localBooking.patient_id"
+              name="patient_id"
               type="number"
               class="w-full bg-bg border border-border/80 rounded px-3 py-2 text-text"
               placeholder="Напр. 42"
@@ -96,6 +97,7 @@ const handleSmartSlotSelect = (slot) => {
             <span class="text-xs text-text/70">Waitlist entry ID</span>
             <input
               v-model="localBooking.waitlist_entry_id"
+              name="waitlist_entry_id"
               type="number"
               class="w-full bg-bg border border-border/80 rounded px-3 py-2 text-text"
               placeholder="Напр. 12"
@@ -108,6 +110,7 @@ const handleSmartSlotSelect = (slot) => {
           <span class="text-xs text-text/70">Коментар</span>
           <textarea
             v-model="localBooking.comment"
+            name="comment"
             rows="3"
             class="w-full bg-bg border border-border/80 rounded px-3 py-2 text-text"
             placeholder="Скарги, побажання, особливі вимоги..."
