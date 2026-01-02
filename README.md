@@ -304,7 +304,7 @@ MIT License
 
 ### Важливо: Не комітьте секрети!
 
-- **Ніколи не комітьте** `.env` файли або файли з реальними секретами (`env_backend.txt`, `env_frontend.txt`)
+- **Ніколи не комітьте** `.env` файли або файли з реальними секретами
 - Використовуйте `env.example.txt` як шаблон
 - Після клонування репозиторію:
   1. Створіть `.env` з `env.example.txt`
@@ -321,8 +321,6 @@ git rm -r --cached dental-crm-api/vendor
 git rm -r --cached dental-crm-api/node_modules
 git rm -r --cached dental-crm-frontend/node_modules
 git rm -r --cached dental-crm-api/storage/logs
-git rm --cached dental-crm-api/env_backend.txt
-git rm --cached dental-crm-frontend/env_frontend.txt
 
 # Закомітити зміни
 git commit -m "chore: remove tracked artifacts from git"
