@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class Appointment extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     public const ALLOWED_STATUSES = [
         'planned',
@@ -28,12 +29,15 @@ class Appointment extends Model
         'assistant_id',
         'equipment_id',
         'patient_id',
+        'invoice_id',
         'is_follow_up',
         'start_at',
         'end_at',
         'status',
         'source',
         'comment',
+        'confirmation_token',
+        'confirmed_at',
     ];
     protected $appends = [
         'patient_name',
@@ -44,6 +48,7 @@ class Appointment extends Model
         'start_at'     => 'datetime',
         'end_at'       => 'datetime',
         'cancelled_at' => 'datetime',
+        'confirmed_at' => 'datetime',
     ];
 
     public function doctor()
@@ -88,5 +93,10 @@ class Appointment extends Model
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
     }
 }

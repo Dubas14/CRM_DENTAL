@@ -52,13 +52,19 @@ function addRetryInterceptor(
   )
 }
 
+const baseURL =
+  // In dev we use Vite proxy `/api` -> backend to avoid CORS issues
+  import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL || '/api'
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost/api',
+  baseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json'
-  }
+  },
+  // Додаємо withCredentials для CORS, якщо потрібно
+  withCredentials: false
 })
 
 // Global cooldown window after 429 responses (prevents request spam while server throttles)
@@ -103,6 +109,19 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
+    // Логування для діагностики
+    if (config.method?.toUpperCase() === 'PUT' && config.url?.includes('/appointments/')) {
+      const fullURL = config.baseURL ? `${config.baseURL}${config.url}` : config.url
+      console.log('PUT request interceptor:', {
+        url: config.url,
+        baseURL: config.baseURL,
+        fullURL: fullURL,
+        method: config.method,
+        headers: config.headers,
+        payload: config.data
+      })
+    }
+
     return config
   },
   (error) => {
@@ -124,11 +143,87 @@ apiClient.interceptors.response.use(
 
     // Network error
     if (!response) {
-      console.error('Network error - no internet or server down')
+      const errorDetails = {
+        message: error.message,
+        code: error.code,
+        name: error.name,
+        stack: error.stack
+      }
+      
+      if (error.config) {
+        errorDetails.config = {
+          url: error.config.url,
+          method: error.config.method,
+          baseURL: error.config.baseURL,
+          fullURL: error.config.baseURL ? `${error.config.baseURL}${error.config.url}` : error.config.url,
+          timeout: error.config.timeout,
+          headers: error.config.headers,
+          data: error.config.data
+        }
+      }
+      
+      if (error.request) {
+        errorDetails.request = {
+          readyState: error.request.readyState,
+          status: error.request.status,
+          statusText: error.request.statusText,
+          responseURL: error.request.responseURL
+        }
+      }
+      
+      console.error('Network error - no internet or server down', errorDetails)
       return Promise.reject(error)
     }
 
     const { status, data } = response
+
+    // Enrich conflict responses with human-readable details so UI can show "which conflicts and why"
+    try {
+      if ((status === 409 || status === 422) && data && (data.hard_conflicts || data.soft_conflicts)) {
+        const formatConflictList = (conflicts: any): string => {
+          if (!conflicts) return ''
+          if (!Array.isArray(conflicts)) return ''
+
+          // Series conflicts: [{ procedure_step_id, conflicts: [{code,message}, ...] }]
+          if (conflicts.length > 0 && typeof conflicts[0] === 'object' && conflicts[0]?.conflicts) {
+            return conflicts
+              .map((entry: any) => {
+                const step = entry.procedure_step_id ? `Етап ${entry.procedure_step_id}` : 'Етап'
+                const inner = Array.isArray(entry.conflicts)
+                  ? entry.conflicts
+                      .map((c: any) => `- ${c?.message || c?.code || 'Конфлікт'}`)
+                      .join('\n')
+                  : ''
+                return `${step}:\n${inner}`.trim()
+              })
+              .join('\n')
+              .trim()
+          }
+
+          // Normal conflicts: [{code,message}, ...]
+          return conflicts
+            .map((c: any) => `- ${c?.message || c?.code || 'Конфлікт'}`)
+            .join('\n')
+            .trim()
+        }
+
+        const hardDetails = formatConflictList(data.hard_conflicts)
+        const softDetails = formatConflictList(data.soft_conflicts)
+        const details = [hardDetails, softDetails].filter(Boolean).join('\n').trim()
+
+        if (details) {
+          // Keep original message but add details for existing alert() usage across the app.
+          // Avoid duplicating on retries or repeated interceptor passes.
+          if (!data.conflicts_details) {
+            const base = data.message || 'Конфлікти'
+            data.message = `${base}\n${details}`
+            data.conflicts_details = details
+          }
+        }
+      }
+    } catch (_e) {
+      // never break error handling due to formatting
+    }
 
     // Handle 429 Too Many Requests - set cooldown based on Retry-After header
     if (status === 429) {

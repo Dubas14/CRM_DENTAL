@@ -140,13 +140,41 @@ class WaitlistController extends Controller
             $date = $startAt->copy()->startOfDay();
 
             $availability = new AvailabilityService();
+            
+            // Спочатку визначаємо обладнання, якщо потрібне
+            if ($procedure?->equipment_id) {
+                $equipment = $availability->resolveEquipment(
+                    $equipment ?? $procedure->equipment,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $appointment->clinic_id,
+                    $room
+                );
+            }
+
+            // Потім визначаємо кабінет з урахуванням обладнання
             if ($procedure && $procedure->requires_room) {
-                $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $appointment->clinic_id);
+                $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $appointment->clinic_id, $equipment);
             }
 
             if ($procedure && $procedure->requires_room && ! $room) {
                 $offer->update(['status' => 'failed']);
                 return response()->json(['message' => 'Немає сумісного кабінету'], 422);
+            }
+
+            // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
+            if ($room && $procedure?->equipment_id && !$equipment) {
+                $equipment = $availability->resolveEquipment(
+                    $procedure->equipment,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $appointment->clinic_id,
+                    $room
+                );
             }
 
             $conflicts = (new ConflictChecker())->evaluate(

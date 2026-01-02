@@ -4,6 +4,7 @@ import { debounce } from 'lodash-es'
 import assistantApi from '../services/assistantApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
+import SearchField from '../components/SearchField.vue'
 
 const { user } = useAuth()
 
@@ -87,6 +88,9 @@ const form = ref({
   password: ''
 })
 
+const search = ref('')
+let requestSeq = 0
+
 const loadClinics = async () => {
   if (user.value?.global_role === 'super_admin') {
     const { data } = await clinicApi.list()
@@ -104,19 +108,24 @@ const loadClinics = async () => {
   }
 }
 
-const isFetchingAssistants = ref(false)
-
 const fetchAssistants = async () => {
-  if (!selectedClinicId.value || isFetchingAssistants.value) return
-  isFetchingAssistants.value = true
+  if (!selectedClinicId.value) return
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
   try {
-    const { data } = await assistantApi.list({
+    const params: Record<string, any> = {
       clinic_id: selectedClinicId.value,
       page: currentPage.value,
       per_page: perPage
-    })
+    }
+    if (search.value.trim()) params.search = search.value.trim()
+
+    const { data } = await assistantApi.list(params)
+    
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     const items = data.data ?? data
     assistants.value = items
     const hasPagination =
@@ -139,11 +148,16 @@ const fetchAssistants = async () => {
       currentPage.value = pagination.value.currentPage
     }
   } catch (err) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     console.error(err)
     error.value = 'Не вдалося завантажити асистентів'
   } finally {
-    loading.value = false
-    isFetchingAssistants.value = false
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -253,6 +267,12 @@ watch(selectedClinicId, () => {
   debouncedFetchAssistants()
 })
 
+// Live search: reset page and trigger search on search change
+watch(search, () => {
+  currentPage.value = 1
+  debouncedFetchAssistants()
+})
+
 onMounted(async () => {
   await loadClinics()
   // fetchAssistants will be called by watch when selectedClinicId is set in loadClinics
@@ -286,6 +306,11 @@ const goToPage = async (page) => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
+      <SearchField
+        v-model="search"
+        id="assistants-search"
+        placeholder="Пошук (імʼя / прізвище / email)"
+      />
       <label for="assistants-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Support\QuerySearch;
 
 class PatientController extends Controller
 {
@@ -54,13 +55,9 @@ class PatientController extends Controller
             $query->where('clinic_id', $request->integer('clinic_id'));
         }
 
-        // search filter
+        // search filter (case-insensitive)
         if ($search = $request->string('search')->toString()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+            QuerySearch::applyIlike($query, $search, ['full_name', 'phone', 'email']);
         }
 
         return $query

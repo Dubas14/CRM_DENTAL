@@ -16,6 +16,7 @@ class Procedure extends Model
         'duration_minutes',
         'requires_room',
         'requires_assistant',
+        'requires_prepayment',
         'default_room_id',
         'equipment_id',
         'metadata',
@@ -24,6 +25,7 @@ class Procedure extends Model
     protected $casts = [
         'requires_room' => 'boolean',
         'requires_assistant' => 'boolean',
+        'requires_prepayment' => 'boolean',
         'metadata' => 'array',
     ];
 

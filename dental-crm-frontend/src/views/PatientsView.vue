@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import apiClient from '../services/apiClient'
+import SearchField from '../components/SearchField.vue'
 
 const patients = ref([])
 const clinics = ref([])
@@ -22,6 +24,7 @@ const form = ref({
 })
 
 const search = ref('')
+let requestSeq = 0
 
 const loadClinics = async () => {
   const { data } = await apiClient.get('/clinics')
@@ -29,25 +32,36 @@ const loadClinics = async () => {
 }
 
 const loadPatients = async () => {
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
 
   try {
-    const { data } = await apiClient.get('/patients', {
-      params: {
-        search: search.value || undefined
-      }
-    })
+    const params: Record<string, any> = {}
+    if (search.value.trim()) params.search = search.value.trim()
+
+    const { data } = await apiClient.get('/patients', { params })
+
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
 
     // бо ми повертаємо paginate – data.data
     patients.value = data.data || data
   } catch (e) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     console.error(e)
     error.value = e.response?.data?.message || e.message || 'Помилка завантаження пацієнтів'
   } finally {
-    loading.value = false
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
+      loading.value = false
+    }
   }
 }
+
+const debouncedLoadPatients = debounce(loadPatients, 300)
 
 const createPatient = async () => {
   formError.value = null
@@ -84,6 +98,11 @@ const createPatient = async () => {
 onMounted(async () => {
   await Promise.all([loadClinics(), loadPatients()])
 })
+
+// Live search: trigger search on search change
+watch(search, () => {
+  debouncedLoadPatients()
+})
 </script>
 
 <template>
@@ -95,23 +114,11 @@ onMounted(async () => {
       </div>
 
       <div class="flex items-center gap-2">
-        <label for="patients-view-search" class="sr-only">Пошук</label>
-        <input
+        <SearchField
           v-model="search"
           id="patients-view-search"
-          name="search"
-          type="text"
           placeholder="Пошук по імені / телефону / email"
-          class="rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-          @keyup.enter="loadPatients"
         />
-        <button
-          type="button"
-          class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-          @click="loadPatients"
-        >
-          Знайти
-        </button>
 
         <button
           type="button"

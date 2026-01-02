@@ -1,6 +1,7 @@
 // Окремий клієнт для логіну (без інтерсепторів)
 const createLoginClient = () => {
-  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost/api'
+  // In dev we use Vite proxy `/api` -> backend to avoid CORS issues
+  const baseURL = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL || '/api'
 
   // Простий axios для логіну
   return {

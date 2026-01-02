@@ -1,10 +1,13 @@
 import apiClient from './apiClient'
-import { buildKey, withCacheAndDedupe } from './requestCache'
+import { buildKey, clearRequestCache, withCacheAndDedupe } from './requestCache'
 
 function pick(obj, keys) {
   const out = {}
   keys.forEach((k) => {
-    if (obj[k] !== undefined) out[k] = obj[k]
+    // Виключаємо undefined та null значення (окрім false та 0)
+    if (obj[k] !== undefined && obj[k] !== null) {
+      out[k] = obj[k]
+    }
   })
   return out
 }
@@ -64,6 +67,8 @@ const calendarApi = {
 
   // Create appointment
   createAppointment(payload) {
+    // Ensure UI does not show stale slots/appointments right after a write
+    clearRequestCache()
     if (payload.start_at && payload.end_at) {
       return apiClient.post('/appointments', {
         ...pick(payload, [
@@ -106,6 +111,7 @@ const calendarApi = {
   },
 
   createAppointmentSeries(payload) {
+    clearRequestCache()
     return apiClient.post('/appointments/series', {
       ...pick(payload, [
         'doctor_id',
@@ -125,8 +131,9 @@ const calendarApi = {
   },
 
   updateAppointment(appointmentId, payload) {
+    clearRequestCache()
     if (payload.start_at && payload.end_at) {
-      return apiClient.put(`/appointments/${appointmentId}`, {
+      const requestPayload = {
         ...pick(payload, [
           'doctor_id',
           'patient_id',
@@ -140,11 +147,14 @@ const calendarApi = {
           'status',
           'comment',
           'source',
-          'clinic_id' // якщо буде потрібно
+          'clinic_id'
         ]),
         start_at: payload.start_at,
         end_at: payload.end_at
-      })
+      }
+      
+      console.log('Sending PUT request to:', `/appointments/${appointmentId}`, 'Payload:', JSON.stringify(requestPayload, null, 2))
+      return apiClient.put(`/appointments/${appointmentId}`, requestPayload)
     }
 
     return apiClient.put(`/appointments/${appointmentId}`, {
@@ -169,7 +179,13 @@ const calendarApi = {
   },
 
   cancelAppointment(appointmentId, payload) {
+    clearRequestCache()
     return apiClient.post(`/appointments/${appointmentId}/cancel`, payload)
+  },
+
+  finishAppointment(appointmentId, payload = {}) {
+    clearRequestCache()
+    return apiClient.post(`/appointments/${appointmentId}/finish`, payload)
   },
 
   // Waitlist

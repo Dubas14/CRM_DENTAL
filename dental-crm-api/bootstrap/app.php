@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Important: CORS must run early so even error responses (4xx/5xx) include CORS headers.
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
+            // \App\Http\Middleware\LogRequests::class, // Тимчасово вимкнено для діагностики
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
         ]);
     })

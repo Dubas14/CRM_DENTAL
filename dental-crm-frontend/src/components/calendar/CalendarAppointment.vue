@@ -1,6 +1,6 @@
 <template>
   <div
-    class="absolute left-1 right-1 rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group"
+    class="absolute rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group"
     :class="[
       statusClass,
       cursorClass
@@ -51,6 +51,15 @@ const props = defineProps({
   stackOffset: {
     type: Number,
     default: 0
+  },
+  // Overlap layout (percentages)
+  leftPct: {
+    type: Number,
+    default: 0
+  },
+  widthPct: {
+    type: Number,
+    default: 100
   },
   readOnly: {
     type: Boolean,
@@ -128,7 +137,10 @@ const cursorClass = computed(() => {
 
 const styleObject = computed(() => ({
   top: `${props.top + props.stackOffset}px`,
-  height: `${props.height}px`
+  height: `${props.height}px`,
+  // Add small gutters between overlap columns
+  left: `calc(${props.leftPct}% + 4px)`,
+  width: `calc(${props.widthPct}% - 8px)`
 }))
 
 const handleClick = () => {

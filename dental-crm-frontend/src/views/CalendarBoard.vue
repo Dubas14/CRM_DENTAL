@@ -55,7 +55,7 @@
                 ⬅ Будь ласка, оберіть клініку зі списку зліва
               </div>
               <div
-                v-else-if="!selectedDoctorId"
+                v-else-if="!selectedDoctorId && view !== 'multi-doctor' && view !== 'multi-room'"
                 class="flex h-full flex-1 items-center justify-center text-text/60"
               >
                 ⬅ Оберіть лікаря зі списку зліва
@@ -85,7 +85,7 @@
                 </div>
 
                 <div
-                  v-if="view === 'day'"
+                  v-if="view === 'day' || view === 'multi-doctor' || view === 'multi-room'"
                   ref="dayScrollRef"
                   class="flex min-h-0 flex-1 overflow-y-auto custom-scrollbar"
                 >
@@ -93,14 +93,14 @@
                     :date="currentDate"
                     :doctors="filteredDoctors"
                     :items="filteredCalendarItems"
-                    :show-doctor-header="false"
+                    :show-doctor-header="view === 'multi-doctor' || view === 'multi-room'"
                     :start-hour="DISPLAY_START_HOUR"
                     :end-hour="DISPLAY_END_HOUR"
                     :active-start-hour="CLINIC_START_HOUR"
                     :active-end-hour="CLINIC_END_HOUR"
                     :hour-height="HOUR_HEIGHT"
                     :snap-minutes="SNAP_MINUTES"
-                    view-mode="day"
+                    :view-mode="view === 'multi-doctor' || view === 'multi-room' ? 'multi-doctor' : 'day'"
                     @select-slot="handleSelectSlot"
                     @appointment-click="handleAppointmentClick"
                   />
@@ -269,16 +269,20 @@
 import { computed, onMounted, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { debounce } from 'lodash-es'
-import CalendarBoard from '../components/calendar/CalendarBoard.vue'
+import { defineAsyncComponent } from 'vue'
 import CalendarSidebar from '../components/calendar/CalendarSidebar.vue'
 import CalendarHeader from '../components/calendar/CalendarHeader.vue'
-import EventModal from '../components/EventModal.vue'
-import AppointmentModal from '../components/AppointmentModal.vue'
+
+// Lazy load heavy calendar components for better initial load performance
+const CalendarBoard = defineAsyncComponent(() => import('../components/calendar/CalendarBoard.vue'))
+const EventModal = defineAsyncComponent(() => import('../components/EventModal.vue'))
+const AppointmentModal = defineAsyncComponent(() => import('../components/AppointmentModal.vue'))
 import calendarApi from '../services/calendarApi'
 import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
 import procedureApi from '../services/procedureApi'
 import doctorApi from '../services/doctorApi'
+import roomApi from '../services/roomApi'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
@@ -330,11 +334,57 @@ const selectedDoctor = computed(() =>
   doctors.value.find((doctor) => Number(doctor.id) === Number(selectedDoctorId.value))
 )
 
-const filteredDoctors = computed(() => (selectedDoctor.value ? [selectedDoctor.value] : []))
+// Підтримка мульти-лікар та мульти-кабінет режимів
+const selectedDoctorIds = ref([])
+const selectedRoomIds = ref([])
+const rooms = ref([])
+
+const filteredDoctors = computed(() => {
+  if (view.value === 'multi-doctor') {
+    // У мульти-лікар режимі показуємо всіх лікарів клініки або вибрані
+    if (selectedDoctorIds.value.length > 0) {
+      return doctors.value.filter((d) => selectedDoctorIds.value.includes(Number(d.id)))
+    }
+    // Якщо немає вибраних, показуємо всіх активних лікарів клініки
+    return doctors.value.filter((d) => d.is_active !== false)
+  }
+  // У звичайному режимі показуємо тільки вибраного лікаря
+  return selectedDoctor.value ? [selectedDoctor.value] : []
+})
+
 const filteredCalendarItems = computed(() => {
+  const applyProcedureFilter = (items) => {
+    if (!selectedProcedureId.value) return items
+    return items.filter((item) => {
+      if (item.type === 'block') return true
+      const procId = item.raw?.procedure_id || item.raw?.procedure?.id
+      return procId && Number(procId) === Number(selectedProcedureId.value)
+    })
+  }
+
+  if (view.value === 'multi-room') {
+    // У мульти-кабінет режимі фільтруємо по кабінетах
+    if (selectedRoomIds.value.length === 0) {
+      return applyProcedureFilter(calendarItems.value)
+    }
+    return applyProcedureFilter(calendarItems.value.filter((item) => {
+      const roomId = item.raw?.room_id || item.raw?.room?.id
+      return !roomId || selectedRoomIds.value.includes(Number(roomId))
+    }))
+  }
+  
+  // У мульти-лікар режимі показуємо записи вибраних лікарів
+  if (view.value === 'multi-doctor') {
+    const allowedDoctorIds = new Set(filteredDoctors.value.map((d) => Number(d.id)))
+    return applyProcedureFilter(
+      calendarItems.value.filter((item) => allowedDoctorIds.has(Number(item.doctorId)))
+    )
+  }
+  
+  // У звичайному режимі фільтруємо по вибраному лікарю
   if (!selectedDoctorId.value) return []
-  return calendarItems.value.filter(
-    (item) => Number(item.doctorId) === Number(selectedDoctorId.value)
+  return applyProcedureFilter(
+    calendarItems.value.filter((item) => Number(item.doctorId) === Number(selectedDoctorId.value))
   )
 })
 
@@ -661,7 +711,8 @@ const fetchEvents = async () => {
       calendarApi.getAppointments({
         clinic_id: currentClinicId.value,
         from_date: from,
-        to_date: to
+        to_date: to,
+        procedure_id: selectedProcedureId.value || undefined
       })
     ])
 
@@ -691,8 +742,8 @@ const fetchEvents = async () => {
   }
 }
 
-// Debounced version for watch handlers
-const debouncedFetchEvents = debounce(fetchEvents, 300)
+// Debounced version for watch handlers - оптимізовано для швидшої реакції (<200ms)
+const debouncedFetchEvents = debounce(fetchEvents, 200)
 
 const saveEvent = async (payload) => {
   if (!currentClinicId.value) {
@@ -770,9 +821,9 @@ const handlePrev = () => shiftDateByView(-1)
 const handleNext = () => shiftDateByView(1)
 
 const scrollToCurrentTime = async () => {
-  if (view.value !== 'day' && view.value !== 'week') return
+  if (!['day', 'week', 'multi-doctor', 'multi-room'].includes(view.value)) return
   await nextTick()
-  const container = view.value === 'day' ? dayScrollRef.value : weekScrollRef.value
+  const container = ['day', 'multi-doctor', 'multi-room'].includes(view.value) ? dayScrollRef.value : weekScrollRef.value
   if (!container) return
   const now = new Date()
   const minutesFromStart = (now.getHours() - DISPLAY_START_HOUR) * 60 + now.getMinutes()
@@ -789,8 +840,19 @@ const handleToday = () => {
 }
 
 const setView = (mode) => {
-  if (!['day', 'week', 'month'].includes(mode)) return
+  if (!['day', 'week', 'month', 'multi-doctor', 'multi-room'].includes(mode)) return
   view.value = mode
+  
+  // При зміні на мульти-режими, якщо немає вибраних лікарів/кабінетів, завантажуємо їх
+  if (mode === 'multi-doctor' && selectedDoctorIds.value.length === 0) {
+    // Автоматично вибираємо всіх активних лікарів
+    selectedDoctorIds.value = doctors.value
+      .filter((d) => d.is_active !== false)
+      .map((d) => Number(d.id))
+  }
+  if (mode === 'multi-room' && rooms.value.length === 0) {
+    loadRooms()
+  }
 }
 
 const handleMonthDayClick = (date) => {
@@ -828,6 +890,20 @@ const createDefaultEvent = ({ start, end, doctorId }) => {
     doctor_id: doctorId || selectedDoctorId.value || defaultDoctorId.value,
     type: 'personal_block',
     note: ''
+  }
+}
+
+const loadRooms = async () => {
+  if (!currentClinicId.value) {
+    rooms.value = []
+    return
+  }
+  try {
+    const { data } = await roomApi.list({ clinic_id: currentClinicId.value })
+    rooms.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+  } catch (e) {
+    console.warn('Не вдалося завантажити кабінети', e)
+    rooms.value = []
   }
 }
 

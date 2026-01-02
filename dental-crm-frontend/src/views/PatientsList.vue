@@ -4,6 +4,7 @@ import { debounce } from 'lodash-es'
 import apiClient from '../services/apiClient'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
+import SearchField from '../components/SearchField.vue'
 
 const patients = ref([])
 const clinics = ref([])
@@ -81,17 +82,16 @@ const loadClinics = async () => {
   }
 }
 
-const isFetchingPatients = ref(false)
+let requestSeq = 0
 
 const loadPatients = async () => {
-  if (isFetchingPatients.value) return
-  isFetchingPatients.value = true
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
 
   try {
     const params = { page: currentPage.value, per_page: 12 }
-    if (search.value) params.search = search.value
+    if (search.value.trim()) params.search = search.value.trim()
     if (isDoctor.value && doctorClinicId.value) {
       params.clinic_id = doctorClinicId.value
     } else if (selectedClinicFilter.value) {
@@ -99,6 +99,10 @@ const loadPatients = async () => {
     }
 
     const { data } = await apiClient.get('/patients', { params })
+    
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     // бо ми повернули paginate, беремо data.data
     patients.value = data.data ?? data
     pagination.value = {
@@ -111,11 +115,16 @@ const loadPatients = async () => {
     }
     currentPage.value = pagination.value.currentPage
   } catch (e) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+    
     console.error(e)
     error.value = e.response?.data?.message || e.message || 'Помилка завантаження пацієнтів'
   } finally {
-    loading.value = false
-    isFetchingPatients.value = false
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -163,10 +172,17 @@ onMounted(async () => {
   await loadPatients()
 })
 
-const applyFilters = async () => {
+// Live search: reset page and trigger search on search change
+watch(search, () => {
   currentPage.value = 1
-  await loadPatients()
-}
+  debouncedLoadPatients()
+})
+
+// Also trigger search when clinic filter changes
+watch(selectedClinicFilter, () => {
+  currentPage.value = 1
+  debouncedLoadPatients()
+})
 
 const goToPage = async (page) => {
   const nextPage = Math.min(Math.max(page, 1), pageCount.value)
@@ -206,32 +222,17 @@ const goToPage = async (page) => {
 
     <!-- фільтри -->
     <div class="flex flex-wrap items-center gap-3">
-      <div class="flex items-center gap-2">
-        <label for="patients-search" class="sr-only">Пошук</label>
-        <input
-          v-model="search"
-          id="patients-search"
-          name="search"
-          type="text"
-          placeholder="Пошук (ПІБ / телефон / email)"
-          class="w-64 max-w-full rounded-lg bg-card border border-border/80 px-3 py-2 text-sm"
-          @keyup.enter="applyFilters"
-        />
-        <button
-          type="button"
-          class="px-3 py-2 rounded-lg border border-border/80 text-sm hover:bg-card/80"
-          @click="applyFilters"
-        >
-          Знайти
-        </button>
-      </div>
+      <SearchField
+        v-model="search"
+        id="patients-search"
+        placeholder="Пошук (ПІБ / телефон / email)"
+      />
 
       <label v-if="!isDoctor" class="text-sm text-text/80">
         Клініка:
         <select
           v-model="selectedClinicFilter"
           name="clinic_id"
-          @change="applyFilters"
           class="ml-2 rounded-lg bg-card border border-border/80 px-2 py-1 text-sm"
         >
           <option value="">Усі</option>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { debounce } from 'lodash-es'
 import calendarApi from '../services/calendarApi'
 
@@ -35,6 +35,57 @@ const isFetchingSlots = ref(false)
 const normalizedReason = computed(() => (reason.value ? String(reason.value).toLowerCase() : null))
 const isNoSchedule = computed(() => normalizedReason.value === 'no_schedule')
 const isNoRoomCompatibility = computed(() => normalizedReason.value === 'no_room_compatibility')
+
+// Tick every minute so "today" slots update as time passes
+const nowTick = ref(Date.now())
+let nowInterval: any = null
+
+const localDateString = () => {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const timeToMinutes = (hhmm: string | null | undefined): number | null => {
+  if (!hhmm || typeof hhmm !== 'string') return null
+  const [hh, mm] = hhmm.split(':')
+  const h = Number(hh)
+  const m = Number(mm)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return h * 60 + m
+}
+
+const isToday = computed(() => props.date === localDateString())
+const nowMinutes = computed(() => {
+  // depends on nowTick so it updates
+  void nowTick.value
+  const d = new Date()
+  return d.getHours() * 60 + d.getMinutes()
+})
+
+// Hide past slots for "today"
+const visibleSlots = computed(() => {
+  if (!isToday.value) return slots.value
+  return (slots.value || []).filter((s: any) => {
+    const endMin = timeToMinutes(s?.end)
+    if (endMin === null) return true
+    return endMin > nowMinutes.value
+  })
+})
+
+const visibleRecommended = computed(() => {
+  const rec = recommended.value || []
+  if (!isToday.value) return rec
+  return rec.filter((s: any) => {
+    const date = s?.date || props.date
+    if (date !== props.date) return true
+    const startMin = timeToMinutes(s?.start)
+    if (startMin === null) return true
+    return startMin > nowMinutes.value
+  })
+})
 
 const reasonMessage = computed(() => {
   if (isNoSchedule.value) {
@@ -148,6 +199,16 @@ onMounted(() => {
     // Initial load - use debounced version to avoid immediate rate limit
     debouncedLoadSlots()
   }
+  nowInterval = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (nowInterval) {
+    clearInterval(nowInterval)
+    nowInterval = null
+  }
 })
 </script>
 
@@ -202,9 +263,9 @@ onMounted(() => {
         <span>Оновлення...</span>
       </div>
 
-      <div v-if="slots.length" class="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+      <div v-if="visibleSlots.length" class="grid sm:grid-cols-2 md:grid-cols-3 gap-2">
         <button
-          v-for="slot in slots"
+          v-for="slot in visibleSlots"
           :key="slot.start"
           :disabled="disabled"
           class="w-full px-3 py-2 rounded-lg border border-emerald-600/60 bg-emerald-900/30 text-text hover:bg-emerald-800/40 transition"
@@ -216,13 +277,10 @@ onMounted(() => {
 
       <div v-else-if="loading" class="text-sm text-text/70">Завантаження слотів...</div>
 
-      <div
-        v-else
-        class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
-      >
+      <div v-else class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
         <p class="text-xs text-amber-400">
-          {{ reasonMessage }}
+          {{ isToday && slots.length ? 'Слоти на сьогодні вже минули. Оберіть іншу дату.' : reasonMessage }}
         </p>
       </div>
 
@@ -239,9 +297,9 @@ onMounted(() => {
           </button>
         </div>
 
-        <div v-if="recommended.length" class="flex flex-wrap gap-2">
+        <div v-if="visibleRecommended.length" class="flex flex-wrap gap-2">
           <button
-            v-for="slot in recommended"
+            v-for="slot in visibleRecommended"
             :key="`${slot.date}-${slot.start}`"
             :disabled="disabled"
             class="px-3 py-2 rounded-lg border border-border/80 bg-card/70 text-text hover:bg-card/60 transition"

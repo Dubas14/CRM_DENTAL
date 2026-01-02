@@ -71,6 +71,31 @@ const formatDateTimeLocal = (value) => {
   return `${year}-${month}-${day}T${hour}:${minute}`
 }
 
+// Convert API datetime (YYYY-MM-DD HH:mm:ss) to datetime-local string (YYYY-MM-DDTHH:mm) without timezone shifts.
+const apiDateTimeToLocalInput = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') {
+    // already datetime-local
+    if (value.includes('T')) return value.slice(0, 16)
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?::\d{2})?$/)
+    if (m) return `${m[1]}T${m[2]}`
+  }
+  return formatDateTimeLocal(value)
+}
+
+const parseLocalInputToApi = (value) => {
+  if (!value) return null
+  if (typeof value === 'string') {
+    // datetime-local: YYYY-MM-DDTHH:mm
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/)
+    if (m) return `${m[1]} ${m[2]}:00`
+    // fallback: already api-ish
+    const m2 = value.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?::\d{2})?$/)
+    if (m2) return `${m2[1]} ${m2[2]}:00`
+  }
+  return formatDateTimeApi(value)
+}
+
 const formatDateTimeApi = (value) => {
   const parsed = toDate(value)
   if (!parsed) return null
@@ -149,7 +174,8 @@ const appointmentForm = ref({
   equipment_id: '',
   assistant_id: '',
   start_at: '',
-  end_at: ''
+  end_at: '',
+  status: ''
 })
 
 const followUpForm = ref({
@@ -190,6 +216,16 @@ const slotPickerDate = computed(() =>
 
 const normalizeId = (value) => (value === null || value === undefined ? '' : value)
 
+const appointmentStatuses = [
+  { value: 'planned', label: 'Заплановано' },
+  { value: 'confirmed', label: 'Підтверджено' },
+  { value: 'reminded', label: 'Нагадано' },
+  { value: 'waiting', label: 'Очікує' },
+  { value: 'done', label: 'Завершено' },
+  { value: 'cancelled', label: 'Скасовано' },
+  { value: 'no_show', label: 'Не прийшов' }
+]
+
 const hydrateAppointmentForm = () => {
   appointmentForm.value = {
     doctor_id: normalizeId(getProp('doctor_id') || getProp('doctor')?.id || ''),
@@ -197,8 +233,9 @@ const hydrateAppointmentForm = () => {
     room_id: normalizeId(getProp('room_id') || getProp('room')?.id || ''),
     equipment_id: normalizeId(getProp('equipment_id') || getProp('equipment')?.id || ''),
     assistant_id: normalizeId(getProp('assistant_id') || getProp('assistant')?.id || ''),
-    start_at: formatDateTimeLocal(getProp('start_at') || getProp('start')),
-    end_at: formatDateTimeLocal(getProp('end_at') || getProp('end'))
+    start_at: apiDateTimeToLocalInput(getProp('start_at') || getProp('start')),
+    end_at: apiDateTimeToLocalInput(getProp('end_at') || getProp('end')),
+    status: getProp('status') || 'planned'
   }
 }
 
@@ -248,6 +285,26 @@ const applySlotToForm = (slot) => {
 }
 
 const ensureSlotAvailable = async () => {
+  // Only validate slot availability when time/resources were changed.
+  const originalStart = apiDateTimeToLocalInput(getProp('start_at') || getProp('start'))
+  const originalEnd = apiDateTimeToLocalInput(getProp('end_at') || getProp('end'))
+  const originalDoctor = normalizeId(getProp('doctor_id') || getProp('doctor')?.id || '')
+  const originalProcedure = normalizeId(getProp('procedure_id') || getProp('procedure')?.id || '')
+  const originalRoom = normalizeId(getProp('room_id') || getProp('room')?.id || '')
+  const originalEquipment = normalizeId(getProp('equipment_id') || getProp('equipment')?.id || '')
+  const originalAssistant = normalizeId(getProp('assistant_id') || getProp('assistant')?.id || '')
+
+  const onlyStatusChanged =
+    appointmentForm.value.start_at === originalStart &&
+    appointmentForm.value.end_at === originalEnd &&
+    String(appointmentForm.value.doctor_id || '') === String(originalDoctor || '') &&
+    String(appointmentForm.value.procedure_id || '') === String(originalProcedure || '') &&
+    String(appointmentForm.value.room_id || '') === String(originalRoom || '') &&
+    String(appointmentForm.value.equipment_id || '') === String(originalEquipment || '') &&
+    String(appointmentForm.value.assistant_id || '') === String(originalAssistant || '')
+
+  if (onlyStatusChanged) return true
+
   const doctorId = slotPickerDoctorId.value
   if (!doctorId) return true
 
@@ -288,20 +345,52 @@ const updateAppointment = async () => {
 
   appointmentSaving.value = true
   try {
-    await calendarApi.updateAppointment(appointmentId.value, {
-      doctor_id: appointmentForm.value.doctor_id || null,
-      procedure_id: appointmentForm.value.procedure_id || null,
-      room_id: appointmentForm.value.room_id || null,
-      equipment_id: appointmentForm.value.equipment_id || null,
-      assistant_id: appointmentForm.value.assistant_id || null,
-      start_at: formatDateTimeApi(new Date(appointmentForm.value.start_at)),
-      end_at: formatDateTimeApi(new Date(appointmentForm.value.end_at)),
-      clinic_id: props.clinicId || undefined
-    })
+    const originalStart = apiDateTimeToLocalInput(getProp('start_at') || getProp('start'))
+    const originalEnd = apiDateTimeToLocalInput(getProp('end_at') || getProp('end'))
+    const startChanged = appointmentForm.value.start_at !== originalStart
+    const endChanged = appointmentForm.value.end_at !== originalEnd
+
+    const startAtFormatted = startChanged ? parseLocalInputToApi(appointmentForm.value.start_at) : null
+    const endAtFormatted = endChanged ? parseLocalInputToApi(appointmentForm.value.end_at) : null
+
+    // Створюємо payload, виключаючи null/undefined значення
+    const updatePayload: any = {}
+    if (startAtFormatted && endAtFormatted) {
+      updatePayload.start_at = startAtFormatted
+      updatePayload.end_at = endAtFormatted
+    }
+
+    // Додаємо поля тільки якщо вони мають значення
+    if (appointmentForm.value.doctor_id) {
+      updatePayload.doctor_id = appointmentForm.value.doctor_id
+    }
+    if (appointmentForm.value.procedure_id) {
+      updatePayload.procedure_id = appointmentForm.value.procedure_id
+    }
+    if (appointmentForm.value.room_id) {
+      updatePayload.room_id = appointmentForm.value.room_id
+    }
+    if (appointmentForm.value.equipment_id) {
+      updatePayload.equipment_id = appointmentForm.value.equipment_id
+    }
+    if (appointmentForm.value.assistant_id) {
+      updatePayload.assistant_id = appointmentForm.value.assistant_id
+    }
+    if (appointmentForm.value.status) {
+      updatePayload.status = appointmentForm.value.status
+    }
+    if (props.clinicId) {
+      updatePayload.clinic_id = props.clinicId
+    }
+
+    console.log('Updating appointment with payload:', updatePayload)
+    await calendarApi.updateAppointment(appointmentId.value, updatePayload)
     emit('saved')
-    alert('Запис оновлено.')
+    emit('close')
   } catch (e) {
-    alert('Помилка: ' + (e.response?.data?.message || e.message))
+    console.error('Error updating appointment:', e)
+    const errorMessage = e.response?.data?.message || e.response?.data?.error || e.message || 'Невідома помилка'
+    alert('Помилка: ' + errorMessage)
   } finally {
     appointmentSaving.value = false
   }
@@ -377,6 +466,19 @@ const saveRecord = async () => {
       ...form.value,
       appointment_id: appointmentId.value
     })
+
+    // Варіант A: завершуємо прийом "зараз" і скорочуємо end_at, щоб слот одразу повернувся
+    if (appointmentId.value) {
+      const startLocal = apiDateTimeToLocalInput(getProp('start_at') || getProp('start'))
+      const startDate = startLocal ? new Date(startLocal) : null
+      const now = new Date()
+      if (startDate && !Number.isNaN(startDate.getTime()) && startDate.getTime() > now.getTime()) {
+        alert('Цей запис ще не почався. Неможливо завершити прийом раніше початку.')
+      } else {
+        await calendarApi.finishAppointment(appointmentId.value)
+      }
+    }
+
     alert('Прийом завершено успішно!')
     emit('saved')
     emit('close')
@@ -452,9 +554,22 @@ watch(
               <p class="text-xs uppercase tracking-wide text-text/60">Поточний запис</p>
               <p class="text-sm font-semibold text-text">{{ periodLabel }}</p>
             </div>
-            <span class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
-              Статус: {{ status || '—' }}
+            <div class="flex items-center gap-2">
+              <label for="appointment-status" class="text-xs text-text/60">Статус:</label>
+              <select
+                v-if="!isReadOnly"
+                id="appointment-status"
+                v-model="appointmentForm.status"
+                class="text-xs bg-card/80 px-2 py-1 rounded text-text/80 border border-border/40 focus:border-emerald-500/60 focus:outline-none"
+              >
+                <option v-for="s in appointmentStatuses" :key="s.value" :value="s.value">
+                  {{ s.label }}
+                </option>
+              </select>
+              <span v-else class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
+                {{ appointmentStatuses.find((s) => s.value === status)?.label || status || '—' }}
             </span>
+            </div>
           </div>
 
           <div class="grid gap-2 sm:grid-cols-2 text-sm text-text/80">

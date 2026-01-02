@@ -5,6 +5,7 @@ import procedureApi from '../services/procedureApi'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
+import SearchField from '../components/SearchField.vue'
 
 const { user } = useAuth()
 
@@ -95,6 +96,9 @@ const form = ref({
   steps: []
 })
 
+const search = ref('')
+let requestSeq = 0
+
 const createStep = (overrides = {}) => ({
   name: '',
   duration_minutes: 30,
@@ -142,33 +146,34 @@ const loadClinics = async () => {
   }
 }
 
-const isFetchingEquipments = ref(false)
-const isFetchingProcedures = ref(false)
-
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value || isFetchingEquipments.value) return
-  isFetchingEquipments.value = true
+  if (!selectedClinicId.value) return
   try {
     const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
     equipments.value = data.data ?? data
   } catch (err) {
     console.error(err)
-  } finally {
-    isFetchingEquipments.value = false
   }
 }
 
 const fetchProcedures = async () => {
-  if (!selectedClinicId.value || isFetchingProcedures.value) return
-  isFetchingProcedures.value = true
+  if (!selectedClinicId.value) return
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
   try {
-    const { data } = await procedureApi.list({
+    const params: Record<string, any> = {
       clinic_id: selectedClinicId.value,
       page: currentPage.value,
       per_page: perPage
-    })
+    }
+    if (search.value.trim()) params.search = search.value.trim()
+
+    const { data } = await procedureApi.list(params)
+    
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     const items = data.data ?? data
     procedures.value = items
     const hasPagination =
@@ -191,11 +196,16 @@ const fetchProcedures = async () => {
       currentPage.value = pagination.value.currentPage
     }
   } catch (err) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     console.error(err)
     error.value = 'Не вдалося завантажити процедури'
   } finally {
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
     loading.value = false
-    isFetchingProcedures.value = false
+    }
   }
 }
 
@@ -303,6 +313,12 @@ watch(selectedClinicId, () => {
   debouncedFetchEquipments()
 })
 
+// Live search: reset page and trigger search on search change
+watch(search, () => {
+  currentPage.value = 1
+  debouncedFetchProcedures()
+})
+
 onMounted(async () => {
   await loadClinics()
   // fetch functions will be called by watch when selectedClinicId is set in loadClinics
@@ -336,6 +352,11 @@ const goToPage = async (page) => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
+      <SearchField
+        v-model="search"
+        id="procedures-search"
+        placeholder="Пошук (назва / категорія / етапи)"
+      />
       <label for="procedures-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"

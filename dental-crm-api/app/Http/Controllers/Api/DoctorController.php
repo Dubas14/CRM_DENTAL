@@ -10,6 +10,7 @@ use App\Models\Clinic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use App\Support\QuerySearch;
 
 class DoctorController extends Controller
 {
@@ -39,6 +40,11 @@ class DoctorController extends Controller
         // фільтр по клініці (якщо явно передали)
         if ($request->filled('clinic_id')) {
             $query->where('clinic_id', $request->integer('clinic_id'));
+        }
+
+        // search filter (case-insensitive)
+        if ($search = $request->string('search')->toString()) {
+            QuerySearch::applyIlike($query, $search, ['full_name', 'specialization']);
         }
 
         // пагінація

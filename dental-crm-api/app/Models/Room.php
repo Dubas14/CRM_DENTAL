@@ -35,4 +35,9 @@ class Room extends Model
     {
         return $this->belongsToMany(Procedure::class, 'procedure_room');
     }
+
+    public function equipments()
+    {
+        return $this->belongsToMany(Equipment::class, 'room_equipment');
+    }
 }

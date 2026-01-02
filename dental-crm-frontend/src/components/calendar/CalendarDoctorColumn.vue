@@ -38,6 +38,8 @@
         :top="entry.top"
         :height="entry.height"
         :stack-offset="entry.stackOffset"
+        :left-pct="entry.leftPct"
+        :width-pct="entry.widthPct"
         :read-only="entry.item.isReadOnly"
         :interactive="interactive"
         @click="emit('appointment-click', entry.item)"
@@ -67,6 +69,8 @@ interface ColumnEntry {
   top: number
   height: number
   stackOffset?: number
+  leftPct?: number
+  widthPct?: number
 }
 
 /* ===================== PROPS ===================== */

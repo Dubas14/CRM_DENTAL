@@ -364,6 +364,77 @@ const getMinutesFromStart = (date: string | Date | undefined): number => {
   return Math.max(0, minutes - startMinutes)
 }
 
+const computeOverlapLayout = (entries: any[]) => {
+  if (!Array.isArray(entries) || entries.length === 0) return
+
+  // Add minute-based bounds for overlap calculations
+  entries.forEach((e) => {
+    const startMin = (e.top ?? 0) / pixelsPerMinute.value
+    const endMin = startMin + (e.height ?? 0) / pixelsPerMinute.value
+    e._startMin = startMin
+    e._endMin = Math.max(endMin, startMin + props.snapMinutes)
+  })
+
+  const sorted = [...entries].sort((a, b) => {
+    if (a._startMin !== b._startMin) return a._startMin - b._startMin
+    return a._endMin - b._endMin
+  })
+
+  // Build overlap clusters (transitively overlapping)
+  let cluster: any[] = []
+  let clusterMaxEnd = -Infinity
+  const flushCluster = () => {
+    if (cluster.length === 0) return
+
+    // Greedy column assignment inside cluster
+    const colEnds: number[] = []
+    const clusterSorted = [...cluster].sort((a, b) => {
+      if (a._startMin !== b._startMin) return a._startMin - b._startMin
+      return a._endMin - b._endMin
+    })
+
+    clusterSorted.forEach((e) => {
+      let col = colEnds.findIndex((end) => end <= e._startMin)
+      if (col === -1) {
+        col = colEnds.length
+        colEnds.push(e._endMin)
+      } else {
+        colEnds[col] = e._endMin
+      }
+      e._overlapCol = col
+    })
+
+    const totalCols = Math.max(1, colEnds.length)
+    clusterSorted.forEach((e) => {
+      e.leftPct = (e._overlapCol / totalCols) * 100
+      e.widthPct = 100 / totalCols
+      // Keep tiny vertical offset only for exact same start to reduce border flicker
+      e.stackOffset = 0
+    })
+
+    cluster = []
+    clusterMaxEnd = -Infinity
+  }
+
+  for (const e of sorted) {
+    if (cluster.length === 0) {
+      cluster = [e]
+      clusterMaxEnd = e._endMin
+      continue
+    }
+
+    if (e._startMin < clusterMaxEnd) {
+      cluster.push(e)
+      clusterMaxEnd = Math.max(clusterMaxEnd, e._endMin)
+    } else {
+      flushCluster()
+      cluster = [e]
+      clusterMaxEnd = e._endMin
+    }
+  }
+  flushCluster()
+}
+
 const itemsByColumn = computed(() => {
   const map: Record<string, any[]> = {}
   resolvedColumns.value.forEach((column) => {
@@ -395,19 +466,14 @@ const itemsByColumn = computed(() => {
       map[groupKey].push({
         item: item,
         top: startMinutes * pixelsPerMinute.value,
-        height
+        height,
+        leftPct: 0,
+        widthPct: 100,
       })
     }
   })
 
-  Object.values(map).forEach((entries) => {
-    const overlapCounts = new Map<number, number>()
-    entries.forEach((entry) => {
-      const index = overlapCounts.get(entry.top) || 0
-      entry.stackOffset = index * 3
-      overlapCounts.set(entry.top, index + 1)
-    })
-  })
+  Object.values(map).forEach((entries) => computeOverlapLayout(entries))
 
   return map
 })

@@ -4,6 +4,7 @@ import { debounce } from 'lodash-es'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
+import SearchField from '../components/SearchField.vue'
 
 const { user } = useAuth()
 
@@ -32,6 +33,9 @@ const form = ref({
   is_active: true
 })
 
+const search = ref('')
+let requestSeq = 0
+
 const loadClinics = async () => {
   if (user.value?.global_role === 'super_admin') {
     const { data } = await clinicApi.list()
@@ -49,22 +53,32 @@ const loadClinics = async () => {
   }
 }
 
-const isFetchingEquipments = ref(false)
-
 const fetchEquipments = async () => {
-  if (!selectedClinicId.value || isFetchingEquipments.value) return
-  isFetchingEquipments.value = true
+  if (!selectedClinicId.value) return
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
   try {
-    const { data } = await equipmentApi.list({ clinic_id: selectedClinicId.value })
+    const params: Record<string, any> = { clinic_id: selectedClinicId.value }
+    if (search.value.trim()) params.search = search.value.trim()
+
+    const { data } = await equipmentApi.list(params)
+    
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     equipments.value = data.data ?? data
   } catch (err) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     console.error(err)
     error.value = 'Не вдалося завантажити обладнання'
   } finally {
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
     loading.value = false
-    isFetchingEquipments.value = false
+    }
   }
 }
 
@@ -155,6 +169,11 @@ watch(selectedClinicId, () => {
   debouncedFetchEquipments()
 })
 
+// Live search: trigger search on search change
+watch(search, () => {
+  debouncedFetchEquipments()
+})
+
 onMounted(async () => {
   await loadClinics()
   // fetchEquipments will be called by watch when selectedClinicId is set in loadClinics
@@ -181,6 +200,11 @@ onMounted(async () => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
+      <SearchField
+        v-model="search"
+        id="equipments-search"
+        placeholder="Пошук (назва / опис)"
+      />
       <label for="equipments-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\User;
 use App\Support\RoleHierarchy;
+use App\Support\QuerySearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +32,16 @@ class AssistantController extends Controller
                 ->pluck('clinics.id');
 
             $query->whereHas('clinics', fn ($q) => $q->whereIn('clinics.id', $clinicIds));
+        }
+
+        // search filter (case-insensitive)
+        if ($search = $request->string('search')->toString()) {
+            QuerySearch::applyIlike(
+                $query,
+                $search,
+                ['email', 'name', 'first_name', 'last_name'],
+                ["concat_ws(' ', first_name, last_name) ILIKE ?"]
+            );
         }
 
         $perPage = $request->integer('per_page', 50);

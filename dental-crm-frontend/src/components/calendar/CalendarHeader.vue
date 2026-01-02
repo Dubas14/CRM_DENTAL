@@ -89,7 +89,9 @@ const normalizedDate = computed(() => normalizeDate(props.currentDate))
 const viewOptions = [
   { value: 'day', label: 'День' },
   { value: 'week', label: 'Тиждень' },
-  { value: 'month', label: 'Місяць' }
+  { value: 'month', label: 'Місяць' },
+  { value: 'multi-doctor', label: 'Мульти-лікар' },
+  { value: 'multi-room', label: 'Мульти-кабінет' }
 ]
 
 const capitalize = (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')

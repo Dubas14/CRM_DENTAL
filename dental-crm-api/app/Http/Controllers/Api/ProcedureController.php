@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Procedure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\QuerySearch;
 
 class ProcedureController extends Controller
 {
@@ -15,11 +16,26 @@ class ProcedureController extends Controller
         $perPage = $request->integer('per_page', 50);
         $perPage = min(max($perPage, 1), 100);
 
-        return Procedure::query()
+        $query = Procedure::query()
             ->with(['steps', 'rooms'])
-            ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId))
-            ->orderBy('name')
-            ->paginate($perPage);
+            ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId));
+
+        // search filter (case-insensitive)
+        if ($search = $request->string('search')->toString()) {
+            $searchTerm = trim($search);
+            if (!empty($searchTerm)) {
+                $like = '%' . addcslashes($searchTerm, '%_') . '%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('name', 'ilike', $like)
+                        ->orWhere('category', 'ilike', $like)
+                        ->orWhereHas('steps', function ($q) use ($like) {
+                            $q->where('name', 'ilike', $like);
+                        });
+                });
+            }
+        }
+
+        return $query->orderBy('name')->paginate($perPage);
     }
 
     public function store(Request $request)

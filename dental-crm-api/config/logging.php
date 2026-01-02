@@ -18,7 +18,21 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'stack'),
+    // In Docker/Sail it's common that volume permissions prevent writing to storage/logs.
+    // If the selected channel would write to files, force stderr to avoid hard crashes.
+    'default' => (function () {
+        $channel = env('LOG_CHANNEL');
+        $isSail = (bool) env('LARAVEL_SAIL');
+
+        // Common file-based defaults in many Laravel apps
+        $fileBased = ['stack', 'single', 'daily', 'emergency'];
+
+        if ($isSail && (!$channel || in_array($channel, $fileBased, true))) {
+            return 'stderr';
+        }
+
+        return $channel ?: 'stack';
+    })(),
 
     /*
     |--------------------------------------------------------------------------
@@ -54,7 +68,8 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            // In Sail, default stack to stderr (not file) unless explicitly overridden.
+            'channels' => explode(',', (string) env('LOG_STACK', env('LARAVEL_SAIL') ? 'stderr' : 'single')),
             'ignore_exceptions' => false,
         ],
 
@@ -124,7 +139,8 @@ return [
         ],
 
         'emergency' => [
-            'path' => storage_path('logs/laravel.log'),
+            // Emergency logger MUST NOT crash the app. In Sail, use stderr.
+            'path' => env('LARAVEL_SAIL') ? 'php://stderr' : storage_path('logs/laravel.log'),
         ],
 
     ],

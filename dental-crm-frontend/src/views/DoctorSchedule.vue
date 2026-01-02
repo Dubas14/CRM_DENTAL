@@ -114,6 +114,8 @@ const calendarBlockTypes = [
 
 // ---- Бронювання ----
 const bookingSlot = ref(null)
+// Snapshot of filters at the moment a slot is selected (prevents mismatch after filter changes)
+const bookingContext = ref(null)
 const bookingLoading = ref(false)
 const bookingError = ref(null)
 const bookingSuccess = ref(false)
@@ -597,6 +599,16 @@ const debouncedRefreshScheduleData = debounce(refreshScheduleData, 500)
 
 const selectSlot = (slot) => {
   bookingSlot.value = slot
+  bookingContext.value = {
+    doctor_id: Number(selectedDoctorId.value) || null,
+    procedure_id: selectedProcedureId.value ? Number(selectedProcedureId.value) : null,
+    room_id: selectedRoomId.value ? Number(selectedRoomId.value) : null,
+    equipment_id: selectedEquipmentId.value ? Number(selectedEquipmentId.value) : null,
+    assistant_id: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
+    clinic_id: clinicId.value ? Number(clinicId.value) : null,
+    is_follow_up: !!isFollowUp.value,
+    allow_soft_conflicts: !!allowSoftConflicts.value
+  }
   clearBookingForm()
   bookingSuccess.value = false
   bookingError.value = null
@@ -612,6 +624,27 @@ const selectSlot = (slot) => {
     bookingPhone.value = preloadedPatient.value.phone || ''
   }
 }
+
+// If user changes any filters after selecting a slot, clear selection to avoid booking inconsistent data.
+watch(
+  () => [
+    selectedDoctorId.value,
+    selectedDate.value,
+    selectedProcedureId.value,
+    selectedRoomId.value,
+    selectedEquipmentId.value,
+    selectedAssistantId.value,
+    selectedClinicId.value
+  ],
+  () => {
+    if (bookingSlot.value) {
+      bookingSlot.value = null
+      bookingContext.value = null
+      bookingError.value = null
+      bookingSuccess.value = false
+    }
+  }
+)
 
 const bookSelectedSlot = async () => {
   if (!bookingSlot.value || !selectedDoctorId.value || !selectedDate.value) return
@@ -632,16 +665,18 @@ const bookSelectedSlot = async () => {
 
   bookingLoading.value = true
   try {
+    // Use snapshot captured on selectSlot to prevent mismatch (slot list was generated with those filters).
+    const ctx = bookingContext.value || {}
     const basePayload = {
-      doctor_id: Number(selectedDoctorId.value),
+      doctor_id: ctx.doctor_id ?? Number(selectedDoctorId.value),
       patient_id: selectedPatientForBooking.value?.id || linkedPatientId.value || null,
-      procedure_id: selectedProcedureId.value || null,
-      room_id: selectedRoomId.value || null,
-      equipment_id: selectedEquipmentId.value || null,
-      assistant_id: selectedAssistantId.value ? Number(selectedAssistantId.value) : null,
-      clinic_id: clinicId.value ? Number(clinicId.value) : undefined,
-      is_follow_up: !!isFollowUp.value,
-      allow_soft_conflicts: !!allowSoftConflicts.value,
+      procedure_id: ctx.procedure_id ?? (selectedProcedureId.value || null),
+      room_id: ctx.room_id ?? (selectedRoomId.value || null),
+      equipment_id: ctx.equipment_id ?? (selectedEquipmentId.value || null),
+      assistant_id: ctx.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
+      clinic_id: (ctx.clinic_id ?? (clinicId.value ? Number(clinicId.value) : null)) || undefined,
+      is_follow_up: ctx.is_follow_up ?? !!isFollowUp.value,
+      allow_soft_conflicts: ctx.allow_soft_conflicts ?? !!allowSoftConflicts.value,
       comment: selectedPatientForBooking.value
         ? commentText || null
         : `Пацієнт: ${finalName}. ${commentText}`,

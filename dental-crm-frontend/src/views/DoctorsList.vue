@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { debounce } from 'lodash-es'
 import apiClient from '../services/apiClient'
 import clinicApi from '../services/clinicApi'
 import doctorApi from '../services/doctorApi'
 import { useAuth } from '../composables/useAuth'
 import { RouterLink } from 'vue-router'
+import SearchField from '../components/SearchField.vue'
 
 const doctors = ref([])
 const loading = ref(false)
@@ -86,6 +88,9 @@ const { user } = useAuth()
 
 const canCreateDoctor = computed(() => user.value?.global_role === 'super_admin')
 
+const search = ref('')
+let requestSeq = 0
+
 const fetchClinics = async () => {
   loadingClinics.value = true
   try {
@@ -97,10 +102,18 @@ const fetchClinics = async () => {
 }
 
 const fetchDoctors = async () => {
+  const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
   try {
-    const { data } = await doctorApi.list({ page: currentPage.value, per_page: perPage })
+    const params: Record<string, any> = { page: currentPage.value, per_page: perPage }
+    if (search.value.trim()) params.search = search.value.trim()
+
+    const { data } = await doctorApi.list(params)
+    
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     const items = data.data ?? data
     doctors.value = items
     const hasPagination =
@@ -123,12 +136,20 @@ const fetchDoctors = async () => {
       currentPage.value = pagination.value.currentPage
     }
   } catch (e) {
+    // Ignore stale responses
+    if (currentSeq !== requestSeq) return
+
     console.error(e)
     error.value = 'Не вдалося завантажити лікарів'
   } finally {
-    loading.value = false
+    // Only update loading if this is still the latest request
+    if (currentSeq === requestSeq) {
+      loading.value = false
+    }
   }
 }
+
+const debouncedFetchDoctors = debounce(fetchDoctors, 300)
 
 const resetForm = () => {
   form.value = {
@@ -184,6 +205,12 @@ onMounted(async () => {
   await fetchDoctors()
 })
 
+// Live search: reset page and trigger search on search change
+watch(search, () => {
+  currentPage.value = 1
+  debouncedFetchDoctors()
+})
+
 const goToPage = async (page) => {
   const nextPage = Math.min(Math.max(page, 1), pageCount.value)
   if (nextPage === currentPage.value) return
@@ -194,7 +221,7 @@ const goToPage = async (page) => {
 
 <template>
   <div class="space-y-6">
-    <header class="flex items-center justify-between gap-4">
+    <header class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold">Лікарі</h1>
         <p class="text-sm text-text/70">Керування лікарями клінік.</p>
@@ -207,6 +234,15 @@ const goToPage = async (page) => {
         {{ showForm ? 'Приховати форму' : 'Новий лікар' }}
       </button>
     </header>
+
+    <!-- фільтри -->
+    <div class="flex flex-wrap items-center gap-3">
+      <SearchField
+        v-model="search"
+        id="doctors-search"
+        placeholder="Пошук (ПІБ / спеціалізація)"
+      />
+    </div>
 
     <!-- Форма створення лікаря (тільки для супер адміна) -->
     <section

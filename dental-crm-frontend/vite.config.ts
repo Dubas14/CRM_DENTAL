@@ -17,6 +17,13 @@ export default defineConfig({
     strictPort: true, // Якщо порт зайнятий — видати помилку, а не змінювати його
     hmr: {
       host: 'localhost' // Допомагає з оновленням сторінки (Hot Reload)
+    },
+    // Proxy API requests to backend to avoid CORS in development
+    proxy: {
+      '/api': {
+        target: 'http://localhost',
+        changeOrigin: true
+      }
     }
   }
 })

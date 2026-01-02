@@ -14,9 +14,26 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AvailabilityService
 {
+    /**
+     * Якщо в кабінеті/клініці не налаштовано зв'язки room_equipment — не блокуємо підбір ресурсів.
+     * Це важливо для "порожніх" інсталяцій, де адміністратор ще не заповнив відповідності.
+     */
+    private function hasRoomEquipmentMappingForRoom(Room $room): bool
+    {
+        return $room->equipments()->exists();
+    }
+
+    private function hasRoomEquipmentMappingForClinic(int $clinicId): bool
+    {
+        return DB::table('room_equipment')
+            ->join('rooms', 'rooms.id', '=', 'room_equipment.room_id')
+            ->where('rooms.clinic_id', $clinicId)
+            ->exists();
+    }
     public function getDailyPlan(Doctor $doctor, Carbon $date): array
     {
         if (! $doctor->isActive()) {
@@ -75,11 +92,17 @@ class AvailabilityService
             return $fallbackDuration;
         }
 
-        $customDuration = $doctor->procedures()
-            ->where('procedure_id', $procedure->id)
-            ->value('doctor_procedure.custom_duration_minutes');
+        // Перевіряємо кастомну тривалість для конкретного лікаря
+        $pivot = $doctor->procedures()
+            ->where('procedures.id', $procedure->id)
+            ->first();
 
-        return $customDuration ?? $procedure->duration_minutes ?? $fallbackDuration;
+        if ($pivot && $pivot->pivot->custom_duration_minutes) {
+            return (int) $pivot->pivot->custom_duration_minutes;
+        }
+
+        // Якщо немає кастомної тривалості, використовуємо стандартну тривалість процедури
+        return $procedure->duration_minutes ?? $fallbackDuration;
     }
 
     public function getSlots(
@@ -91,19 +114,20 @@ class AvailabilityService
         ?Equipment $equipment = null,
         ?int $assistantId = null
     ): array {
-        $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_proc_%s_room_%s_eq_%s_asst_%s_v%s',
-            $doctor->id,
-            $date->toDateString(),
-            $durationMinutes,
-            $procedure?->id ?? 'any',
-            $room?->id ?? 'any',
-            $equipment?->id ?? 'any',
-            $assistantId ?? 'any',
-            $this->getSlotsCacheVersion($doctor->id, $date),
-        );
+        // IMPORTANT:
+        // Room/equipment/assistant availability depends on OTHER doctors' appointments too.
+        // Our cache versioning is doctor+date based, so caching resource-constrained slots can go stale.
+        // To keep correctness, we only cache "doctor-only" slots (no room/equipment/assistant/procedure constraints).
+        $hasResourceConstraints =
+            (bool) $room ||
+            (bool) $equipment ||
+            (bool) $assistantId ||
+            (bool) ($procedure?->requires_room) ||
+            (bool) ($procedure?->equipment_id) ||
+            (bool) ($procedure?->default_room_id) ||
+            (bool) ($procedure && $procedure->rooms()->exists());
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use (
+        $compute = function () use (
             $doctor,
             $date,
             $durationMinutes,
@@ -264,7 +288,21 @@ class AvailabilityService
             }
 
             return ['slots' => $slots];
-        });
+        };
+
+        if ($hasResourceConstraints) {
+            return $compute();
+        }
+
+        $cacheKey = sprintf(
+            'calendar_slots_doctor_%d_%s_%d_v%s',
+            $doctor->id,
+            $date->toDateString(),
+            $durationMinutes,
+            $this->getSlotsCacheVersion($doctor->id, $date),
+        );
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), $compute);
     }
 
     public function hasConflict(Collection $appointments, Carbon $start, Carbon $end): bool
@@ -285,12 +323,40 @@ class AvailabilityService
         });
     }
 
+    /**
+     * Інвалідує кеш слотів для конкретного лікаря та дати
+     */
     public static function bumpSlotsCacheVersion(int $doctorId, Carbon $date): void
     {
         $versionKey = self::slotsCacheVersionKey($doctorId, $date);
 
         Cache::add($versionKey, 1, now()->addDays(7));
         Cache::increment($versionKey);
+    }
+
+    /**
+     * Інвалідує кеш слотів для діапазону дат
+     */
+    public static function bumpSlotsCacheVersionRange(int $doctorId, Carbon $startDate, Carbon $endDate): void
+    {
+        $current = $startDate->copy();
+        while ($current->lte($endDate)) {
+            self::bumpSlotsCacheVersion($doctorId, $current);
+            $current->addDay();
+        }
+    }
+
+    /**
+     * Інвалідує весь кеш слотів для лікаря (використовується при зміні розкладу)
+     */
+    public static function invalidateAllSlotsCache(int $doctorId): void
+    {
+        // Інвалідуємо кеш на 30 днів наперед
+        $today = Carbon::today();
+        for ($i = 0; $i < 30; $i++) {
+            $date = $today->copy()->addDays($i);
+            self::bumpSlotsCacheVersion($doctorId, $date);
+        }
     }
 
     private function getSlotsCacheVersion(int $doctorId, Carbon $date): int
@@ -307,10 +373,21 @@ class AvailabilityService
         return sprintf('calendar_slots_version_doctor_%d_%s', $doctorId, $date->toDateString());
     }
 
-    public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Room
+    public function resolveRoom(?Room $room, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId, ?Equipment $requiredEquipment = null): ?Room
     {
         if ($room && ! $this->isRoomCompatible($room, $procedure)) {
             return null;
+        }
+
+        // Перевірка сумісності з обладнанням через room_equipment
+        if ($room && $requiredEquipment) {
+            // Якщо зв'язки для цього кабінету ще не налаштовані — не блокуємо
+            if ($this->hasRoomEquipmentMappingForRoom($room)) {
+                $hasEquipment = $room->equipments()->where('equipments.id', $requiredEquipment->id)->exists();
+                if (! $hasEquipment) {
+                    return null;
+                }
+            }
         }
 
         if ($room) return $room;
@@ -322,6 +399,13 @@ class AvailabilityService
         $candidateQuery = Room::query()
             ->where('clinic_id', $clinicId)
             ->where('is_active', true);
+
+        // Якщо потрібне обладнання, фільтруємо кабінети, де воно є
+        if ($requiredEquipment && $this->hasRoomEquipmentMappingForClinic($clinicId)) {
+            $candidateQuery->whereHas('equipments', function ($q) use ($requiredEquipment) {
+                $q->where('equipments.id', $requiredEquipment->id);
+            });
+        }
 
         if ($procedure->default_room_id) {
             $candidateQuery->where('id', $procedure->default_room_id);
@@ -344,19 +428,39 @@ class AvailabilityService
         return null;
     }
 
-    public function resolveEquipment(?Equipment $equipment, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId): ?Equipment
+    public function resolveEquipment(?Equipment $equipment, Procedure $procedure, Carbon $date, Carbon $start, Carbon $end, int $clinicId, ?Room $requiredRoom = null): ?Equipment
     {
-        if ($equipment) return $equipment;
+        if ($equipment) {
+            // Перевірка сумісності з кабінетом через room_equipment
+            if ($requiredRoom) {
+                // Якщо зв'язки для цього кабінету ще не налаштовані — не блокуємо
+                if ($this->hasRoomEquipmentMappingForRoom($requiredRoom)) {
+                    $hasEquipment = $requiredRoom->equipments()->where('equipments.id', $equipment->id)->exists();
+                    if (! $hasEquipment) {
+                        return null;
+                    }
+                }
+            }
+            return $equipment;
+        }
 
         if (! $procedure->equipment_id) {
             return null;
         }
 
-        $equipments = Equipment::query()
+        $equipmentsQuery = Equipment::query()
             ->where('clinic_id', $clinicId)
             ->where('is_active', true)
-            ->where('id', $procedure->equipment_id)
-            ->get();
+            ->where('id', $procedure->equipment_id);
+
+        // Якщо вибрано кабінет, фільтруємо обладнання, яке є в цьому кабінеті
+        if ($requiredRoom && $this->hasRoomEquipmentMappingForRoom($requiredRoom)) {
+            $equipmentsQuery->whereHas('rooms', function ($q) use ($requiredRoom) {
+                $q->where('rooms.id', $requiredRoom->id);
+            });
+        }
+
+        $equipments = $equipmentsQuery->get();
 
         foreach ($equipments as $candidate) {
             $hasConflict = Appointment::where('equipment_id', $candidate->id)
@@ -395,6 +499,25 @@ class AvailabilityService
                 $slotStart = Carbon::createFromFormat('H:i', $slot['start']);
                 $score = 100 - $fromDate->diffInDays($cursor);
 
+                // Перевірка пікових годин (з конфігурації)
+                $peakHours = config('calendar.peak_hours', ['09:00-12:00', '14:00-18:00']);
+                $isPeakHour = false;
+                $slotTime = $slotStart->format('H:i');
+                
+                foreach ($peakHours as $peakRange) {
+                    [$peakStart, $peakEnd] = explode('-', $peakRange);
+                    if ($slotTime >= $peakStart && $slotTime < $peakEnd) {
+                        $isPeakHour = true;
+                        break;
+                    }
+                }
+
+                // Зменшуємо score для пікових годин (рекомендуємо уникати)
+                if ($isPeakHour) {
+                    $score -= 15;
+                }
+
+                // Підвищуємо score для бажаного часу доби
                 if ($preferredTimeOfDay) {
                     $isPreferredTime = match ($preferredTimeOfDay) {
                         'morning' => $slotStart->betweenIncluded($slotStart->copy()->setTime(6, 0), $slotStart->copy()->setTime(11, 59)),
@@ -403,14 +526,17 @@ class AvailabilityService
                         default => false,
                     };
 
-                    if ($isPreferredTime) $score += 20;
+                    if ($isPreferredTime) {
+                        $score += 20;
+                    }
                 }
 
                 $slots[] = [
                     'date' => $cursor->toDateString(),
                     'start' => $slot['start'],
                     'end' => $slot['end'],
-                    'score' => $score,
+                    'score' => max(0, $score), // Не дозволяємо негативний score
+                    'is_peak_hour' => $isPeakHour,
                 ];
             }
 
@@ -418,7 +544,16 @@ class AvailabilityService
             $safetyCounter++;
         }
 
-        usort($slots, fn($a, $b) => $b['score'] <=> $a['score']);
+        // Сортуємо за score (найкращі спочатку), але також враховуємо дату
+        usort($slots, function ($a, $b) {
+            // Спочатку за score
+            if ($b['score'] !== $a['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+            // Якщо score однаковий, сортуємо за датою (ближчі спочатку)
+            return strcmp($a['date'], $b['date']);
+        });
+        
         $topSlots = array_slice($slots, 0, $limit);
 
         return array_map(fn ($slot) => [

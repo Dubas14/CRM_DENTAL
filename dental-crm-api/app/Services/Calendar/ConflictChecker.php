@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\CalendarBlock;
 use App\Models\Doctor;
 use App\Models\Equipment;
+use App\Models\Invoice;
 use App\Models\Procedure;
 use App\Models\Room;
 use Carbon\Carbon;
@@ -81,6 +82,92 @@ class ConflictChecker
 
             if ($patientConflict) {
                 $result['soft'][] = ['code' => 'patient_busy', 'message' => 'Пацієнт вже має запис у цей час'];
+            }
+        }
+
+        // М'які конфлікти: перевірка пікових годин
+        $peakHours = config('calendar.peak_hours', ['09:00-12:00', '14:00-18:00']);
+        $startTime = $startAt->format('H:i');
+        foreach ($peakHours as $peakRange) {
+            [$peakStart, $peakEnd] = explode('-', $peakRange);
+            if ($startTime >= $peakStart && $startTime < $peakEnd) {
+                $result['soft'][] = ['code' => 'peak_hours', 'message' => 'Це пікові години - можливі затримки'];
+                break;
+            }
+        }
+
+        // М'які конфлікти: перевірка поспіль >2 процедур
+        $timeBetween = config('calendar.time_between_appointments', 5);
+        $threshold = config('calendar.consecutive_threshold', 2);
+        
+        // Отримуємо всі записи лікаря на цей день
+        $dayAppointments = Appointment::where('doctor_id', $doctor->id)
+            ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
+            ->whereDate('start_at', $date)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->orderBy('start_at')
+            ->get();
+
+        // Додаємо поточний запис до списку для аналізу
+        $allAppointments = $dayAppointments->map(function ($appt) {
+            return [
+                'start' => Carbon::parse($appt->start_at),
+                'end' => Carbon::parse($appt->end_at),
+            ];
+        })->push([
+            'start' => $startAt,
+            'end' => $endAt,
+        ])->sortBy('start')->values();
+
+        // Рахуємо найдовшу послідовність поспіль процедур
+        $maxConsecutive = 1;
+        $currentConsecutive = 1;
+
+        for ($i = 1; $i < $allAppointments->count(); $i++) {
+            $prev = $allAppointments[$i - 1];
+            $curr = $allAppointments[$i];
+            
+            // Якщо попередня процедура закінчується незадовго до початку поточної
+            if ($curr['start']->diffInMinutes($prev['end']) <= $timeBetween) {
+                $currentConsecutive++;
+                $maxConsecutive = max($maxConsecutive, $currentConsecutive);
+            } else {
+                $currentConsecutive = 1;
+            }
+        }
+
+        if ($maxConsecutive > $threshold) {
+            $result['soft'][] = [
+                'code' => 'consecutive_appointments',
+                'message' => "Лікар має {$maxConsecutive} процедури поспіль - можливі затримки"
+            ];
+        }
+
+        // М'які конфлікти: перевірка передоплати
+        if ($patientId && $procedure && $procedure->requires_prepayment) {
+            $hasPrepayment = Invoice::where('patient_id', $patientId)
+                ->where(function ($q) use ($procedure, $ignoreAppointmentId) {
+                    // Перевіряємо передоплату для цієї процедури або для конкретного запису
+                    $q->where(function ($subQ) use ($procedure) {
+                        $subQ->where('procedure_id', $procedure->id)
+                            ->orWhereNull('procedure_id');
+                    });
+                    
+                    // Якщо це оновлення запису, перевіряємо передоплату для старого запису
+                    if ($ignoreAppointmentId) {
+                        $q->orWhere('appointment_id', $ignoreAppointmentId);
+                    }
+                })
+                ->where('status', Invoice::STATUS_PAID)
+                ->where('is_prepayment', true)
+                ->whereRaw('paid_amount >= amount') // Перевіряємо, що сплачено повну суму
+                ->exists();
+
+            if (!$hasPrepayment) {
+                $result['soft'][] = [
+                    'code' => 'missing_prepayment',
+                    'message' => 'Відсутня передоплата за процедуру. Рекомендується отримати передоплату перед підтвердженням запису.'
+                ];
             }
         }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Equipment;
 use Illuminate\Http\Request;
+use App\Support\QuerySearch;
 
 class EquipmentController extends Controller
 {
@@ -14,10 +15,15 @@ class EquipmentController extends Controller
         $perPage = $request->integer('per_page', 50);
         $perPage = min(max($perPage, 1), 100);
 
-        return Equipment::query()
-            ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId))
-            ->orderBy('name')
-            ->paginate($perPage);
+        $query = Equipment::query()
+            ->when($clinicId, fn ($q) => $q->where('clinic_id', $clinicId));
+
+        // search filter (case-insensitive)
+        if ($search = $request->string('search')->toString()) {
+            QuerySearch::applyIlike($query, $search, ['name', 'description']);
+        }
+
+        return $query->orderBy('name')->paginate($perPage);
     }
 
     public function store(Request $request)

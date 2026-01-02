@@ -21,8 +21,13 @@ class AppointmentResource extends JsonResource
             'room_id' => $this->room_id,
             'equipment_id' => $this->equipment_id,
 
-            'start_at' => $this->start_at,
-            'end_at' => $this->end_at,
+            // IMPORTANT:
+            // appointments.start_at/end_at are stored as "dateTime" (without timezone) in DB.
+            // Returning Carbon objects serializes to ISO8601 with timezone (Z) which makes the browser shift times,
+            // causing UI to show free slots that backend treats as busy.
+            // We return plain "Y-m-d H:i:s" strings to keep the app timezone-less and consistent.
+            'start_at' => $this->start_at?->format('Y-m-d H:i:s'),
+            'end_at' => $this->end_at?->format('Y-m-d H:i:s'),
 
             'status' => $this->status,
             'source' => $this->source,

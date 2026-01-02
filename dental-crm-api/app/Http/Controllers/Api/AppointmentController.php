@@ -21,6 +21,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
@@ -62,6 +63,7 @@ class AppointmentController extends Controller
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
         $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
         $assistantId = $data['assistant_id'] ?? null;
+        $equipmentWasSelected = array_key_exists('equipment_id', $data) && !empty($data['equipment_id']);
 
         if ($procedureStep) {
             if ($procedure && $procedureStep->procedure_id !== $procedure->id) {
@@ -101,8 +103,30 @@ class AppointmentController extends Controller
             }
         }
 
+        // Спочатку визначаємо обладнання, якщо потрібне
+        if ($procedure?->equipment_id) {
+            $equipment = $availability->resolveEquipment(
+                $equipment ?? $procedure->equipment,
+                $procedure,
+                $date,
+                $startAt,
+                $endAt,
+                $doctor->clinic_id,
+                $room // Передаємо кабінет для перевірки сумісності
+            );
+
+            // Якщо користувач явно вибрав обладнання, але воно "зникло" через несумісність кабінет↔обладнання
+            if ($equipmentWasSelected && ! $equipment) {
+                return response()->json([
+                    'message' => 'Обране обладнання не доступне у вибраному кабінеті. Привʼяжіть обладнання до кабінету або виберіть інший кабінет/обладнання.',
+                    'error' => 'equipment_not_in_room',
+                ], 422);
+            }
+        }
+
+        // Потім визначаємо кабінет з урахуванням обладнання
         if ($procedure && $procedure->requires_room) {
-            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id, $equipment);
         }
 
         if ($procedure && $procedure->requires_room && ! $room) {
@@ -111,14 +135,16 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        if ($procedure?->equipment_id) {
+        // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
+        if ($room && $procedure?->equipment_id && !$equipment) {
             $equipment = $availability->resolveEquipment(
-                $equipment ?? $procedure->equipment,
+                $procedure->equipment,
                 $procedure,
                 $date,
                 $startAt,
                 $endAt,
-                $doctor->clinic_id
+                $doctor->clinic_id,
+                $room
             );
         }
 
@@ -142,12 +168,23 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        if (!empty($conflicts['soft']) && !($data['allow_soft_conflicts'] ?? false)) {
+        // Informational soft conflicts should NOT block creation.
+        // We keep blocking only for actionable soft conflicts like patient_busy, missing_prepayment, etc.
+        $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
+        $blockingSoft = array_values(array_filter(
+            $conflicts['soft'] ?? [],
+            fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+        ));
+
+        if (!empty($blockingSoft) && !($data['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
-                'soft_conflicts' => $conflicts['soft'],
+                'soft_conflicts' => $blockingSoft,
             ], 409);
         }
+
+        // Генеруємо токен для підтвердження запису пацієнтом
+        $confirmationToken = Str::random(64);
 
         $appointment = Appointment::create([
             'clinic_id' => $doctor->clinic_id,
@@ -160,6 +197,7 @@ class AppointmentController extends Controller
 
             'assistant_id' => $assistantId,
             'patient_id' => $data['patient_id'] ?? null,
+            'confirmation_token' => $confirmationToken,
 
             'is_follow_up' => (bool)($data['is_follow_up'] ?? false),
 
@@ -275,18 +313,7 @@ class AppointmentController extends Controller
             $duration = $step->duration_minutes;
             $endAt = $startAt->copy()->addMinutes($duration);
 
-            $resolvedRoom = $room;
-            if ($procedure->requires_room) {
-                $resolvedRoom = $availability->resolveRoom(
-                    $resolvedRoom,
-                    $procedure,
-                    $date,
-                    $startAt,
-                    $endAt,
-                    $doctor->clinic_id
-                );
-            }
-
+            // Спочатку визначаємо обладнання
             $resolvedEquipment = $equipment;
             if ($procedure->equipment_id) {
                 $resolvedEquipment = $availability->resolveEquipment(
@@ -295,7 +322,35 @@ class AppointmentController extends Controller
                     $date,
                     $startAt,
                     $endAt,
-                    $doctor->clinic_id
+                    $doctor->clinic_id,
+                    $room // Передаємо кабінет для перевірки сумісності
+                );
+            }
+
+            // Потім визначаємо кабінет з урахуванням обладнання
+            $resolvedRoom = $room;
+            if ($procedure->requires_room) {
+                $resolvedRoom = $availability->resolveRoom(
+                    $resolvedRoom,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $doctor->clinic_id,
+                    $resolvedEquipment // Передаємо обладнання для перевірки сумісності
+                );
+            }
+
+            // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
+            if ($resolvedRoom && $procedure->equipment_id && !$resolvedEquipment) {
+                $resolvedEquipment = $availability->resolveEquipment(
+                    $procedure->equipment,
+                    $procedure,
+                    $date,
+                    $startAt,
+                    $endAt,
+                    $doctor->clinic_id,
+                    $resolvedRoom
                 );
             }
 
@@ -354,10 +409,21 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        if (!empty($conflictsSummary['soft']) && !($data['allow_soft_conflicts'] ?? false)) {
+        // Informational soft conflicts should NOT block series creation.
+        $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
+        $blockingSoftSummary = array_values(array_filter($conflictsSummary['soft'] ?? [], function ($entry) use ($informationalSoftCodes) {
+            $conflicts = $entry['conflicts'] ?? [];
+            $blocking = array_values(array_filter(
+                $conflicts,
+                fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+            ));
+            return !empty($blocking);
+        }));
+
+        if (!empty($blockingSoftSummary) && !($data['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
-                'soft_conflicts' => $conflictsSummary['soft'],
+                'soft_conflicts' => $blockingSoftSummary,
             ], 409);
         }
 
@@ -420,6 +486,13 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
+        \Log::info('Appointment update request received', [
+            'appointment_id' => $appointment->id,
+            'method' => $request->method(),
+            'payload' => $request->all(),
+            'headers' => $request->headers->all()
+        ]);
+
         $previousDoctorId = $appointment->doctor_id;
         $previousStartAt = $appointment->start_at;
         $previousEndAt = $appointment->end_at;
@@ -428,8 +501,8 @@ class AppointmentController extends Controller
             'doctor_id' => ['sometimes', 'exists:doctors,id'],
             'date' => ['sometimes', 'date'],
             'time' => ['sometimes', 'date_format:H:i'],
-            'start_at' => ['sometimes', 'date'],
-            'end_at' => ['sometimes', 'date', 'after:start_at'],
+            'start_at' => ['sometimes', 'nullable', 'date'],
+            'end_at' => ['sometimes', 'nullable', 'date', 'after:start_at'],
 
             'procedure_id' => ['sometimes', 'nullable', 'exists:procedures,id'],
             'procedure_step_id' => ['sometimes', 'nullable', 'exists:procedure_steps,id'],
@@ -440,7 +513,7 @@ class AppointmentController extends Controller
             'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
             'is_follow_up' => ['sometimes', 'boolean'],
 
-            'status' => ['sometimes', 'string', 'in:' . implode(',', Appointment::ALLOWED_STATUSES)],
+            'status' => ['sometimes', 'nullable', 'string', 'in:' . implode(',', Appointment::ALLOWED_STATUSES)],
             'comment' => ['sometimes', 'nullable', 'string'],
             'allow_soft_conflicts' => ['sometimes', 'boolean'],
         ]);
@@ -479,6 +552,7 @@ class AppointmentController extends Controller
         $equipment = array_key_exists('equipment_id', $validated)
             ? Equipment::find($validated['equipment_id'])
             : $appointment->equipment;
+        $equipmentWasSelected = array_key_exists('equipment_id', $validated) && !empty($validated['equipment_id']);
 
         $assistantId = array_key_exists('assistant_id', $validated)
             ? $validated['assistant_id']
@@ -536,8 +610,30 @@ class AppointmentController extends Controller
             }
         }
 
+        // Спочатку визначаємо обладнання, якщо потрібне
+        if ($procedure?->equipment_id) {
+            $equipment = $availability->resolveEquipment(
+                $equipment ?? $procedure->equipment,
+                $procedure,
+                $date,
+                $startAt,
+                $endAt,
+                $doctor->clinic_id,
+                $room // Передаємо кабінет для перевірки сумісності
+            );
+
+            // Якщо користувач явно вибрав обладнання, але воно "зникло" через несумісність кабінет↔обладнання
+            if ($equipmentWasSelected && ! $equipment) {
+                return response()->json([
+                    'message' => 'Обране обладнання не доступне у вибраному кабінеті. Привʼяжіть обладнання до кабінету або виберіть інший кабінет/обладнання.',
+                    'error' => 'equipment_not_in_room',
+                ], 422);
+            }
+        }
+
+        // Потім визначаємо кабінет з урахуванням обладнання
         if ($procedure && $procedure->requires_room) {
-            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id);
+            $room = $availability->resolveRoom($room, $procedure, $date, $startAt, $endAt, $doctor->clinic_id, $equipment);
         }
 
         if ($procedure && $procedure->requires_room && ! $room) {
@@ -546,14 +642,16 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        if ($procedure?->equipment_id) {
+        // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
+        if ($room && $procedure?->equipment_id && !$equipment) {
             $equipment = $availability->resolveEquipment(
-                $equipment ?? $procedure->equipment,
+                $procedure->equipment,
                 $procedure,
                 $date,
                 $startAt,
                 $endAt,
-                $doctor->clinic_id
+                $doctor->clinic_id,
+                $room
             );
         }
 
@@ -577,10 +675,17 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        if (!empty($conflicts['soft']) && !($validated['allow_soft_conflicts'] ?? false)) {
+        // Informational soft conflicts should NOT block update.
+        $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
+        $blockingSoft = array_values(array_filter(
+            $conflicts['soft'] ?? [],
+            fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+        ));
+
+        if (!empty($blockingSoft) && !($validated['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
-                'soft_conflicts' => $conflicts['soft'],
+                'soft_conflicts' => $blockingSoft,
             ], 409);
         }
 
@@ -636,6 +741,7 @@ class AppointmentController extends Controller
             'doctor_ids' => ['nullable', 'array'],
             'doctor_ids.*' => ['integer', 'exists:doctors,id'],
             'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
+            'procedure_id' => ['nullable', 'integer', 'exists:procedures,id'],
         ]);
 
         $query = Appointment::query()
@@ -679,6 +785,10 @@ class AppointmentController extends Controller
 
         if (!empty($validated['clinic_id'])) {
             $query->where('clinic_id', $validated['clinic_id']);
+        }
+
+        if (!empty($validated['procedure_id'])) {
+            $query->where('procedure_id', $validated['procedure_id']);
         }
 
         // пагінація
@@ -726,6 +836,165 @@ class AppointmentController extends Controller
                 $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment'])
             ),
             'waitlist_suggestions' => $waitlistSuggestions,
+        ]);
+    }
+
+    /**
+     * Завершити прийом раніше (варіант A): ставимо статус "done" і скорочуємо end_at до поточного часу.
+     * Це одразу "повертає" слот для подальших записів.
+     */
+    public function finish(Request $request, Appointment $appointment)
+    {
+        $user = $request->user();
+
+        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+            abort(403, 'У вас немає доступу до завершення цього запису');
+        }
+
+        $data = $request->validate([
+            // optional backdated finish time (defaults to now)
+            'ended_at' => ['sometimes', 'nullable', 'date'],
+        ]);
+
+        // If record hasn't started yet, do not allow finishing early
+        $endedAt = !empty($data['ended_at'])
+            ? Carbon::parse($data['ended_at'])
+            : now();
+
+        if ($endedAt->lt($appointment->start_at)) {
+            return response()->json([
+                'message' => 'Цей запис ще не почався. Неможливо завершити прийом раніше початку.',
+                'error' => 'appointment_not_started',
+            ], 422);
+        }
+
+        $previousEndAt = $appointment->end_at;
+
+        // Do not extend the appointment; only shorten it
+        if ($previousEndAt && $endedAt->gt($previousEndAt)) {
+            $endedAt = $previousEndAt;
+        }
+
+        $appointment->update([
+            'status' => 'done',
+            'end_at' => $endedAt,
+        ]);
+
+        // Invalidate slots cache so freed time becomes available immediately
+        if ($previousEndAt) {
+            $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $previousEndAt);
+        }
+        $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+
+        return response()->json([
+            'status' => 'done',
+            'appointment' => new AppointmentResource(
+                $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment', 'invoice'])
+            ),
+        ]);
+    }
+
+    /**
+     * Підтвердження запису пацієнтом через токен
+     */
+    public function confirm(string $token)
+    {
+        $appointment = Appointment::where('confirmation_token', $token)
+            ->whereIn('status', ['planned', 'confirmed'])
+            ->with(['procedure', 'patient'])
+            ->first();
+
+        if (!$appointment) {
+            return response()->json([
+                'message' => 'Токен недійсний або запис вже підтверджено/скасовано',
+            ], 404);
+        }
+
+        // Перевіряємо, чи запис ще не минув
+        if ($appointment->start_at->isPast()) {
+            return response()->json([
+                'message' => 'Неможливо підтвердити запис, який вже минув',
+            ], 422);
+        }
+
+        // Перевірка передоплати перед підтвердженням
+        if ($appointment->procedure && $appointment->procedure->requires_prepayment) {
+            $hasPrepayment = Invoice::where('patient_id', $appointment->patient_id)
+                ->where(function ($q) use ($appointment) {
+                    $q->where('procedure_id', $appointment->procedure_id)
+                        ->orWhere('appointment_id', $appointment->id);
+                })
+                ->where('status', Invoice::STATUS_PAID)
+                ->where('is_prepayment', true)
+                ->whereRaw('paid_amount >= amount')
+                ->exists();
+
+            if (!$hasPrepayment) {
+                return response()->json([
+                    'message' => 'Для підтвердження запису потрібна передоплата. Будь ласка, зверніться до клініки.',
+                    'requires_prepayment' => true,
+                ], 422);
+            }
+        }
+
+        $appointment->update([
+            'status' => 'confirmed',
+            'confirmed_at' => now(),
+        ]);
+
+        $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+
+        return response()->json([
+            'message' => 'Запис успішно підтверджено',
+            'appointment' => new AppointmentResource(
+                $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment', 'invoice'])
+            ),
+        ]);
+    }
+
+    /**
+     * Перевірка передоплати для запису
+     */
+    public function checkPrepayment(Request $request, Appointment $appointment)
+    {
+        $user = $request->user();
+
+        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+            abort(403, 'У вас немає доступу до цього запису');
+        }
+
+        $hasPrepayment = false;
+        $invoice = null;
+
+        if ($appointment->procedure && $appointment->procedure->requires_prepayment) {
+            $invoice = Invoice::where('patient_id', $appointment->patient_id)
+                ->where(function ($q) use ($appointment) {
+                    $q->where('procedure_id', $appointment->procedure_id)
+                        ->orWhere('appointment_id', $appointment->id);
+                })
+                ->where('status', Invoice::STATUS_PAID)
+                ->where('is_prepayment', true)
+                ->whereRaw('paid_amount >= amount')
+                ->first();
+
+            $hasPrepayment = $invoice !== null;
+
+            // Якщо знайдено інвойс, зв'язуємо його з записом
+            if ($hasPrepayment && $invoice && !$appointment->invoice_id) {
+                $appointment->update(['invoice_id' => $invoice->id]);
+            }
+        }
+
+        return response()->json([
+            'requires_prepayment' => $appointment->procedure?->requires_prepayment ?? false,
+            'has_prepayment' => $hasPrepayment,
+            'invoice' => $invoice ? [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => $invoice->amount,
+                'paid_amount' => $invoice->paid_amount,
+                'status' => $invoice->status,
+            ] : null,
         ]);
     }
 

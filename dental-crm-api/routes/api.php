@@ -22,7 +22,16 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\Api\DoctorScheduleSettingsController;
+use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\ReportsController;
 use App\Support\RoleHierarchy;
+
+// ---- CORS PREFLIGHT (OPTIONS) ----
+// Деякі браузери/проксі можуть не пропускати OPTIONS коректно, особливо для PUT/PATCH з Authorization.
+// Тому додаємо явну відповідь 204 на будь-який OPTIONS /api/* запит.
+Route::options('/{any}', function () {
+    return response()->noContent();
+})->where('any', '.*');
 
 // ---- AUTH ----
 
@@ -95,6 +104,16 @@ Route::get('/health', function () {
     ]);
 });
 
+// ---- ПУБЛІЧНІ ROUTES ДЛЯ ПАЦІЄНТІВ ----
+
+// Підтвердження запису через токен (без авторизації)
+Route::post('/appointments/confirm/{token}', [AppointmentController::class, 'confirm']);
+
+// Перевірка передоплати (потребує авторизації)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/appointments/{appointment}/check-prepayment', [AppointmentController::class, 'checkPrepayment']);
+});
+
 // ---- ЗАХИЩЕНІ CRM-РОУТИ ----
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -140,6 +159,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('appointments/series', [AppointmentController::class, 'storeSeries']);
     Route::put('appointments/{appointment}', [\App\Http\Controllers\Api\AppointmentController::class, 'update']);
     Route::post('appointments/{appointment}/cancel', [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
+    Route::post('appointments/{appointment}/finish', [\App\Http\Controllers\Api\AppointmentController::class, 'finish']);
+    Route::get('appointments/{appointment}/check-prepayment', [AppointmentController::class, 'checkPrepayment']);
     Route::get('/appointments', [AppointmentController::class, 'index']);
 
     Route::get('waitlist', [WaitlistController::class, 'index']);
@@ -165,4 +186,16 @@ Route::middleware('auth:sanctum')->group(function () {
             'clinics'        => $clinics,
         ]);
     });
+
+    // Analytics endpoints
+    Route::prefix('analytics')->group(function () {
+        Route::get('doctors/load', [AnalyticsController::class, 'doctorsLoad']);
+        Route::get('rooms/load', [AnalyticsController::class, 'roomsLoad']);
+        Route::get('procedures/popular', [AnalyticsController::class, 'popularProcedures']);
+        Route::get('appointments/conversion', [AnalyticsController::class, 'conversion']);
+        Route::get('appointments/no-show', [AnalyticsController::class, 'noShowRate']);
+    });
+
+    // Reports endpoints
+    Route::get('reports/appointments', [ReportsController::class, 'appointments']);
 });
