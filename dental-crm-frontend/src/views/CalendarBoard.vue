@@ -179,8 +179,12 @@
                           <div
                             v-for="item in cell.items.slice(0, MAX_EVENTS_PER_DAY)"
                             :key="item.id"
-                            class="rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-100"
-                            :class="item.type === 'block' ? 'bg-slate-500/20 text-slate-100' : ''"
+                            class="rounded-md px-2 py-1 text-[10px] font-medium shadow-sm border border-emerald-500/30"
+                            :class="[
+                              item.type === 'block' 
+                                ? 'bg-slate-600/90 text-slate-50 dark:bg-slate-500/20 dark:text-slate-100' 
+                                : getMonthEventClass(item)
+                            ]"
                             @click.stop="handleMonthEventClick(item)"
                           >
                             <span class="truncate block">{{ item.title }}</span>
@@ -421,6 +425,23 @@ const formatTimeHM = (date) => {
   const hour = `${normalized.getHours()}`.padStart(2, '0')
   const minute = `${normalized.getMinutes()}`.padStart(2, '0')
   return `${hour}:${minute}`
+}
+
+const getMonthEventClass = (item) => {
+  const status = item.raw?.status || item.extendedProps?.status || item.status || 'planned'
+  const statusMap = {
+    planned: 'bg-emerald-50 text-emerald-800 border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:border-emerald-500/30',
+    scheduled: 'bg-emerald-50 text-emerald-800 border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:border-emerald-500/30',
+    confirmed: 'bg-blue-50 text-blue-800 border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-100 dark:border-blue-500/30',
+    reminded: 'bg-blue-50 text-blue-800 border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-100 dark:border-blue-500/30',
+    waiting: 'bg-yellow-50 text-yellow-800 border-yellow-500/40 dark:bg-yellow-500/15 dark:text-yellow-100 dark:border-yellow-500/30',
+    done: 'bg-green-50 text-green-800 border-green-500/40 dark:bg-green-500/15 dark:text-green-100 dark:border-green-500/30',
+    completed: 'bg-green-50 text-green-800 border-green-500/40 dark:bg-green-500/15 dark:text-green-100 dark:border-green-500/30',
+    cancelled: 'bg-red-50 text-red-800 border-red-500/40 dark:bg-red-500/15 dark:text-red-100 dark:border-red-500/30',
+    no_show: 'bg-orange-50 text-orange-800 border-orange-500/40 dark:bg-orange-500/15 dark:text-orange-100 dark:border-orange-500/30',
+    arrived: 'bg-purple-50 text-purple-800 border-purple-500/40 dark:bg-purple-500/15 dark:text-purple-100 dark:border-purple-500/30'
+  }
+  return statusMap[status] || statusMap.planned
 }
 
 const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : '')

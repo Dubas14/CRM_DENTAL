@@ -13,14 +13,14 @@
     <div class="flex flex-col h-full overflow-hidden">
       <!-- Header: Time & Status -->
       <div class="flex items-center gap-1.5 min-w-0 mb-0.5">
-        <span class="text-[10px] font-bold opacity-80 whitespace-nowrap tabular-nums tracking-tight">
+        <span class="text-[10px] font-bold whitespace-nowrap tabular-nums tracking-tight" style="opacity: 0.9;">
           {{ timeLabel }}
         </span>
         <span v-if="item.status === 'done'" class="text-[10px] opacity-100" title="Виконано">✅</span>
       </div>
 
       <!-- Title / Patient Name -->
-      <div class="font-semibold text-sm leading-tight truncate">
+      <div class="font-semibold text-sm leading-tight truncate" style="font-weight: 600;">
         {{ item.title }}
       </div>
 
@@ -166,42 +166,42 @@ const handleClick = () => {
 
 /* Status: Planned/Scheduled */
 .appointment-status-planned {
-  background-color: rgb(255 255 255);
+  background-color: rgb(236 253 245);
   border-left: 4px solid rgb(16 185 129);
   color: rgb(5 46 22);
-  border-right: 1px solid rgba(16, 185, 129, 0.2);
-  border-top: 1px solid rgba(16, 185, 129, 0.2);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border-right: 1px solid rgba(16, 185, 129, 0.3);
+  border-top: 1px solid rgba(16, 185, 129, 0.3);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.08);
 }
 
 .appointment-status-planned.appointment-status-past {
-  background-color: rgb(248 250 252);
+  background-color: rgb(241 245 249);
   border-left-color: rgb(148 163 184);
-  color: rgb(71 85 105);
-  border-right-color: rgba(148, 163, 184, 0.2);
-  border-top-color: rgba(148, 163, 184, 0.2);
-  border-bottom-color: rgba(148, 163, 184, 0.2);
+  color: rgb(51 65 85);
+  border-right-color: rgba(148, 163, 184, 0.3);
+  border-top-color: rgba(148, 163, 184, 0.3);
+  border-bottom-color: rgba(148, 163, 184, 0.3);
 }
 
 /* Status: Confirmed */
 .appointment-status-confirmed {
-  background-color: rgb(239 246 255);
+  background-color: rgb(219 234 254);
   border-left: 4px solid rgb(59 130 246);
   color: rgb(30 58 138);
-  border-right: 1px solid rgba(59, 130, 246, 0.2);
-  border-top: 1px solid rgba(59, 130, 246, 0.2);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  border-right: 1px solid rgba(59, 130, 246, 0.3);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 /* Status: Waiting */
 .appointment-status-waiting {
-  background-color: rgb(254 252 232);
+  background-color: rgb(254 249 195);
   border-left: 4px solid rgb(234 179 8);
   color: rgb(113 63 18);
-  border-right: 1px solid rgba(234, 179, 8, 0.2);
-  border-top: 1px solid rgba(234, 179, 8, 0.2);
-  border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+  border-right: 1px solid rgba(234, 179, 8, 0.3);
+  border-top: 1px solid rgba(234, 179, 8, 0.3);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.3);
 }
 
 /* Status: Done/Completed */
@@ -216,34 +216,34 @@ const handleClick = () => {
 
 /* Status: Cancelled */
 .appointment-status-cancelled {
-  background-color: rgb(254 242 242);
+  background-color: rgb(254 226 226);
   border-left: 4px solid rgb(239 68 68);
   color: rgb(127 29 29);
-  border-right: 1px solid rgba(239, 68, 68, 0.2);
-  border-top: 1px solid rgba(239, 68, 68, 0.2);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  border-right: 1px solid rgba(239, 68, 68, 0.3);
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
   text-decoration: line-through;
-  text-decoration-color: rgba(127, 29, 29, 0.3);
+  text-decoration-color: rgba(127, 29, 29, 0.4);
 }
 
 /* Status: No Show */
 .appointment-status-no-show {
-  background-color: rgb(255 247 237);
+  background-color: rgb(255 237 213);
   border-left: 4px solid rgb(249 115 22);
   color: rgb(124 45 18);
-  border-right: 1px solid rgba(249, 115, 22, 0.2);
-  border-top: 1px solid rgba(249, 115, 22, 0.2);
-  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+  border-right: 1px solid rgba(249, 115, 22, 0.3);
+  border-top: 1px solid rgba(249, 115, 22, 0.3);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.3);
 }
 
 /* Status: Arrived */
 .appointment-status-arrived {
-  background-color: rgb(250 245 255);
+  background-color: rgb(243 232 255);
   border-left: 4px solid rgb(168 85 247);
   color: rgb(88 28 135);
-  border-right: 1px solid rgba(168, 85, 247, 0.2);
-  border-top: 1px solid rgba(168, 85, 247, 0.2);
-  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+  border-right: 1px solid rgba(168, 85, 247, 0.3);
+  border-top: 1px solid rgba(168, 85, 247, 0.3);
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 
