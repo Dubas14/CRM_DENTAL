@@ -486,13 +486,6 @@ class AppointmentController extends Controller
 
     public function update(Request $request, Appointment $appointment)
     {
-        \Log::info('Appointment update request received', [
-            'appointment_id' => $appointment->id,
-            'method' => $request->method(),
-            'payload' => $request->all(),
-            'headers' => $request->headers->all()
-        ]);
-
         $previousDoctorId = $appointment->doctor_id;
         $previousStartAt = $appointment->start_at;
         $previousEndAt = $appointment->end_at;

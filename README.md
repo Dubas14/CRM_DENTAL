@@ -115,7 +115,7 @@ cd dental-crm-api
 composer install
 
 # Створити .env файл
-cp .env.example .env
+cp env.example.txt .env
 
 # Згенерувати ключ
 php artisan key:generate
@@ -136,7 +136,7 @@ cd dental-crm-frontend
 npm install
 
 # Створити .env файл
-cp .env.example .env
+cp env.example.txt .env
 
 # Запустити dev сервер
 npm run dev
@@ -300,12 +300,43 @@ MIT License
 - Email: support@crmdental.com
 - Issues: [GitHub Issues](https://github.com/your-repo/issues)
 
+## 🔒 Безпека
+
+### Важливо: Не комітьте секрети!
+
+- **Ніколи не комітьте** `.env` файли або файли з реальними секретами (`env_backend.txt`, `env_frontend.txt`)
+- Використовуйте `env.example.txt` як шаблон
+- Після клонування репозиторію:
+  1. Створіть `.env` з `env.example.txt`
+  2. Згенеруйте новий `APP_KEY`: `php artisan key:generate`
+  3. Змініть всі паролі та API ключі
+
+### Очищення репозиторію
+
+Якщо ви випадково закомітили артефакти (vendor, node_modules, storage, логи), видаліть їх з git індексу:
+
+```bash
+# Видалити з git (не з файлової системи)
+git rm -r --cached dental-crm-api/vendor
+git rm -r --cached dental-crm-api/node_modules
+git rm -r --cached dental-crm-frontend/node_modules
+git rm -r --cached dental-crm-api/storage/logs
+git rm --cached dental-crm-api/env_backend.txt
+git rm --cached dental-crm-frontend/env_frontend.txt
+
+# Закомітити зміни
+git commit -m "chore: remove tracked artifacts from git"
+```
+
+Детальніше про безпеку: [SECURITY.md](SECURITY.md)
+
 ---
 
 **Примітка**: Це production-ready система. Перед розгортанням на production переконайтеся, що:
 - Налаштовано HTTPS
-- Змінено всі секретні ключі
+- Змінено всі секретні ключі (особливо `APP_KEY`)
 - Налаштовано backup БД
 - Увімкнено логування помилок
 - Налаштовано моніторинг
+- Перевірено `.gitignore` та не закомічені секрети
 

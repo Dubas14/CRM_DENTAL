@@ -383,7 +383,6 @@ const updateAppointment = async () => {
       updatePayload.clinic_id = props.clinicId
     }
 
-    console.log('Updating appointment with payload:', updatePayload)
     await calendarApi.updateAppointment(appointmentId.value, updatePayload)
     emit('saved')
     emit('close')

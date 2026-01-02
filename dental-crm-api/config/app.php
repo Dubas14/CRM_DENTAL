@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Request Logging
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the LogRequests middleware will log PUT/PATCH/DELETE requests
+    | for debugging purposes. Set LOG_REQUESTS=true in .env to enable.
+    |
+    */
+
+    'log_requests' => (bool) env('LOG_REQUESTS', false),
+
 ];

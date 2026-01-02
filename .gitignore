@@ -2,11 +2,22 @@
 dental-crm-api/vendor/
 dental-crm-api/node_modules/
 dental-crm-api/storage/
+!dental-crm-api/storage/.gitignore
+!dental-crm-api/storage/app/.gitignore
+!dental-crm-api/storage/framework/.gitignore
+!dental-crm-api/storage/framework/cache/.gitignore
+!dental-crm-api/storage/framework/sessions/.gitignore
+!dental-crm-api/storage/framework/views/.gitignore
+!dental-crm-api/storage/logs/.gitignore
 dental-crm-api/public/storage/
 dental-crm-api/.env
 dental-crm-api/.env.*
+dental-crm-api/env_backend.txt
 dental-crm-api/.phpunit.cache/
+dental-crm-api/.phpunit.result.cache
 dental-crm-api/storage/*.key
+dental-crm-api/bootstrap/cache/*.php
+!dental-crm-api/bootstrap/cache/.gitignore
 
 ### Composer ###
 composer.phar
@@ -20,23 +31,40 @@ _ide_helper*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 ### Vue / Vite ###
 dental-crm-frontend/node_modules/
 dental-crm-frontend/.env
 dental-crm-frontend/.env.*
+dental-crm-frontend/env_frontend.txt
 dental-crm-frontend/dist/
+dental-crm-frontend/dist-ssr/
 dental-crm-frontend/.vite/
 dental-crm-frontend/.DS_Store
+
+### Logs ###
+*.log
+logs/
+**/logs/
 
 ### OS files ###
 .DS_Store
 Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 ### IDE ###
 .idea/
 .vscode/
 *.iml
+.fleet/
+.nova/
+.zed/
 
 ### Docker ###
 docker-compose.override.yml

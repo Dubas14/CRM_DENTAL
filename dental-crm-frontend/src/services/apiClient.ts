@@ -109,19 +109,6 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    // Логування для діагностики
-    if (config.method?.toUpperCase() === 'PUT' && config.url?.includes('/appointments/')) {
-      const fullURL = config.baseURL ? `${config.baseURL}${config.url}` : config.url
-      console.log('PUT request interceptor:', {
-        url: config.url,
-        baseURL: config.baseURL,
-        fullURL: fullURL,
-        method: config.method,
-        headers: config.headers,
-        payload: config.data
-      })
-    }
-
     return config
   },
   (error) => {

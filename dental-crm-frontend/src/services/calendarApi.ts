@@ -153,7 +153,6 @@ const calendarApi = {
         end_at: payload.end_at
       }
       
-      console.log('Sending PUT request to:', `/appointments/${appointmentId}`, 'Payload:', JSON.stringify(requestPayload, null, 2))
       return apiClient.put(`/appointments/${appointmentId}`, requestPayload)
     }
 
