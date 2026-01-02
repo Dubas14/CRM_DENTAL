@@ -115,7 +115,7 @@ cd dental-crm-api
 composer install
 
 # Створити .env файл
-cp env.example.txt .env
+cp .env.example .env
 
 # Згенерувати ключ
 php artisan key:generate
@@ -136,7 +136,7 @@ cd dental-crm-frontend
 npm install
 
 # Створити .env файл
-cp env.example.txt .env
+cp .env.example .env
 
 # Запустити dev сервер
 npm run dev
@@ -305,9 +305,9 @@ MIT License
 ### Важливо: Не комітьте секрети!
 
 - **Ніколи не комітьте** `.env` файли або файли з реальними секретами
-- Використовуйте `env.example.txt` як шаблон
+- Використовуйте `.env.example` як шаблон
 - Після клонування репозиторію:
-  1. Створіть `.env` з `env.example.txt`
+  1. Створіть `.env` з `.env.example`
   2. Згенеруйте новий `APP_KEY`: `php artisan key:generate`
   3. Змініть всі паролі та API ключі
 

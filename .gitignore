@@ -12,6 +12,7 @@ dental-crm-api/storage/
 dental-crm-api/public/storage/
 dental-crm-api/.env
 dental-crm-api/.env.*
+!dental-crm-api/.env.example
 dental-crm-api/env_backend.txt
 dental-crm-api/.phpunit.cache/
 dental-crm-api/.phpunit.result.cache
@@ -38,6 +39,7 @@ lerna-debug.log*
 dental-crm-frontend/node_modules/
 dental-crm-frontend/.env
 dental-crm-frontend/.env.*
+!dental-crm-frontend/.env.example
 dental-crm-frontend/env_frontend.txt
 dental-crm-frontend/dist/
 dental-crm-frontend/dist-ssr/

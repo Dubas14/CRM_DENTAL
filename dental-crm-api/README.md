@@ -41,7 +41,7 @@ npm install
 Скопіюйте файл з прикладами змінних оточення:
 
 ```bash
-cp env.example.txt .env
+cp .env.example .env
 ```
 
 Згенеруйте ключ додатку:

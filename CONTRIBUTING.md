@@ -23,7 +23,7 @@ Thank you for your interest in contributing to CRM Dental! This document provide
 ```bash
 cd dental-crm-api
 composer install
-cp env.example.txt .env
+cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
 php artisan serve
@@ -34,7 +34,7 @@ php artisan serve
 ```bash
 cd dental-crm-frontend
 npm install
-cp env.example.txt .env
+cp .env.example .env
 npm run dev
 ```
 
