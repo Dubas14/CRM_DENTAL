@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Clinic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use App\Support\QuerySearch;
 
@@ -19,7 +20,10 @@ class DoctorController extends Controller
         $authUser = $request->user();
 
         $query = Doctor::query()
-            ->with('clinic:id,name,city');
+            ->with([
+                'clinic:id,name,city',
+                'user:id,email',
+            ]);
 
         // ✅ Access rules priority:
         // super_admin -> all
@@ -66,9 +70,16 @@ class DoctorController extends Controller
             'specialization' => ['nullable', 'string', 'max:255'],
             'bio'            => ['nullable', 'string'],
             'color'          => ['nullable', 'string', 'max:20'],
+            'phone'          => ['nullable', 'string', 'max:50'],
+            'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
+            'room'           => ['nullable', 'string', 'max:255'],
+            'admin_contact'  => ['nullable', 'string', 'max:255'],
+            'address'        => ['nullable', 'string', 'max:255'],
+            'city'           => ['nullable', 'string', 'max:255'],
+            'state'          => ['nullable', 'string', 'max:255'],
+            'zip'            => ['nullable', 'string', 'max:50'],
 
             // дані акаунта користувача
-            'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
             'password'       => ['required', 'string', 'min:6'],
         ]);
 
@@ -101,6 +112,14 @@ class DoctorController extends Controller
                 'clinic_id'     => $data['clinic_id'],
                 'full_name'     => $data['full_name'],
                 'specialization'=> $data['specialization'] ?? null,
+                'phone'         => $data['phone'] ?? null,
+                'email'         => $data['email'],
+                'room'          => $data['room'] ?? null,
+                'admin_contact' => $data['admin_contact'] ?? null,
+                'address'       => $data['address'] ?? null,
+                'city'          => $data['city'] ?? null,
+                'state'         => $data['state'] ?? null,
+                'zip'           => $data['zip'] ?? null,
                 'bio'           => $data['bio'] ?? null,
                 'color'         => $data['color'] ?? '#22c55e',
                 'is_active'     => true,
@@ -149,7 +168,16 @@ class DoctorController extends Controller
             'specialization' => ['sometimes', 'nullable', 'string', 'max:255'],
             'bio'            => ['sometimes', 'nullable', 'string'],
             'color'          => ['sometimes', 'nullable', 'string', 'max:20'],
+            'phone'          => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email'          => ['sometimes', 'nullable', 'email', 'max:255', 'unique:users,email,' . $doctor->user_id],
+            'room'           => ['sometimes', 'nullable', 'string', 'max:255'],
+            'admin_contact'  => ['sometimes', 'nullable', 'string', 'max:255'],
+            'address'        => ['sometimes', 'nullable', 'string', 'max:255'],
+            'city'           => ['sometimes', 'nullable', 'string', 'max:255'],
+            'state'          => ['sometimes', 'nullable', 'string', 'max:255'],
+            'zip'            => ['sometimes', 'nullable', 'string', 'max:50'],
             'is_active'      => ['sometimes', 'boolean'],
+            'status'         => ['sometimes', 'string', 'in:active,vacation,inactive'],
         ]);
 
         $doctor->fill($data);
@@ -159,6 +187,41 @@ class DoctorController extends Controller
             $doctor->user->name = $data['full_name'];
             $doctor->user->save();
         }
+
+        if (array_key_exists('email', $data) && $doctor->user && $data['email']) {
+            $doctor->user->email = $data['email'];
+            $doctor->user->save();
+        }
+
+        return response()->json($doctor->fresh()->load('clinic'));
+    }
+
+    public function uploadAvatar(Request $request, Doctor $doctor)
+    {
+        $authUser = $request->user();
+
+        $canEdit =
+            $authUser->isSuperAdmin()
+            || $authUser->hasClinicRole($doctor->clinic_id, ['clinic_admin'])
+            || ($doctor->user_id && $doctor->user_id === $authUser->id);
+
+        if (! $canEdit) {
+            abort(403, 'У вас немає права редагувати цього лікаря');
+        }
+
+        $validated = $request->validate([
+            'avatar' => ['required', 'file', 'image', 'max:4096'],
+        ]);
+
+        $file = $validated['avatar'];
+        $path = $file->store('doctor-avatars', 'public');
+
+        if ($doctor->avatar_path && Storage::disk('public')->exists($doctor->avatar_path)) {
+            Storage::disk('public')->delete($doctor->avatar_path);
+        }
+
+        $doctor->avatar_path = $path;
+        $doctor->save();
 
         return response()->json($doctor->fresh()->load('clinic'));
     }

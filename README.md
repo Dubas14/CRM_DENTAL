@@ -185,9 +185,19 @@ npm run test:e2e
 
 ## 📚 Документація
 
+### Основна документація
 - [API Documentation](dental-crm-api/docs/API_DOCUMENTATION.md)
 - [Calendar Module Design](dental-crm-api/docs/calendar_module_design.md)
 - [Audit Logging](dental-crm-api/docs/AUDIT_LOGGING.md)
+
+### Планування та дизайн
+- [Telegram Нагадування для Лікарів](dental-crm-api/docs/TELEGRAM_NOTIFICATIONS.md)
+- [Аналітика та Dashboard](dental-crm-api/docs/ANALYTICS_DASHBOARD.md)
+- [Експорт/Імпорт даних](dental-crm-api/docs/EXPORT_IMPORT.md)
+- [API Versioning](dental-crm-api/docs/API_VERSIONING.md)
+- [2FA для Адміністраторів](dental-crm-api/docs/2FA_DESIGN.md)
+- [Платіжні Системи (Шаблон)](dental-crm-api/docs/PAYMENTS_TEMPLATE.md)
+- [Мобільний Додаток (Scope)](dental-crm-api/docs/MOBILE_APP_SCOPE.md)
 
 ## 🔑 API Endpoints
 
@@ -246,17 +256,17 @@ PUT /api/doctors/{id}/schedule
 - [x] Database indexes
 
 ### 🚧 In Progress
-- [ ] Нагадування пацієнтам (SMS/Email)
-- [ ] Аналітика та звіти
-- [ ] Dashboard з статистикою
+- [x] Нагадування для лікарів (Telegram) - [Документація](dental-crm-api/docs/TELEGRAM_NOTIFICATIONS.md)
+- [ ] Аналітика та звіти - [Документація](dental-crm-api/docs/ANALYTICS_DASHBOARD.md)
+- [ ] Dashboard з статистикою - [Документація](dental-crm-api/docs/ANALYTICS_DASHBOARD.md)
 
 ### 📝 Planned
-- [ ] Експорт/імпорт даних
-- [ ] API versioning
-- [ ] Мультимовність (i18n)
-- [ ] 2FA для адміністраторів
-- [ ] Інтеграція з платіжними системами
-- [ ] Мобільний додаток
+- [x] Експорт/імпорт даних - [Документація](dental-crm-api/docs/EXPORT_IMPORT.md)
+- [x] API versioning - [Документація](dental-crm-api/docs/API_VERSIONING.md)
+- [ ] Мультимовність (i18n) - Відкладено, враховується в нових текстах
+- [x] 2FA для адміністраторів - [Документація](dental-crm-api/docs/2FA_DESIGN.md)
+- [x] Інтеграція з платіжними системами - [Шаблон](dental-crm-api/docs/PAYMENTS_TEMPLATE.md)
+- [ ] Мобільний додаток - [Scope](dental-crm-api/docs/MOBILE_APP_SCOPE.md) (на паузі)
 
 ## 🤝 Contributing
 

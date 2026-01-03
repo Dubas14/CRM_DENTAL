@@ -27,7 +27,7 @@ class DoctorFactory extends Factory
                 'Стоматолог-хірург',
                 'Ортодонт',
             ]),
-            'status' => Arr::random(['active', 'vacation', 'inactive']),
+            'status' => 'active',
             'color' => fake()->hexColor(),
             'bio' => fake()->paragraph(),
             'is_active' => true,

@@ -16,10 +16,23 @@ class Doctor extends Model
         'user_id',
         'full_name',
         'specialization',
+        'avatar_path',
+        'phone',
+        'email',
+        'room',
+        'admin_contact',
+        'address',
+        'city',
+        'state',
+        'zip',
         'status',
         'color',
         'bio',
         'is_active',
+    ];
+
+    protected $appends = [
+        'avatar_url',
     ];
 
     /* =======================
@@ -80,4 +93,21 @@ class Doctor extends Model
         return $this->is_active === true;
     }
 
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar_path) {
+            return null;
+        }
+
+        return asset('storage/' . ltrim($this->avatar_path, '/'));
+    }
+
+    public function getEmailAttribute($value): ?string
+    {
+        if ($value) {
+            return $value;
+        }
+
+        return $this->relationLoaded('user') ? $this->user?->email : $this->user()->value('email');
+    }
 }

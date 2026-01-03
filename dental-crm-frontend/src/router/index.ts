@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import ClinicsList from '../views/ClinicsList.vue'
-import DoctorsList from '../views/DoctorsList.vue'
-import DoctorDetails from '../views/DoctorDetails.vue'
+import DoctorListPage from '../features/doctors/DoctorListPage.vue'
+import DoctorProfilePage from '../features/doctors/DoctorProfilePage.vue'
 import DoctorSchedule from '../views/DoctorSchedule.vue'
 import PatientsList from '../views/PatientsList.vue'
 import PatientDetails from '../views/PatientDetails.vue'
@@ -97,13 +97,13 @@ const routes = [
   {
     path: '/doctors',
     name: 'doctors',
-    component: DoctorsList,
+    component: DoctorListPage,
     meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
   },
   {
     path: '/doctors/:id',
     name: 'doctor-details',
-    component: DoctorDetails,
+    component: DoctorProfilePage,
     props: true,
     meta: {
       requiresAuth: true,

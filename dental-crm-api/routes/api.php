@@ -125,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'show']);
     Route::put('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'update']);
     Route::apiResource('doctors', DoctorController::class);
+    Route::post('doctors/{doctor}/avatar', [DoctorController::class, 'uploadAvatar']);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('assistants', AssistantController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::apiResource('rooms', RoomController::class);
