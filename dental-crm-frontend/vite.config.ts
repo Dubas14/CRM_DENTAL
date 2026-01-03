@@ -10,6 +10,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  css: {
+    lightningcss: {
+      errorRecovery: true
+    }
+  },
   // 👇 ОСЬ ЦЕЙ БЛОК НАМ ПОТРІБЕН
   server: {
     host: '0.0.0.0', // Дозволяє доступ з будь-якої IP (в т.ч. з Windows)
