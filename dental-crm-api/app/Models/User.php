@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'first_name',
         'last_name',
+        'avatar_path',
     ];
 
     /**
@@ -35,6 +36,10 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $appends = [
+        'avatar_url',
     ];
 
     /**
@@ -58,6 +63,15 @@ class User extends Authenticatable
     public function doctor()
     {
         return $this->hasOne(Doctor::class);
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar_path) {
+            return null;
+        }
+
+        return asset('storage/' . ltrim($this->avatar_path, '/'));
     }
 
 

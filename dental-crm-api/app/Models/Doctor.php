@@ -26,6 +26,8 @@ class Doctor extends Model
         'state',
         'zip',
         'status',
+        'vacation_from',
+        'vacation_to',
         'color',
         'bio',
         'is_active',
@@ -42,6 +44,11 @@ class Doctor extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function clinics(): BelongsToMany
+    {
+        return $this->belongsToMany(Clinic::class, 'doctor_clinic')->withTimestamps();
     }
 
     public function user(): BelongsTo
@@ -95,11 +102,21 @@ class Doctor extends Model
 
     public function getAvatarUrlAttribute(): ?string
     {
-        if (! $this->avatar_path) {
-            return null;
+        // 1) Прямо з доктора
+        if ($this->avatar_path) {
+            return asset('storage/' . ltrim($this->avatar_path, '/'));
         }
 
-        return asset('storage/' . ltrim($this->avatar_path, '/'));
+        // 2) Fallback: аватар користувача (щоб працювало для всіх ролей)
+        $userAvatarPath = $this->relationLoaded('user')
+            ? $this->user?->avatar_path
+            : $this->user()->value('avatar_path');
+
+        if ($userAvatarPath) {
+            return asset('storage/' . ltrim($userAvatarPath, '/'));
+        }
+
+        return null;
     }
 
     public function getEmailAttribute($value): ?string
@@ -109,5 +126,15 @@ class Doctor extends Model
         }
 
         return $this->relationLoaded('user') ? $this->user?->email : $this->user()->value('email');
+    }
+
+    public function isOnVacationAt(?string $date = null): bool
+    {
+        if (! $this->vacation_from || ! $this->vacation_to) {
+            return false;
+        }
+
+        $target = $date ?: now()->toDateString();
+        return $target >= $this->vacation_from && $target <= $this->vacation_to;
     }
 }

@@ -47,15 +47,17 @@ const statusVariant = computed(() => {
     <div class="space-y-3 text-sm text-text/80">
       <div class="flex items-start gap-3">
         <span class="text-text/60 w-28">Клініка</span>
-        <span>{{ doctor.clinic?.name || '—' }}</span>
+        <span>
+          {{
+            doctor.clinics?.length
+              ? doctor.clinics.map((c) => c.name).join(', ')
+              : doctor.clinic?.name || '—'
+          }}
+        </span>
       </div>
       <div class="flex items-start gap-3">
         <span class="text-text/60 w-28">Кабінет</span>
         <span>{{ doctor.room || '—' }}</span>
-      </div>
-      <div class="flex items-start gap-3">
-        <span class="text-text/60 w-28">Адміністратор</span>
-        <span>{{ doctor.admin_contact || '—' }}</span>
       </div>
       <div class="flex items-start gap-3">
         <span class="text-text/60 w-28">Телефон</span>
@@ -65,12 +67,15 @@ const statusVariant = computed(() => {
         <span class="text-text/60 w-28">Email</span>
         <span>{{ doctor.email || '—' }}</span>
       </div>
-      <div class="flex items-start gap-3" v-if="doctor.address || doctor.city">
+      <div class="flex items-start gap-3">
         <span class="text-text/60 w-28">Адреса</span>
-        <span>
-          {{ doctor.address || '' }}<template v-if="doctor.city">, {{ doctor.city }}</template>
-          <template v-if="doctor.state">, {{ doctor.state }}</template>
-          <template v-if="doctor.zip">, {{ doctor.zip }}</template>
+        <span class="flex flex-col">
+          <span>
+            {{ doctor.address || '—' }}
+            <template v-if="doctor.city">, {{ doctor.city }}</template>
+            <template v-if="doctor.state">, {{ doctor.state }}</template>
+            <template v-if="doctor.zip">, {{ doctor.zip }}</template>
+          </span>
         </span>
       </div>
     </div>

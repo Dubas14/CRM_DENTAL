@@ -37,10 +37,25 @@ class AvailabilityService
     public function getDailyPlan(Doctor $doctor, Carbon $date): array
     {
         if (! $doctor->isActive()) {
+            $reason = 'doctor_inactive';
+            if ($doctor->status === 'vacation' && $doctor->vacation_from && $doctor->vacation_to) {
+                $reason = 'doctor_vacation';
+            }
             return [
-                'reason' => 'doctor_inactive',
+                'reason' => $reason,
                 'slot_duration' => null,
             ];
+        }
+
+        if ($doctor->status === 'vacation' && $doctor->vacation_from && $doctor->vacation_to) {
+            $targetDate = $date->toDateString();
+            if ($targetDate >= $doctor->vacation_from && $targetDate <= $doctor->vacation_to) {
+                return [
+                    'reason' => 'doctor_vacation',
+                    'slot_duration' => null,
+                    'vacation_to' => $doctor->vacation_to,
+                ];
+            }
         }
 
         $weekday = (int) $date->isoWeekday();
@@ -599,3 +614,4 @@ class AvailabilityService
         return $procedure->rooms()->where('rooms.id', $room->id)->exists();
     }
 }
+

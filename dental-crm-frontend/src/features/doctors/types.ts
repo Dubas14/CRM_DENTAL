@@ -10,6 +10,7 @@ export interface Doctor {
   full_name: string
   specialization?: string
   clinic?: DoctorClinic
+  clinics?: DoctorClinic[]
   is_active?: boolean
   avatar_url?: string | null
   email?: string | null

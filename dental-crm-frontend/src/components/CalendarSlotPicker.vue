@@ -24,6 +24,7 @@ const recommended = ref([])
 const loading = ref(false)
 const error = ref(null)
 const reason = ref(null)
+const vacationTo = ref<string | null>(null)
 const slotRoom = ref(null)
 const slotEquipment = ref(null)
 const slotAssistantId = ref(null)
@@ -97,6 +98,12 @@ const reasonMessage = computed(() => {
   if (normalizedReason.value === 'room_incompatible') {
     return 'Вибраний кабінет несумісний з процедурою. Оберіть інший кабінет.'
   }
+  if (normalizedReason.value === 'doctor_vacation') {
+    return `Лікар у відпустці${vacationTo.value ? ' до ' + vacationTo.value : ''}`
+  }
+  if (normalizedReason.value === 'doctor_inactive') {
+    return 'Лікар недоступний'
+  }
   if (reason.value) {
     return `Причина: ${reason.value}`
   }
@@ -122,6 +129,7 @@ const loadSlots = async () => {
   loading.value = true
   error.value = null
   reason.value = null
+  vacationTo.value = null
   try {
     const { data } = await calendarApi.getDoctorSlots(props.doctorId, {
       date: props.date,
@@ -132,6 +140,7 @@ const loadSlots = async () => {
     })
     slots.value = data.slots || []
     reason.value = data.reason || null
+    vacationTo.value = data.vacation_to || null
     slotRoom.value = data.room || null
     slotEquipment.value = data.equipment || null
     slotAssistantId.value = data.assistant_id || null

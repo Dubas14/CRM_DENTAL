@@ -62,6 +62,8 @@ const isFetchingAppointments = ref(false)
 const isFetchingCalendarBlocks = ref(false)
 
 const error = ref(null)
+const reason = ref<string | null>(null)
+const vacationTo = ref<string | null>(null)
 
 const appointments = ref([])
 const loadingAppointments = ref(false)
@@ -542,12 +544,21 @@ const loadAppointments = async (silent = false) => {
   isFetchingAppointments.value = true
   if (!silent) loadingAppointments.value = true
   appointmentsError.value = null
+  reason.value = null
+  vacationTo.value = null
 
   try {
     const { data } = await calendarApi.getDoctorAppointments(selectedDoctorId.value, {
       date: selectedDate.value
     })
     appointments.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    if (data?.meta?.reason) {
+      reason.value = data.meta.reason
+      vacationTo.value = data.meta.vacation_to || null
+    } else {
+      reason.value = null
+      vacationTo.value = null
+    }
   } catch (e) {
     console.error(e)
     if (!silent) appointmentsError.value = 'Не вдалося завантажити записи'
@@ -1149,6 +1160,15 @@ onUnmounted(() => {
     </div>
 
     <div v-if="error" class="text-red-400">❌ {{ error }}</div>
+    <div v-else-if="reason" class="text-amber-300 text-sm">
+      {{
+        reason === 'doctor_vacation'
+          ? `Лікар у відпустці${vacationTo ? ' до ' + vacationTo : ''}`
+          : reason === 'doctor_inactive'
+            ? 'Лікар недоступний'
+            : 'Слоти недоступні'
+      }}
+    </div>
 
     <div class="grid xl:grid-cols-3 gap-6">
       <div class="xl:col-span-2 space-y-4">

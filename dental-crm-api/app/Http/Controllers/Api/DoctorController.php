@@ -22,6 +22,7 @@ class DoctorController extends Controller
         $query = Doctor::query()
             ->with([
                 'clinic:id,name,city',
+                'clinics:id,name',
                 'user:id,email',
             ]);
 
@@ -43,7 +44,11 @@ class DoctorController extends Controller
 
         // фільтр по клініці (якщо явно передали)
         if ($request->filled('clinic_id')) {
-            $query->where('clinic_id', $request->integer('clinic_id'));
+            $clinicId = $request->integer('clinic_id');
+            $query->where(function ($q) use ($clinicId) {
+                $q->where('clinic_id', $clinicId)
+                  ->orWhereHas('clinics', fn($qq) => $qq->where('clinics.id', $clinicId));
+            });
         }
 
         // search filter (case-insensitive)
@@ -74,6 +79,8 @@ class DoctorController extends Controller
             'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
             'room'           => ['nullable', 'string', 'max:255'],
             'admin_contact'  => ['nullable', 'string', 'max:255'],
+            'vacation_from'  => ['nullable', 'date'],
+            'vacation_to'    => ['nullable', 'date', 'after_or_equal:vacation_from'],
             'address'        => ['nullable', 'string', 'max:255'],
             'city'           => ['nullable', 'string', 'max:255'],
             'state'          => ['nullable', 'string', 'max:255'],
@@ -81,6 +88,8 @@ class DoctorController extends Controller
 
             // дані акаунта користувача
             'password'       => ['required', 'string', 'min:6'],
+            'clinic_ids'     => ['nullable', 'array'],
+            'clinic_ids.*'   => ['integer', 'exists:clinics,id'],
         ]);
 
         // перевірка прав: супер адмін або адмін цієї клініки
@@ -116,6 +125,8 @@ class DoctorController extends Controller
                 'email'         => $data['email'],
                 'room'          => $data['room'] ?? null,
                 'admin_contact' => $data['admin_contact'] ?? null,
+                'vacation_from' => $data['vacation_from'] ?? null,
+                'vacation_to'   => $data['vacation_to'] ?? null,
                 'address'       => $data['address'] ?? null,
                 'city'          => $data['city'] ?? null,
                 'state'         => $data['state'] ?? null,
@@ -124,6 +135,11 @@ class DoctorController extends Controller
                 'color'         => $data['color'] ?? '#22c55e',
                 'is_active'     => true,
             ]);
+
+            $clinicIds = collect($data['clinic_ids'] ?? [])->filter()->all();
+            if ($clinicIds) {
+                $doctor->clinics()->sync($clinicIds);
+            }
 
             return $doctor->load('clinic');
         });
@@ -145,7 +161,7 @@ class DoctorController extends Controller
             abort(403, 'У вас немає права переглядати цього лікаря');
         }
 
-        $doctor->load('clinic', 'user');
+        $doctor->load('clinic', 'clinics', 'user');
 
         return response()->json($doctor);
     }
@@ -172,12 +188,16 @@ class DoctorController extends Controller
             'email'          => ['sometimes', 'nullable', 'email', 'max:255', 'unique:users,email,' . $doctor->user_id],
             'room'           => ['sometimes', 'nullable', 'string', 'max:255'],
             'admin_contact'  => ['sometimes', 'nullable', 'string', 'max:255'],
+            'vacation_from'  => ['sometimes', 'nullable', 'date'],
+            'vacation_to'    => ['sometimes', 'nullable', 'date', 'after_or_equal:vacation_from'],
             'address'        => ['sometimes', 'nullable', 'string', 'max:255'],
             'city'           => ['sometimes', 'nullable', 'string', 'max:255'],
             'state'          => ['sometimes', 'nullable', 'string', 'max:255'],
             'zip'            => ['sometimes', 'nullable', 'string', 'max:50'],
             'is_active'      => ['sometimes', 'boolean'],
             'status'         => ['sometimes', 'string', 'in:active,vacation,inactive'],
+            'clinic_ids'     => ['sometimes', 'array'],
+            'clinic_ids.*'   => ['integer', 'exists:clinics,id'],
         ]);
 
         $doctor->fill($data);
@@ -193,7 +213,25 @@ class DoctorController extends Controller
             $doctor->user->save();
         }
 
-        return response()->json($doctor->fresh()->load('clinic'));
+        // sync is_active with status
+        if (array_key_exists('status', $data)) {
+            $doctor->is_active = $data['status'] === 'active';
+            $doctor->save();
+        }
+
+        if (array_key_exists('clinic_ids', $data)) {
+            $clinicIds = collect($data['clinic_ids'] ?? [])->filter()->all();
+            if ($clinicIds) {
+                // перша клініка стає primary clinic_id
+                $doctor->clinic_id = $clinicIds[0];
+                $doctor->save();
+                $doctor->clinics()->sync($clinicIds);
+            } else {
+                $doctor->clinics()->sync([]);
+            }
+        }
+
+        return response()->json($doctor->fresh()->load('clinic', 'clinics'));
     }
 
     public function uploadAvatar(Request $request, Doctor $doctor)

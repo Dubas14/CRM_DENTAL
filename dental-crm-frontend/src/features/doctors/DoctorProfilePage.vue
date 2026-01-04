@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { UIButton, UIAvatar, UIBadge, UITabs } from '../../ui'
 import { doctorsApi } from './api'
 import type { Doctor, DoctorProcedure } from './types'
+import clinicApi from '../../services/clinicApi'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +23,11 @@ const avatarUploading = ref(false)
 const contactSaving = ref(false)
 const contactMessage = ref<string | null>(null)
 const isEditingContacts = ref(false)
+const clinics = ref<{ id: number; name: string }[]>([])
+const selectedClinicIds = ref<number[]>([])
+const availableClinics = computed(() =>
+  Array.isArray(clinics.value) ? clinics.value : []
+)
 
 const contactForm = ref({
   phone: '',
@@ -31,7 +37,9 @@ const contactForm = ref({
   address: '',
   city: '',
   state: '',
-  zip: ''
+  zip: '',
+  vacation_from: '',
+  vacation_to: ''
 })
 
 const mockHistory = ref([
@@ -63,12 +71,20 @@ const loadDoctor = async () => {
   loading.value = true
   error.value = null
   try {
-    const [{ data: doctorData }, { data: proceduresData }] = await Promise.all([
+    const [{ data: doctorData }, { data: proceduresData }, { data: clinicsData }] = await Promise.all([
       doctorsApi.get(doctorId.value),
-      doctorsApi.procedures(doctorId.value)
+      doctorsApi.procedures(doctorId.value),
+      clinicApi.list()
     ])
+    clinics.value = Array.isArray(clinicsData) ? clinicsData : Array.isArray(clinicsData?.data) ? clinicsData.data : []
     doctor.value = doctorData
     status.value = (doctorData.status as any) || (doctorData.is_active === false ? 'inactive' : 'active')
+    selectedClinicIds.value = (doctorData.clinics || [])
+      .map((c: any) => Number(c.id))
+      .filter((v) => Number.isFinite(v))
+    if (!selectedClinicIds.value.length && doctorData.clinic?.id) {
+      selectedClinicIds.value = [Number(doctorData.clinic.id)]
+    }
     contactForm.value = {
       phone: doctorData.phone || '',
       email: doctorData.email || '',
@@ -77,7 +93,9 @@ const loadDoctor = async () => {
       address: doctorData.address || '',
       city: doctorData.city || '',
       state: doctorData.state || '',
-      zip: doctorData.zip || ''
+      zip: doctorData.zip || '',
+      vacation_from: doctorData.vacation_from || '',
+      vacation_to: doctorData.vacation_to || ''
     }
     procedures.value = Array.isArray(proceduresData) ? proceduresData : []
   } catch (e: any) {
@@ -170,11 +188,45 @@ const saveStatus = async () => {
 const saveContact = async () => {
   contactSaving.value = true
   contactMessage.value = null
+
+  const phoneOk =
+    !contactForm.value.phone ||
+    /^(\+?\d[\d\s\-()]{6,20})$/.test(contactForm.value.phone.trim())
+
+  const emailOk =
+    !contactForm.value.email ||
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactForm.value.email.trim())
+
+  if (contactForm.value.vacation_from && contactForm.value.vacation_to) {
+    if (contactForm.value.vacation_to < contactForm.value.vacation_from) {
+      contactMessage.value = 'Дата завершення відпустки раніше за початок'
+      contactSaving.value = false
+      return
+    }
+  }
+
+  if ((contactForm.value.vacation_from && !contactForm.value.vacation_to) || (!contactForm.value.vacation_from && contactForm.value.vacation_to)) {
+    contactMessage.value = 'Вкажіть обидві дати відпустки (з / до)'
+    contactSaving.value = false
+    return
+  }
+
+  if (!phoneOk) {
+    contactMessage.value = 'Невірний формат телефону'
+    contactSaving.value = false
+    return
+  }
+  if (!emailOk) {
+    contactMessage.value = 'Невірний email'
+    contactSaving.value = false
+    return
+  }
   try {
     const payload = {
       ...contactForm.value,
       is_active: status.value === 'active',
-      status: status.value
+      status: status.value,
+      clinic_ids: selectedClinicIds.value
     }
     await doctorsApi.update(doctorId.value, payload)
     contactMessage.value = 'Дані оновлено'
@@ -229,10 +281,43 @@ const saveContact = async () => {
         </div>
 
           <div class="grid gap-3 text-sm text-text/80">
-            <div class="flex items-start gap-2">
-              <span class="text-text/60 w-24">Клініка</span>
-              <span>{{ doctor?.clinic?.name || '—' }}</span>
+          <div class="rounded-lg border border-border/60 bg-bg/40 p-3 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-semibold text-text/90">Клініки</div>
+              <UIButton size="sm" variant="secondary" @click="isEditingContacts = !isEditingContacts">
+                {{ isEditingContacts ? 'Сховати' : 'Редагувати' }}
+              </UIButton>
             </div>
+
+            <div v-if="!isEditingContacts" class="text-text">
+              {{
+                doctor?.clinics?.length
+                  ? doctor?.clinics?.map((c) => c.name).join(', ')
+                  : doctor?.clinic?.name || 'Не привʼязано'
+              }}
+            </div>
+
+            <div v-else class="space-y-2">
+              <div class="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                <label
+                  v-for="clinic in availableClinics"
+                  :key="clinic.id"
+                  class="flex items-center gap-2 text-sm text-text/90"
+                >
+                  <input
+                    v-model="selectedClinicIds"
+                    :value="clinic.id"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-border/80 bg-bg"
+                  />
+                  <span>{{ clinic.name }}</span>
+                </label>
+              </div>
+              <p v-if="!availableClinics.length" class="text-xs text-text/60">
+                Немає доступних клінік. Додайте клініку або надайте доступ.
+              </p>
+            </div>
+          </div>
 
             <div v-if="!isEditingContacts" class="space-y-2 rounded-lg border border-border/60 bg-bg/40 p-3">
               <div class="grid sm:grid-cols-2 gap-3">
@@ -271,21 +356,27 @@ const saveContact = async () => {
               <div class="grid sm:grid-cols-2 gap-3">
                 <label class="space-y-1 text-sm text-text/80">
                   <span class="text-xs text-text/60 uppercase">Телефон</span>
-                  <input v-model="contactForm.phone" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
+                  <input
+                    v-model="contactForm.phone"
+                    type="text"
+                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                    placeholder="+380..."
+                  />
                 </label>
                 <label class="space-y-1 text-sm text-text/80">
                   <span class="text-xs text-text/60 uppercase">Email</span>
-                  <input v-model="contactForm.email" type="email" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
+                  <input
+                    v-model="contactForm.email"
+                    type="email"
+                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                    placeholder="user@example.com"
+                  />
                 </label>
               </div>
               <div class="grid sm:grid-cols-2 gap-3">
                 <label class="space-y-1 text-sm text-text/80">
                   <span class="text-xs text-text/60 uppercase">Кабінет</span>
                   <input v-model="contactForm.room" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-                </label>
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Адміністратор</span>
-                  <input v-model="contactForm.admin_contact" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
                 </label>
               </div>
               <label class="space-y-1 text-sm text-text/80">
@@ -307,7 +398,6 @@ const saveContact = async () => {
                 </label>
               </div>
               <div class="flex items-center gap-2">
-                <UIButton size="sm" variant="secondary" :loading="contactSaving" @click="saveContact">Зберегти контакти</UIButton>
                 <UIButton size="sm" variant="ghost" @click="isEditingContacts = false">Скасувати</UIButton>
                 <span v-if="contactMessage" class="text-xs text-emerald-400">{{ contactMessage }}</span>
               </div>
@@ -329,8 +419,23 @@ const saveContact = async () => {
               <option value="inactive">Неактивний</option>
               <option value="vacation">Відпустка</option>
             </select>
-            <UIButton size="sm" variant="secondary" @click="saveStatus">Зберегти</UIButton>
           </div>
+
+            <div v-if="status === 'vacation'" class="grid sm:grid-cols-2 gap-3">
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">Відпустка з</span>
+                <input v-model="contactForm.vacation_from" type="date" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
+              </label>
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">До</span>
+                <input v-model="contactForm.vacation_to" type="date" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
+              </label>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <UIButton size="sm" variant="secondary" :loading="contactSaving" @click="saveContact">Зберегти</UIButton>
+          <span v-if="contactMessage" class="text-xs text-emerald-400 self-center">{{ contactMessage }}</span>
         </div>
       </section>
 

@@ -16,27 +16,43 @@ class DoctorScheduleSettingsController extends Controller
     public function show(Request $request, Doctor $doctor)
     {
         $user = $request->user();
+        $clinicId = $request->integer('clinic_id') ?: $doctor->clinic_id;
+
+        $allowedClinicIds = collect([$doctor->clinic_id])
+            ->merge($doctor->clinics()->pluck('clinics.id')->all())
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         // супер-адмін або адмін цієї клініки, або сам лікар
         $canView =
             $user->isSuperAdmin()
-            || $user->hasClinicRole($doctor->clinic_id, ['clinic_admin'])
+            || $user->hasClinicRole($clinicId ?? $doctor->clinic_id, ['clinic_admin'])
             || ($doctor->user_id && $doctor->user_id === $user->id);
 
         if (! $canView) {
             abort(403, 'Немає доступу до розкладу цього лікаря');
         }
 
+        if ($clinicId && $allowedClinicIds && ! in_array($clinicId, $allowedClinicIds)) {
+            abort(422, 'Цей лікар не привʼязаний до вибраної клініки');
+        }
+
+        $targetClinicId = $clinicId ?: ($allowedClinicIds[0] ?? null);
+
         $existing = Schedule::where('doctor_id', $doctor->id)
+            ->when($targetClinicId, fn($q) => $q->where('clinic_id', $targetClinicId))
             ->orderBy('weekday')
             ->get()
             ->keyBy('weekday');
 
         $defaultWorkingDays = $existing->isEmpty();
 
-        $items = collect(range(1, 7))->map(function ($day) use ($doctor, $existing, $defaultWorkingDays) {
+        $items = collect(range(1, 7))->map(function ($day) use ($doctor, $existing, $defaultWorkingDays, $targetClinicId) {
             $base = [
                 'doctor_id' => $doctor->id,
+                'clinic_id' => $targetClinicId,
                 'weekday'   => $day, // 1=Пн ... 7=Нд
                 'is_working' => $defaultWorkingDays && in_array($day, [1,2,3,4,5]),
                 'start_time' => '09:00:00',
@@ -54,6 +70,7 @@ class DoctorScheduleSettingsController extends Controller
 
             return [
                 'doctor_id' => $schedule->doctor_id,
+                'clinic_id' => $schedule->clinic_id,
                 'weekday'   => $schedule->weekday,
                 'is_working'=> true,
                 'start_time' => $schedule->start_time,
@@ -70,9 +87,17 @@ class DoctorScheduleSettingsController extends Controller
     {
         $user = $request->user();
 
+        $clinicId = $request->integer('clinic_id') ?: $doctor->clinic_id;
+        $allowedClinicIds = collect([$doctor->clinic_id])
+            ->merge($doctor->clinics()->pluck('clinics.id')->all())
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         $canEdit =
             $user->isSuperAdmin()
-            || $user->hasClinicRole($doctor->clinic_id, ['clinic_admin'])
+            || $user->hasClinicRole($clinicId ?? $doctor->clinic_id, ['clinic_admin'])
             || ($doctor->user_id && $doctor->user_id === $user->id);
 
         if (! $canEdit) {
@@ -80,6 +105,7 @@ class DoctorScheduleSettingsController extends Controller
         }
 
         $data = $request->validate([
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
             'days' => ['required', 'array'],
             'days.*.weekday' => ['required', 'integer', 'between:1,7'],
             'days.*.is_working' => ['required', 'boolean'],
@@ -90,11 +116,18 @@ class DoctorScheduleSettingsController extends Controller
             'days.*.slot_duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
         ]);
 
-        DB::transaction(function () use ($doctor, $data) {
+        if ($clinicId && $allowedClinicIds && ! in_array($clinicId, $allowedClinicIds)) {
+            abort(422, 'Цей лікар не привʼязаний до вибраної клініки');
+        }
+
+        $targetClinicId = $clinicId ?: ($allowedClinicIds[0] ?? null);
+
+        DB::transaction(function () use ($doctor, $data, $targetClinicId) {
             foreach ($data['days'] as $day) {
                 if (! $day['is_working']) {
                     // якщо в цей день не працює — просто видаляємо запис
                     Schedule::where('doctor_id', $doctor->id)
+                        ->when($targetClinicId, fn($q) => $q->where('clinic_id', $targetClinicId))
                         ->where('weekday', $day['weekday'])
                         ->delete();
                     continue;
@@ -103,6 +136,7 @@ class DoctorScheduleSettingsController extends Controller
                 Schedule::updateOrCreate(
                     [
                         'doctor_id' => $doctor->id,
+                        'clinic_id' => $targetClinicId,
                         'weekday'   => $day['weekday'],
                     ],
                     [

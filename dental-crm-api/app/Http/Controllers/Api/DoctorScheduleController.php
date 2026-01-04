@@ -159,6 +159,7 @@ class DoctorScheduleController extends Controller
                 'date'   => $date->toDateString(),
                 'slots'  => [],
                 'reason' => $plan['reason'],
+                'vacation_to' => $plan['vacation_to'] ?? ($doctor->vacation_to ?? null),
             ]);
         }
 

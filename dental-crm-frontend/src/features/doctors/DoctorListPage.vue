@@ -74,6 +74,13 @@ const statusVariant = (doctor: Doctor) => {
   return 'success'
 }
 
+const clinicsTooltip = (doctor: Doctor) => {
+  if (doctor.clinics?.length) {
+    return doctor.clinics.map((c) => c.name).join(', ')
+  }
+  return doctor.clinic?.name || '—'
+}
+
 const handleAction = (actionId: string) => {
   // Stub: integrate with real flows later
   console.log(`Action: ${actionId} for doctor #${selectedDoctorId.value}`)
@@ -129,7 +136,16 @@ const handleAction = (actionId: string) => {
                 </div>
               </td>
               <td class="px-4 py-3 text-text/80">
-                {{ doctor.clinic?.name || '—' }}
+                <span
+                  class="cursor-help underline decoration-dotted"
+                  :title="clinicsTooltip(doctor)"
+                >
+                  {{
+                    doctor.clinics?.length
+                      ? `${doctor.clinics.length} клін.` 
+                      : doctor.clinic?.name || '—'
+                  }}
+                </span>
               </td>
               <td class="px-4 py-3 text-text/80">
                 {{ doctor.specialization || '—' }}
@@ -153,7 +169,7 @@ const handleAction = (actionId: string) => {
                     </template>
                   </UIDropdown>
                   <UIButton variant="primary" size="sm" @click.stop="handleManageClick(doctor, $event)">Керувати</UIButton>
-                  <UIButton variant="ghost" size="sm" @click.stop="goToDetails(doctor.id)">Details</UIButton>
+                  <UIButton variant="ghost" size="sm" @click.stop="goToDetails(doctor.id)">Деталі</UIButton>
                 </div>
               </td>
             </tr>

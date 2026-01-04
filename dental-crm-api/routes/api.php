@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\CalendarBlockController;
 use App\Http\Controllers\Api\ClinicWorkingHoursController;
 use App\Http\Controllers\Api\DoctorProcedureController;
 use App\Http\Controllers\Api\BookingSuggestionController;
+use App\Http\Controllers\Api\UserPasswordController;
+use App\Http\Controllers\Api\UserAvatarController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -199,4 +201,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reports endpoints
     Route::get('reports/appointments', [ReportsController::class, 'appointments']);
+
+    // Update own avatar
+    Route::post('user/avatar', UserAvatarController::class);
+    // Update own password
+    Route::post('user/password', [UserPasswordController::class, 'update']);
 });

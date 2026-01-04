@@ -2,16 +2,21 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../services/apiClient'
+import clinicApi from '../services/clinicApi'
+import doctorApi from '../services/doctorApi'
 
 const route = useRoute()
 const router = useRouter()
 
 const doctorId = computed(() => Number(route.params.id))
+const doctorName = ref('')
 
 const loading = ref(true)
 const saving = ref(false)
 const error = ref(null)
 const saveError = ref(null)
+const clinics = ref([])
+const selectedClinicId = ref<string | number | null>(null)
 
 const days = ref([])
 
@@ -80,7 +85,24 @@ const loadSchedule = async () => {
   error.value = null
   saveError.value = null
   try {
-    const { data } = await apiClient.get(`/doctors/${doctorId.value}/weekly-schedule`)
+    // підтягуємо клініки лікаря для селектора
+    if (!clinics.value.length) {
+      const { data: doctorData } = await doctorApi.get(doctorId.value)
+      doctorName.value = doctorData?.full_name || ''
+      clinics.value = doctorData?.clinics ?? (doctorData?.clinic ? [doctorData.clinic] : [])
+      if (!selectedClinicId.value) {
+        selectedClinicId.value = doctorData?.clinic?.id ?? doctorData?.clinics?.[0]?.id ?? null
+      }
+      if (!clinics.value.length) {
+        // fallback — всі клініки
+        const { data: allClinics } = await clinicApi.list()
+        clinics.value = allClinics?.data ?? allClinics ?? []
+      }
+    }
+
+    const { data } = await apiClient.get(`/doctors/${doctorId.value}/weekly-schedule`, {
+      params: selectedClinicId.value ? { clinic_id: selectedClinicId.value } : {}
+    })
     days.value = mergeWithDefaults(data)
   } catch (e) {
     console.error(e)
@@ -101,7 +123,8 @@ const saveSchedule = async () => {
         end_time: d.is_working ? d.end_time : null,
         break_start: d.is_working ? d.break_start : null,
         break_end: d.is_working ? d.break_end : null
-      }))
+      })),
+      clinic_id: selectedClinicId.value || undefined
     }
     await apiClient.put(`/doctors/${doctorId.value}/weekly-schedule`, payload)
     router.push({ name: 'schedule', query: { doctor: doctorId.value } })
@@ -128,7 +151,10 @@ onMounted(loadSchedule)
     </button>
 
     <div>
-      <h1 class="text-2xl font-semibold">Тижневий розклад лікаря</h1>
+      <h1 class="text-2xl font-semibold">
+        Тижневий розклад лікаря
+        <span v-if="doctorName" class="text-text/70">· {{ doctorName }}</span>
+      </h1>
       <p class="text-sm text-text/70">
         Вкажіть робочі дні та години. На основі цього будуть будуватися вільні слоти.
       </p>
@@ -142,6 +168,19 @@ onMounted(loadSchedule)
       v-else
       class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
     >
+      <div v-if="clinics.length > 1" class="flex flex-col gap-2">
+        <label class="text-xs uppercase text-text/70">Клініка</label>
+        <select
+          v-model="selectedClinicId"
+          class="w-full sm:w-80 rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+          @change="loadSchedule"
+        >
+          <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
+            {{ clinic.name }}
+          </option>
+        </select>
+      </div>
+
       <table class="min-w-full text-sm">
         <thead class="text-text/70 border-b border-border">
           <tr>
