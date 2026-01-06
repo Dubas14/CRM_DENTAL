@@ -73,9 +73,8 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     component: SpecializationsList,
     meta: {
       requiresAuth: true,
-      allowedRoles: ['super_admin', 'clinic_admin'],
-      // спеціалізації немає в явних правах, дозволяємо через procedure.view/manage
-      allowedPermissions: ['procedure.view', 'procedure.manage']
+      allowedRoles: ['super_admin', 'clinic_admin', 'doctor'],
+      allowedPermissions: ['procedure.view', 'procedure.manage', 'specialization.view', 'specialization.manage']
     }
   },
   {
@@ -169,7 +168,11 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     path: '/doctors',
     name: 'doctors',
     component: DoctorListPage,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['user.view', 'clinic.view']
+    }
   },
   {
     path: '/doctors/:id',
@@ -179,6 +182,7 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['user.view', 'clinic.view'],
       allowOwnDoctor: true
     }
   },
@@ -190,6 +194,7 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['user.view', 'clinic.view'],
       allowOwnDoctor: true
     }
   },
@@ -219,15 +224,15 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'login' })
   }
 
-  // 🔹 тільки супер-адмін
-  if (to.meta.superOnly && user.value.global_role !== 'super_admin') {
-    return next({ name: 'schedule' })
-  }
-
   const hasRequiredPermission = () => {
     if (!Array.isArray(to.meta.allowedPermissions)) return false
     const userPerms: string[] = permissions.value || []
     return to.meta.allowedPermissions.some((p: string) => userPerms.includes(p))
+  }
+
+  // 🔹 тільки супер-адмін (дозволяємо також, якщо є потрібні пермішени)
+  if (to.meta.superOnly && user.value.global_role !== 'super_admin' && !hasRequiredPermission()) {
+    return next({ name: 'schedule' })
   }
 
   // 🔹 ролі / пермішени

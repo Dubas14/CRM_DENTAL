@@ -70,7 +70,13 @@ class SpecializationController extends Controller
 
     private function authorizeAccess($user): void
     {
-        if (! $user->hasRole('super_admin') && ! $user->hasRole('clinic_admin')) {
+        $canByRole = $user->hasRole('super_admin') || $user->hasRole('clinic_admin') || $user->hasRole('doctor');
+        $canByPermission = $user->can('specialization.view')
+            || $user->can('specialization.manage')
+            || $user->can('procedure.view')
+            || $user->can('procedure.manage');
+
+        if (! $canByRole && ! $canByPermission) {
             abort(403, 'Немає доступу до спеціалізацій');
         }
     }

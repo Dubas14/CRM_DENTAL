@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Support\RoleHierarchy;
 
 class UserResource extends JsonResource
 {
@@ -20,10 +21,20 @@ class UserResource extends JsonResource
             'last_name' => $this->last_name,
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at?->toISOString(),
-            
-            'global_role' => $this->when(isset($this->global_role), $this->global_role),
-            'roles' => $this->when(isset($this->roles), $this->roles),
-            
+
+            'global_role' => $this->when(
+                true,
+                fn () => $this->global_role ?? RoleHierarchy::highestRole($this->getRoleNames()->all()) ?? 'user'
+            ),
+            'roles' => $this->when(
+                true,
+                fn () => $this->relationLoaded('roles') ? $this->roles : $this->getRoleNames()
+            ),
+            'permissions' => $this->when(
+                true,
+                fn () => $this->permissions ?? $this->getAllPermissions()->pluck('name')
+            ),
+
             'doctor' => $this->whenLoaded('doctor', fn () => new DoctorResource($this->doctor)),
             
             'created_at' => $this->created_at?->toISOString(),

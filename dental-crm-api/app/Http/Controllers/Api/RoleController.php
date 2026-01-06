@@ -32,8 +32,8 @@ class RoleController extends Controller
     {
         $authUser = $request->user();
 
-        // Only clinic admins and super admins can access
-        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin'])) {
+        // super_admin / clinic_admin OR permission role.manage
+        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin']) && ! $authUser->can('role.manage')) {
             abort(403, 'Недостатньо прав');
         }
 
@@ -76,7 +76,7 @@ class RoleController extends Controller
     {
         $authUser = $request->user();
 
-        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin'])) {
+        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin']) && ! $authUser->can('role.manage')) {
             abort(403, 'Недостатньо прав');
         }
 
@@ -108,7 +108,7 @@ class RoleController extends Controller
     {
         $authUser = $request->user();
 
-        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin'])) {
+        if (! $authUser->hasAnyRole(['super_admin', 'clinic_admin']) && ! $authUser->can('role.manage')) {
             abort(403, 'Недостатньо прав');
         }
 

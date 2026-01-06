@@ -14,7 +14,10 @@ class ClinicWorkingHoursController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->isSuperAdmin() && ! $user->hasClinicRole($clinic->id, ['clinic_admin'])) {
+        $canByRole = $user->isSuperAdmin() || $user->hasClinicRole($clinic->id, ['clinic_admin']);
+        $canByPermission = $user->can('clinic.view') || $user->can('clinic.update');
+
+        if (! $canByRole && ! $canByPermission) {
             abort(403, 'Немає доступу до налаштувань цієї клініки');
         }
 
@@ -60,7 +63,10 @@ class ClinicWorkingHoursController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->isSuperAdmin() && ! $user->hasClinicRole($clinic->id, ['clinic_admin'])) {
+        $canByRole = $user->isSuperAdmin() || $user->hasClinicRole($clinic->id, ['clinic_admin']);
+        $canByPermission = $user->can('clinic.update');
+
+        if (! $canByRole && ! $canByPermission) {
             abort(403, 'Немає права редагувати налаштування цієї клініки');
         }
 

@@ -32,16 +32,79 @@ const roleName = ref('')
 const selectedPermissions = ref<string[]>([])
 
 const moduleLabels: Record<string, string> = {
-  appointment: 'Календар',
-  invoice: 'Фінанси',
-  payment: 'Фінанси',
+  appointment: 'Календар (системне)',
+  invoice: 'Фінанси (системне)',
+  payment: 'Фінанси (системне)',
   inventory: 'Склад',
   medical: 'Медичні записи',
   patient: 'Пацієнти',
   user: 'Користувачі',
-  role: 'Ролі',
+  role: 'Ролі (системне)',
   clinic: 'Клініки',
+  procedure: 'Процедури',
+  specialization: 'Спеціалізації',
   other: 'Інше'
+}
+
+const permissionLabels: Record<string, string> = {
+  // Calendar
+  'appointment.view': 'Перегляд календаря',
+  'appointment.create': 'Створення записів',
+  'appointment.update': 'Редагування записів',
+  'appointment.delete': 'Видалення записів',
+  'appointment.cancel': 'Скасування записів',
+  'calendar.view': 'Перегляд календаря',
+  'calendar.manage': 'Керування календарем',
+
+  // Finance
+  'invoice.view': 'Перегляд рахунків',
+  'invoice.create': 'Створення рахунків',
+  'invoice.update': 'Редагування рахунків',
+  'invoice.delete': 'Видалення рахунків',
+  'payment.collect': 'Прийом оплат',
+  'payment.view': 'Перегляд оплат',
+
+  // Inventory
+  'inventory.view': 'Перегляд складу',
+  'inventory.manage': 'Керування складом',
+  'inventory.transaction.create': 'Створення рухів складу',
+  'inventory.transaction.view': 'Перегляд рухів складу',
+
+  // Medical
+  'medical.view': 'Перегляд медичних записів',
+  'medical.edit': 'Редагування медичних записів',
+  'medical.record.create': 'Створення медичних записів',
+  'medical.record.update': 'Оновлення медичних записів',
+
+  // Patients
+  'patient.view': 'Перегляд пацієнтів',
+  'patient.create': 'Створення пацієнтів',
+  'patient.update': 'Редагування пацієнтів',
+  'patient.delete': 'Видалення пацієнтів',
+
+  // Users / Roles / Clinics
+  'user.view': 'Перегляд користувачів',
+  'user.create': 'Створення користувачів',
+  'user.update': 'Редагування користувачів',
+  'user.delete': 'Видалення користувачів',
+  'role.manage': 'Керування ролями',
+  'clinic.view': 'Перегляд клінік',
+  'clinic.create': 'Створення клінік',
+  'clinic.update': 'Редагування клінік',
+  'clinic.delete': 'Видалення клінік',
+
+  // Catalogs
+  'procedure.view': 'Перегляд процедур',
+  'procedure.manage': 'Керування процедурами',
+  'specialization.view': 'Перегляд спеціалізацій',
+  'specialization.manage': 'Керування спеціалізаціями',
+
+  // Fallbacks if present
+  'inventory.transaction': 'Рухи складу',
+}
+
+const formatPermission = (name: string) => {
+  return permissionLabels[name] || name
 }
 
 const loadRoles = async () => {
@@ -153,7 +216,7 @@ onMounted(loadRoles)
                     variant="info"
                     small
                   >
-                    {{ perm }}
+                    {{ formatPermission(perm) }}
                   </UIBadge>
                   <span v-if="role.permissions.length > 5" class="text-xs text-text/60">
                     +{{ role.permissions.length - 5 }} ще
@@ -230,7 +293,7 @@ onMounted(loadRoles)
                           @change="togglePermission(perm.name)"
                           class="rounded border-border/80 bg-bg text-emerald-500 focus:ring-emerald-500"
                         />
-                        <span>{{ perm.name }}</span>
+                        <span>{{ formatPermission(perm.name) }}</span>
                       </label>
                     </div>
                   </div>

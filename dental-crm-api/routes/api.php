@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\DoctorScheduleSettingsController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Support\RoleHierarchy;
+use App\Http\Resources\UserResource;
 
 // ---- CORS PREFLIGHT (OPTIONS) ----
 // Деякі браузери/проксі можуть не пропускати OPTIONS коректно, особливо для PUT/PATCH з Authorization.
@@ -65,8 +66,10 @@ Route::post('/login', function (Request $request) {
     $token = $user->createToken('crm-spa')->plainTextToken;
 
     // Підтягуємо ролі + зв'язки для фронта
+    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     $user->load('doctor.clinic', 'roles');
-    $roleNames = $user->getRoleNames();
+    // Беремо ролі напряму з рілейшена, щоб не впливали guard-кеші
+    $roleNames = $user->roles()->pluck('name');
     $permissions = $user->getAllPermissions()->pluck('name');
 
     // Скидаємо кеш прав перед обчисленням
@@ -82,7 +85,7 @@ Route::post('/login', function (Request $request) {
     // 5. Відповідь
     return response()->json([
         'token' => $token,
-        'user' => $user,
+        'user' => new UserResource($user),
     ]);
 })->middleware('throttle:auth');
 
@@ -94,11 +97,11 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    $user = $request->user()->load('doctor.clinic', 'roles');
-    $roleNames = $user->getRoleNames();
-    $permissions = $user->getAllPermissions()->pluck('name');
-
     app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    $user = $request->user()->load('doctor.clinic', 'roles');
+    // Беремо ролі напряму з рілейшена, щоб не впливали guard-кеші
+    $roleNames = $user->roles()->pluck('name');
+    $permissions = $user->getAllPermissions()->pluck('name');
 
     // ✅ Стабільний global_role з пріоритетом
     RoleHierarchy::ensureRolesExist();
@@ -108,7 +111,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     $user->setAttribute('permissions', $permissions);
     $user->setAttribute('roles', $roleNames);
 
-    return $user;
+    return new UserResource($user);
 });
 
 // ---- ПУБЛІЧНИЙ health-check ----

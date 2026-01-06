@@ -241,6 +241,8 @@ const onProfileUpdated = async () => {
               hasPermission('inventory.manage') ||
               hasPermission('procedure.view') ||
               hasPermission('procedure.manage') ||
+              hasPermission('specialization.view') ||
+              hasPermission('specialization.manage') ||
               hasPermission('equipment.view') ||
               hasPermission('equipment.manage') ||
               hasPermission('clinic.view')

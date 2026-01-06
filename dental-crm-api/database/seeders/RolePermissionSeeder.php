@@ -48,6 +48,11 @@ class RolePermissionSeeder extends Seeder
                 'patient.view',
                 'patient.create',
                 'patient.update',
+                // Catalogs
+                'procedure.view',
+                'procedure.manage',
+                'specialization.view',
+                'specialization.manage',
                 // Users / Roles / Clinics
                 'user.view',
                 'user.create',
@@ -67,6 +72,9 @@ class RolePermissionSeeder extends Seeder
                 'medical.record.update',
                 'patient.view',
                 'patient.update',
+                // Catalogs read
+                'procedure.view',
+                'specialization.view',
             ],
             'assistant' => [
                 'appointment.view',
@@ -76,6 +84,9 @@ class RolePermissionSeeder extends Seeder
                 'patient.view',
                 'patient.create',
                 'patient.update',
+                // Catalogs read
+                'procedure.view',
+                'specialization.view',
             ],
             'registrar' => [
                 'appointment.view',

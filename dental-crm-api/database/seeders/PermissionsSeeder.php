@@ -58,6 +58,14 @@ class PermissionsSeeder extends Seeder
             'clinic.create',
             'clinic.update',
             'clinic.delete',
+
+            // Specializations
+            'specialization.view',
+            'specialization.manage',
+
+            // Procedures catalog
+            'procedure.view',
+            'procedure.manage',
         ];
 
         // Використовуємо guard sanctum, щоб збігався з токен-авторизацією
