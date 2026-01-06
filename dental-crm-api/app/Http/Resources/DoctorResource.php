@@ -24,6 +24,7 @@ class DoctorResource extends JsonResource
             'color' => $this->color,
             'is_active' => (bool) $this->is_active,
             'default_slot_duration' => $this->default_slot_duration,
+            'avatar_url' => $this->avatar_url,
             
             'clinic' => $this->whenLoaded('clinic', fn () => new ClinicResource($this->clinic)),
             'user' => $this->whenLoaded('user', fn () => new UserResource($this->user)),

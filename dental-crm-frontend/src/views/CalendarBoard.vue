@@ -706,13 +706,23 @@ const loadClinics = async () => {
       const { data } = await clinicApi.list()
       clinics.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
     } else {
+      // Для не-супер-адмінів (включно з лікарями) - отримуємо клініки з API /me/clinics
       const { data } = await clinicApi.listMine()
       clinics.value = (data.clinics || []).map((c) => ({ id: c.clinic_id, name: c.clinic_name }))
     }
 
     // Якщо користувач має одну клініку — підставляємо її. Якщо кілька — не форсимо.
-    if (!selectedClinicId.value && clinics.value.length === 1) {
-      selectedClinicId.value = clinics.value[0].id
+    // Для лікаря — вибираємо його основну клініку як default
+    if (!selectedClinicId.value) {
+      if (clinics.value.length === 1) {
+        selectedClinicId.value = clinics.value[0].id
+      } else if (isDoctor.value && user.value?.doctor?.clinic_id) {
+        // Якщо лікар має кілька клінік - вибираємо його основну
+        const doctorClinicId = user.value.doctor.clinic_id
+        if (clinics.value.some(c => c.id === doctorClinicId)) {
+          selectedClinicId.value = doctorClinicId
+        }
+      }
     }
   } catch (e) {
     console.error('Failed to load clinics', e)

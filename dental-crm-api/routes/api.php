@@ -205,13 +205,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('waitlist/offers/{token}/claim', [WaitlistController::class, 'claim']);
 
     Route::get('/me/clinics', function (Request $request) {
-        $user = $request->user()->load('clinics');
+        $user = $request->user()->load('clinics', 'doctor.clinics');
 
+        // Для лікарів - беремо ТІЛЬКИ клініки з doctor_clinic
+        if ($user->doctor && $user->doctor->clinics->isNotEmpty()) {
+            $clinics = $user->doctor->clinics->map(function ($clinic) {
+                return [
+                    'clinic_id'   => $clinic->id,
+                    'clinic_name' => $clinic->name,
+                    'clinic_role' => 'doctor',
+                ];
+            })->values();
+
+            return response()->json([
+                'is_super_admin' => $user->isSuperAdmin(),
+                'clinics'        => $clinics,
+            ]);
+        }
+
+        // Для не-лікарів (адміни, реєстратори) - беремо з clinic_user
         $clinics = $user->clinics->map(function ($clinic) {
             return [
                 'clinic_id'   => $clinic->id,
                 'clinic_name' => $clinic->name,
-                'clinic_role' => $clinic->pivot->clinic_role,
+                'clinic_role' => $clinic->pivot->clinic_role ?? 'member',
             ];
         })->values();
 

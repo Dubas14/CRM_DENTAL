@@ -59,7 +59,9 @@ export function useAuth() {
   const fetchUser = async () => {
     try {
       loadingUser.value = true
-      const userData = await authApi.getCurrentUser()
+      const response = await authApi.getCurrentUser()
+      // UserResource обгортає дані в .data - витягуємо правильно
+      const userData = response?.data || response
       user.value = {
         ...(userData || {}),
         permissions: Array.isArray(userData?.permissions) ? userData.permissions : []

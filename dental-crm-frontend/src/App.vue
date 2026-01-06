@@ -39,6 +39,9 @@ const isMobileMenuOpen = ref(false) // Для мобілок
 const showProfileMenu = ref(false)
 const showProfileModal = ref(false)
 
+// Відновлюємо сесію при завантаженні (щоб після F5 були ролі/права)
+initAuth()
+
 const themeOptions = [
   { value: 'light', label: 'Світла', icon: '🌞' },
   { value: 'dark', label: 'Темна', icon: '🌙' },
@@ -148,52 +151,67 @@ const onProfileUpdated = async () => {
 
         <!-- Меню -->
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-          <p class="px-4 text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Головне</p>
-
-          <router-link
-            :to="{ name: 'dashboard' }"
-            :class="[
-              route.name === 'dashboard' ? activeClass : inactiveClass,
-              'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
-            ]"
+          <!-- Блок "Головне" - показується ТІЛЬКИ якщо є відповідні permissions -->
+          <div
+            v-if="
+              isSuperAdmin ||
+              isClinicAdmin ||
+              hasPermission('appointment.view') ||
+              hasPermission('calendar.view') ||
+              hasPermission('patient.view')
+            "
           >
-            <LayoutDashboard :size="20" />
-            <span class="font-medium">Дашборд</span>
-          </router-link>
+            <p class="px-4 text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Головне</p>
 
-          <router-link
-            :to="{ name: 'schedule' }"
-            :class="[
-              route.name === 'schedule' ? activeClass : inactiveClass,
-              'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
-            ]"
-          >
-            <Calendar :size="20" />
-            <span class="font-medium">Розклад &amp; Waitlist</span>
-          </router-link>
+            <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('appointment.view') || hasPermission('calendar.view')"
+              :to="{ name: 'dashboard' }"
+              :class="[
+                route.name === 'dashboard' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <LayoutDashboard :size="20" />
+              <span class="font-medium">Дашборд</span>
+            </router-link>
 
-          <!-- ✅ Новий календар у стилі Google Calendar (board/grid) -->
-          <router-link
-            :to="{ name: 'calendar-board' }"
-            :class="[
-              route.name === 'calendar-board' ? activeClass : inactiveClass,
-              'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
-            ]"
-          >
-            <LayoutGrid :size="20" />
-            <span class="font-medium">Календар (Board)</span>
-          </router-link>
+            <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('appointment.view') || hasPermission('calendar.view')"
+              :to="{ name: 'schedule' }"
+              :class="[
+                route.name === 'schedule' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Calendar :size="20" />
+              <span class="font-medium">Розклад &amp; Waitlist</span>
+            </router-link>
 
-          <router-link
-            :to="{ name: 'patients' }"
-            :class="[
-              route.name === 'patients' ? activeClass : inactiveClass,
-              'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
-            ]"
-          >
-            <Users :size="20" />
-            <span class="font-medium">Пацієнти</span>
-          </router-link>
+            <!-- ✅ Новий календар у стилі Google Calendar (board/grid) -->
+            <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('calendar.view') || hasPermission('appointment.view')"
+              :to="{ name: 'calendar-board' }"
+              :class="[
+                route.name === 'calendar-board' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <LayoutGrid :size="20" />
+              <span class="font-medium">Календар (Board)</span>
+            </router-link>
+
+            <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('patient.view')"
+              :to="{ name: 'patients' }"
+              :class="[
+                route.name === 'patients' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Users :size="20" />
+              <span class="font-medium">Пацієнти</span>
+            </router-link>
+          </div>
 
           <!-- Блок Адміністратора -->
           <div
@@ -210,6 +228,7 @@ const onProfileUpdated = async () => {
             </p>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('clinic.view')"
               :to="{ name: 'clinics' }"
               :class="[
                 route.name === 'clinics' ? activeClass : inactiveClass,
@@ -221,6 +240,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('user.view')"
               :to="{ name: 'doctors' }"
               :class="[
                 route.name === 'doctors' ? activeClass : inactiveClass,
@@ -236,7 +256,6 @@ const onProfileUpdated = async () => {
             v-if="
               isSuperAdmin ||
               isClinicAdmin ||
-              canManageCatalog ||
               hasPermission('inventory.view') ||
               hasPermission('inventory.manage') ||
               hasPermission('procedure.view') ||
@@ -245,7 +264,7 @@ const onProfileUpdated = async () => {
               hasPermission('specialization.manage') ||
               hasPermission('equipment.view') ||
               hasPermission('equipment.manage') ||
-              hasPermission('clinic.view')
+              hasPermission('user.view')
             "
             class="mt-6"
           >
@@ -254,6 +273,7 @@ const onProfileUpdated = async () => {
             </p>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('equipment.view') || hasPermission('equipment.manage')"
               :to="{ name: 'equipments' }"
               :class="[
                 route.name === 'equipments' ? activeClass : inactiveClass,
@@ -265,6 +285,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('procedure.view') || hasPermission('procedure.manage')"
               :to="{ name: 'procedures' }"
               :class="[
                 route.name === 'procedures' ? activeClass : inactiveClass,
@@ -276,6 +297,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('specialization.view') || hasPermission('specialization.manage')"
               :to="{ name: 'specializations' }"
               :class="[
                 route.name === 'specializations' ? activeClass : inactiveClass,
@@ -287,6 +309,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('inventory.view') || hasPermission('inventory.manage')"
               :to="{ name: 'inventory' }"
               :class="[
                 route.name === 'inventory' ? activeClass : inactiveClass,
@@ -298,6 +321,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('user.view')"
               :to="{ name: 'assistants' }"
               :class="[
                 route.name === 'assistants' ? activeClass : inactiveClass,
@@ -309,6 +333,7 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('clinic.update')"
               :to="{ name: 'clinic-settings' }"
               :class="[
                 route.name === 'clinic-settings' ? activeClass : inactiveClass,
