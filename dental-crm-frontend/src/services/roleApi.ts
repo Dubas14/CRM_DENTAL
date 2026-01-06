@@ -7,8 +7,12 @@ const roleApi = {
   listUsers(params = {}) {
     return apiClient.get('/roles/users', { params })
   },
-  updateUserRoles(userId, roles) {
-    return apiClient.put(`/roles/users/${userId}`, { roles })
+  updateUserRoles(userId, roles, clinicId = null) {
+    const payload = { roles }
+    if (clinicId) {
+      payload.clinic_id = clinicId
+    }
+    return apiClient.put(`/roles/users/${userId}`, payload)
   }
 }
 

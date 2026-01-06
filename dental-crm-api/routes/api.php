@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ProcedureController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\WaitlistController;
+use App\Http\Controllers\Api\SpecializationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\CalendarBlockController;
@@ -129,10 +130,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('doctors', DoctorController::class);
     Route::post('doctors/{doctor}/avatar', [DoctorController::class, 'uploadAvatar']);
     Route::apiResource('patients', PatientController::class);
-    Route::apiResource('assistants', AssistantController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('assistants', AssistantController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
     Route::apiResource('rooms', RoomController::class);
     Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
+    Route::apiResource('specializations', SpecializationController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // Медична картка
     Route::get('patients/{patient}/records', [MedicalRecordController::class, 'index']);

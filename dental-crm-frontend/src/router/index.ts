@@ -12,12 +12,14 @@ import Dashboard from '../views/DashboardView.vue'
 import EquipmentsList from '../views/EquipmentsList.vue'
 import ProceduresList from '../views/ProceduresList.vue'
 import AssistantsList from '../views/AssistantsList.vue'
+import AssistantDetails from '../views/AssistantDetails.vue'
 import RolesManager from '../views/RolesManager.vue'
 import ClinicSettings from '../views/ClinicSettings.vue'
+import SpecializationsList from '../views/SpecializationsList.vue'
 
 import { useAuth } from '../composables/useAuth'
 
-const routes = [
+const routes: import('vue-router').RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: Login },
 
   // ✅ Головна сторінка — Dashboard
@@ -55,9 +57,22 @@ const routes = [
     meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
   },
   {
+    path: '/specializations',
+    name: 'specializations',
+    component: SpecializationsList,
+    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+  },
+  {
     path: '/assistants',
     name: 'assistants',
     component: AssistantsList,
+    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+  },
+  {
+    path: '/assistants/:id',
+    name: 'assistant-details',
+    component: AssistantDetails,
+    props: true,
     meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
   },
   {
@@ -134,8 +149,8 @@ const router = createRouter({
 
 // guard
 router.beforeEach(async (to, from, next) => {
-  const publicPages = ['login']
-  if (publicPages.includes(to.name)) return next()
+  const publicPages: string[] = ['login']
+  if (publicPages.includes(String(to.name ?? ''))) return next()
 
   const { user, fetchUser } = useAuth()
 
@@ -153,7 +168,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 🔹 ролі
-  if (to.meta.allowedRoles) {
+  if (Array.isArray(to.meta.allowedRoles)) {
     const userRole = user.value.global_role
 
     const isAllowed = to.meta.allowedRoles.includes(userRole)

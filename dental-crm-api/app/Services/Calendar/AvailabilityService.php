@@ -34,7 +34,7 @@ class AvailabilityService
             ->where('rooms.clinic_id', $clinicId)
             ->exists();
     }
-    public function getDailyPlan(Doctor $doctor, Carbon $date): array
+    public function getDailyPlan(Doctor $doctor, Carbon $date, ?int $clinicId = null): array
     {
         if (! $doctor->isActive()) {
             $reason = 'doctor_inactive';
@@ -69,7 +69,11 @@ class AvailabilityService
         }
 
         $schedule = Schedule::where('doctor_id', $doctor->id)
+            ->when($clinicId, fn($q) => $q->where(function ($qq) use ($clinicId) {
+                $qq->where('clinic_id', $clinicId)->orWhereNull('clinic_id');
+            }))
             ->where('weekday', $weekday)
+            ->orderByDesc('clinic_id') // віддавати прив'язаний до клініки запис у пріоритеті
             ->first();
 
         if (!$schedule && !$exception) {
@@ -127,7 +131,8 @@ class AvailabilityService
         ?Procedure $procedure = null,
         ?Room $room = null,
         ?Equipment $equipment = null,
-        ?int $assistantId = null
+        ?int $assistantId = null,
+        ?int $clinicId = null
     ): array {
         // IMPORTANT:
         // Room/equipment/assistant availability depends on OTHER doctors' appointments too.
@@ -149,9 +154,10 @@ class AvailabilityService
             $procedure,
             $room,
             $equipment,
-            $assistantId
+            $assistantId,
+            $clinicId
         ) {
-            $plan = $this->getDailyPlan($doctor, $date);
+            $plan = $this->getDailyPlan($doctor, $date, $clinicId);
 
             if (isset($plan['reason'])) {
                 return ['slots' => [], 'reason' => $plan['reason']];
@@ -310,10 +316,11 @@ class AvailabilityService
         }
 
         $cacheKey = sprintf(
-            'calendar_slots_doctor_%d_%s_%d_v%s',
+            'calendar_slots_doctor_%d_%s_%d_clinic_%s_v%s',
             $doctor->id,
             $date->toDateString(),
             $durationMinutes,
+            $clinicId ?: 'none',
             $this->getSlotsCacheVersion($doctor->id, $date),
         );
 
@@ -501,14 +508,15 @@ class AvailabilityService
         ?Equipment $equipment = null,
         int $limit = 5,
         ?string $preferredTimeOfDay = null,
-        ?int $assistantId = null
+        ?int $assistantId = null,
+        ?int $clinicId = null
     ): array {
         $slots = [];
         $cursor = $fromDate->copy();
         $safetyCounter = 0;
 
         while (count($slots) < $limit && $safetyCounter < 60) {
-            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $procedure, $room, $equipment, $assistantId);
+            $daily = $this->getSlots($doctor, $cursor, $durationMinutes, $procedure, $room, $equipment, $assistantId, $clinicId);
 
             foreach ($daily['slots'] as $slot) {
                 $slotStart = Carbon::createFromFormat('H:i', $slot['start']);

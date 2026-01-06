@@ -1,7 +1,7 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["src/**/*"],
-  "files": ["src/components/UserProfileModal.ts"],
+  "files": [],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
     "composite": true,

@@ -330,6 +330,9 @@ const pendingAppointmentId = ref(null)
 
 const currentClinicId = computed(() => {
   if (selectedClinicId.value) return selectedClinicId.value
+  // Якщо користувач прив'язаний до кількох клінік — не обмежуємо
+  const clinics = user.value?.clinics || []
+  if (Array.isArray(clinics) && clinics.length > 1) return null
   return user.value?.clinic_id || user.value?.doctor?.clinic_id || null
 })
 
@@ -707,7 +710,8 @@ const loadClinics = async () => {
       clinics.value = (data.clinics || []).map((c) => ({ id: c.clinic_id, name: c.clinic_name }))
     }
 
-    if (!currentClinicId.value && clinics.value.length > 0) {
+    // Якщо користувач має одну клініку — підставляємо її. Якщо кілька — не форсимо.
+    if (!selectedClinicId.value && clinics.value.length === 1) {
       selectedClinicId.value = clinics.value[0].id
     }
   } catch (e) {
@@ -874,6 +878,9 @@ const setView = (mode) => {
   if (mode === 'multi-room' && rooms.value.length === 0) {
     loadRooms()
   }
+
+  // Перезавантажити події під новий режим/клітинки
+  fetchEvents()
 }
 
 const handleMonthDayClick = (date) => {

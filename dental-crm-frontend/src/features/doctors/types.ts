@@ -9,6 +9,7 @@ export interface Doctor {
   id: number
   full_name: string
   specialization?: string
+  specializations?: { id: number | string; name: string }[]
   clinic?: DoctorClinic
   clinics?: DoctorClinic[]
   is_active?: boolean

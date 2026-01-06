@@ -6,6 +6,9 @@ const assistantApi = {
     const key = buildKey('/assistants', params || {})
     return withCacheAndDedupe(key, () => apiClient.get('/assistants', { params }))
   },
+  get(id) {
+    return apiClient.get(`/assistants/${id}`)
+  },
   create(payload) {
     return apiClient.post('/assistants', payload)
   },

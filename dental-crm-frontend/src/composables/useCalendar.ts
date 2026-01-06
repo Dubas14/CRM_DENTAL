@@ -150,7 +150,8 @@ export function useCalendar() {
     roomId,
     equipmentId,
     assistantId,
-    durationMinutes
+    durationMinutes,
+    clinicId
   }) =>
     [
       doctorId || '',
@@ -159,7 +160,8 @@ export function useCalendar() {
       roomId || '',
       equipmentId || '',
       assistantId || '',
-      durationMinutes || ''
+      durationMinutes || '',
+      clinicId || ''
     ].join('|')
 
   const clearExpiredCache = () => {
@@ -176,7 +178,8 @@ export function useCalendar() {
     roomId,
     equipmentId,
     assistantId,
-    durationMinutes
+    durationMinutes,
+    clinicId
   }) => {
     clearExpiredCache()
 
@@ -187,12 +190,14 @@ export function useCalendar() {
       roomId,
       equipmentId,
       assistantId,
-      durationMinutes
+      durationMinutes,
+      clinicId
     })
     const cached = slotsCache.get(key)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data
 
     const params = { date }
+    if (clinicId) params.clinic_id = clinicId
     if (procedureId) params.procedure_id = procedureId
     if (roomId) params.room_id = roomId
     if (equipmentId) params.equipment_id = equipmentId

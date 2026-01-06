@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { debounce } from 'lodash-es'
 import roleApi from '../services/roleApi'
+import RoleAssignModal from '../components/roles/RoleAssignModal.vue'
 
 const roles = ref([])
 const users = ref([])
@@ -11,6 +12,9 @@ const error = ref(null)
 const saving = ref({})
 const searchQuery = ref('')
 const currentPage = ref(1)
+const showRoleModal = ref(false)
+const modalUser = ref<any>(null)
+const modalSelectedRoles = ref<string[]>([])
 const perPage = 12
 const totalPages = ref(1)
 const totalItems = ref(0)
@@ -98,16 +102,46 @@ const displayName = (user) => {
   return user.name || user.email
 }
 
+const openRoleModal = (user: any) => {
+  modalUser.value = user
+  modalSelectedRoles.value = [...(editableRoles.value[user.id] || [])]
+  showRoleModal.value = true
+}
+
+const onRoleModalSaved = () => {
+  if (modalUser.value) {
+    // Refresh user roles from server
+    fetchUsers()
+  }
+  showRoleModal.value = false
+  modalUser.value = null
+  modalSelectedRoles.value = []
+}
+
 const updateUserRoles = async (userId) => {
-  saving.value[userId] = true
-  try {
-    const { data } = await roleApi.updateUserRoles(userId, editableRoles.value[userId])
-    editableRoles.value[userId] = data.roles ?? editableRoles.value[userId]
-  } catch (err) {
-    console.error(err)
-    error.value = err.response?.data?.message || 'Не вдалося оновити ролі'
-  } finally {
-    saving.value[userId] = false
+  const user = users.value.find((u) => u.id === userId)
+  if (!user) return
+  
+  // Check if any role needs clinic (doctor or assistant)
+  const roles = editableRoles.value[userId] || []
+  const needsClinic = roles.some((r: string) => r === 'doctor' || r === 'assistant')
+  
+  if (needsClinic) {
+    // Open modal for clinic selection
+    openRoleModal(user)
+  } else if (roles.length > 0) {
+    // Direct update for roles that don't need clinic
+    saving.value[userId] = true
+    try {
+      const { data } = await roleApi.updateUserRoles(userId, roles)
+      editableRoles.value[userId] = data.roles ?? editableRoles.value[userId]
+      await fetchUsers() // Refresh to see updated roles
+    } catch (err) {
+      console.error(err)
+      error.value = err.response?.data?.message || 'Не вдалося оновити ролі'
+    } finally {
+      saving.value[userId] = false
+    }
   }
 }
 
@@ -251,5 +285,12 @@ const goToPage = (page) => {
         </div>
       </div>
     </section>
+
+    <RoleAssignModal
+      v-model="showRoleModal"
+      :user="modalUser"
+      :selected-roles="modalSelectedRoles"
+      @saved="onRoleModalSaved"
+    />
   </div>
 </template>

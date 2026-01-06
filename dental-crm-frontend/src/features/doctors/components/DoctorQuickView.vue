@@ -39,7 +39,13 @@ const statusVariant = computed(() => {
             {{ doctor.status === 'vacation' ? 'Відпустка' : doctor.is_active === false ? 'Неактивний' : 'Активний' }}
           </UIBadge>
         </div>
-        <p class="text-sm text-text/70 mt-1">{{ doctor.specialization || 'Спеціалізація не вказана' }}</p>
+        <p class="text-sm text-text/70 mt-1">
+          {{
+            doctor.specializations?.length
+              ? doctor.specializations.map((s: any) => s.name).join(', ')
+              : doctor.specialization || 'Спеціалізація не вказана'
+          }}
+        </p>
       </div>
       <button class="text-text/60 hover:text-text" aria-label="Закрити" @click="emit('close')">✕</button>
     </div>

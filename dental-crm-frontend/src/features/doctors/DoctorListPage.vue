@@ -148,7 +148,11 @@ const handleAction = (actionId: string) => {
                 </span>
               </td>
               <td class="px-4 py-3 text-text/80">
-                {{ doctor.specialization || '—' }}
+                {{
+                  doctor.specializations?.length
+                    ? doctor.specializations.map((s: any) => s.name).join(', ')
+                    : doctor.specialization || '—'
+                }}
               </td>
               <td class="px-4 py-3">
                 <UIBadge :variant="statusVariant(doctor)" small>

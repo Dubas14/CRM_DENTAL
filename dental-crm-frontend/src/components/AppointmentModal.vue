@@ -653,6 +653,7 @@ watch(
             <CalendarSlotPicker
               v-else
               :doctor-id="slotPickerDoctorId"
+              :clinic-id="clinicId"
               :procedure-id="slotPickerProcedureId"
               :room-id="slotPickerRoomId"
               :equipment-id="slotPickerEquipmentId"

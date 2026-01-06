@@ -130,6 +130,25 @@ class AssistantController extends Controller
         return $assistant->load(['roles', 'clinics:id,name']);
     }
 
+    public function show(Request $request, User $assistant)
+    {
+        if (! $assistant->hasRole('assistant')) {
+            abort(404);
+        }
+
+        $authUser = $request->user();
+        $assistantClinicIds = $assistant->clinics()->pluck('clinics.id');
+
+        if (! $authUser->isSuperAdmin()) {
+            $hasAccess = $assistantClinicIds->contains(fn ($clinicId) => $authUser->hasClinicRole($clinicId, ['clinic_admin']));
+            if (! $hasAccess) {
+                abort(403, 'У вас немає права переглядати цього асистента');
+            }
+        }
+
+        return $assistant->load(['roles', 'clinics:id,name']);
+    }
+
     public function destroy(Request $request, User $assistant)
     {
         if (! $assistant->hasRole('assistant')) {

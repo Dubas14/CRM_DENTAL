@@ -22,6 +22,8 @@ use Illuminate\Support\Arr;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Database\Seeders\FutureAppointmentsSeeder;
+use Database\Seeders\SpecializationSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -236,5 +238,11 @@ class DatabaseSeeder extends Seeder
                 ])
                 ->create();
         });
+
+        // Довідник спеціалізацій (включно з існуючими значеннями з лікарів)
+        $this->call(SpecializationSeeder::class);
+
+        // Заповнюємо майбутні записи на 6 місяців вперед з урахуванням розкладів/кліник
+        $this->call(FutureAppointmentsSeeder::class);
     }
 }

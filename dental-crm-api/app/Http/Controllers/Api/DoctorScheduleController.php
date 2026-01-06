@@ -136,6 +136,7 @@ class DoctorScheduleController extends Controller
             'room_id' => ['nullable', 'exists:rooms,id'],
             'equipment_id' => ['nullable', 'exists:equipments,id'],
             'assistant_id' => ['nullable', 'exists:users,id'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
         ]);
 
         $user = $request->user();
@@ -152,7 +153,8 @@ class DoctorScheduleController extends Controller
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
-        $plan = $availability->getDailyPlan($doctor, $date);
+        $clinicId = $validated['clinic_id'] ?? $doctor->clinic_id;
+        $plan = $availability->getDailyPlan($doctor, $date, $clinicId);
 
         if (isset($plan['reason'])) {
             return response()->json([
@@ -178,7 +180,8 @@ class DoctorScheduleController extends Controller
             $procedure,
             $room,
             $resolvedEquipment,
-            $assistantId
+            $assistantId,
+            $clinicId
         );
 
         return response()->json([
@@ -201,6 +204,7 @@ class DoctorScheduleController extends Controller
             'equipment_id' => ['nullable', 'exists:equipments,id'],
             'assistant_id' => ['nullable', 'exists:users,id'],
             'limit' => ['nullable', 'integer', 'between:1,20'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'],
         ]);
 
         $user = $request->user();
@@ -217,7 +221,8 @@ class DoctorScheduleController extends Controller
         $assistantId = $validated['assistant_id'] ?? null;
 
         $availability = new AvailabilityService();
-        $plan = $availability->getDailyPlan($doctor, $fromDate);
+        $clinicId = $validated['clinic_id'] ?? $doctor->clinic_id;
+        $plan = $availability->getDailyPlan($doctor, $fromDate, $clinicId);
 
         $duration = $availability->resolveProcedureDuration(
             $doctor,
@@ -235,7 +240,8 @@ class DoctorScheduleController extends Controller
             $resolvedEquipment,
             $validated['limit'] ?? 5,
             null,
-            $assistantId
+            $assistantId,
+            $clinicId
         );
 
         return response()->json([

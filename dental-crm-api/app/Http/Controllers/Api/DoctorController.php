@@ -24,6 +24,7 @@ class DoctorController extends Controller
                 'clinic:id,name,city',
                 'clinics:id,name',
                 'user:id,email',
+                'specializations:id,name',
             ]);
 
         // ✅ Access rules priority:
@@ -161,7 +162,7 @@ class DoctorController extends Controller
             abort(403, 'У вас немає права переглядати цього лікаря');
         }
 
-        $doctor->load('clinic', 'clinics', 'user');
+        $doctor->load('clinic', 'clinics', 'user', 'specializations:id,name');
 
         return response()->json($doctor);
     }
@@ -198,6 +199,8 @@ class DoctorController extends Controller
             'status'         => ['sometimes', 'string', 'in:active,vacation,inactive'],
             'clinic_ids'     => ['sometimes', 'array'],
             'clinic_ids.*'   => ['integer', 'exists:clinics,id'],
+            'specialization_ids' => ['sometimes', 'array'],
+            'specialization_ids.*' => ['integer', 'exists:specializations,id'],
         ]);
 
         $doctor->fill($data);
@@ -231,7 +234,12 @@ class DoctorController extends Controller
             }
         }
 
-        return response()->json($doctor->fresh()->load('clinic', 'clinics'));
+        if (array_key_exists('specialization_ids', $data)) {
+            $specIds = collect($data['specialization_ids'] ?? [])->filter()->all();
+            $doctor->specializations()->sync($specIds);
+        }
+
+        return response()->json($doctor->fresh()->load('clinic', 'clinics', 'specializations:id,name'));
     }
 
     public function uploadAvatar(Request $request, Doctor $doctor)

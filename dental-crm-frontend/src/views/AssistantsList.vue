@@ -5,8 +5,12 @@ import assistantApi from '../services/assistantApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
 import SearchField from '../components/SearchField.vue'
+import { UIButton, UIDropdown, UIDrawer } from '../ui'
+import { useRouter } from 'vue-router'
+import AssistantQuickView from '../components/AssistantQuickView.vue'
 
 const { user } = useAuth()
+const router = useRouter()
 
 const clinics = ref([])
 const selectedClinicId = ref('')
@@ -18,14 +22,6 @@ const showForm = ref(false)
 const creating = ref(false)
 const createError = ref(null)
 const editError = ref(null)
-const editingAssistantId = ref(null)
-const editForm = ref({
-  first_name: '',
-  last_name: '',
-  email: '',
-  password: ''
-})
-const savingEdit = ref(false)
 const perPage = 12
 const currentPage = ref(1)
 const pagination = ref({
@@ -103,21 +99,23 @@ const loadClinics = async () => {
     }))
   }
 
-  if (!selectedClinicId.value && clinics.value.length) {
-    selectedClinicId.value = clinics.value[0].id
+  // за замовчуванням показуємо всіх доступних асистентів по всіх клініках
+  if (!selectedClinicId.value) {
+    selectedClinicId.value = ''
   }
 }
 
 const fetchAssistants = async () => {
-  if (!selectedClinicId.value) return
   const currentSeq = ++requestSeq
   loading.value = true
   error.value = null
   try {
     const params: Record<string, any> = {
-      clinic_id: selectedClinicId.value,
       page: currentPage.value,
       per_page: perPage
+    }
+    if (selectedClinicId.value) {
+      params.clinic_id = selectedClinicId.value
     }
     if (search.value.trim()) params.search = search.value.trim()
 
@@ -163,6 +161,17 @@ const fetchAssistants = async () => {
 
 const debouncedFetchAssistants = debounce(fetchAssistants, 300)
 
+const selectedAssistantId = ref<number | null>(null)
+const drawerOpen = ref(false)
+const quickActions = [
+  { id: 'note', label: 'Додати нотатку', icon: '📝' },
+  { id: 'message', label: 'Надіслати повідомлення', icon: '💬' }
+]
+
+const activeAssistant = computed(() =>
+  pagedAssistants.value.find((a: any) => a.id === selectedAssistantId.value) || null
+)
+
 const resetForm = () => {
   form.value = {
     clinic_id: selectedClinicId.value || clinics.value[0]?.id || '',
@@ -199,45 +208,6 @@ const createAssistant = async () => {
   }
 }
 
-const startEdit = (assistant) => {
-  editingAssistantId.value = assistant.id
-  editError.value = null
-  editForm.value = {
-    first_name: assistant.first_name || '',
-    last_name: assistant.last_name || '',
-    email: assistant.email || '',
-    password: ''
-  }
-}
-
-const cancelEdit = () => {
-  editingAssistantId.value = null
-  editError.value = null
-}
-
-const updateAssistant = async (assistant) => {
-  savingEdit.value = true
-  editError.value = null
-  try {
-    const payload = {
-      first_name: editForm.value.first_name,
-      last_name: editForm.value.last_name,
-      email: editForm.value.email
-    }
-    if (editForm.value.password) {
-      payload.password = editForm.value.password
-    }
-    await assistantApi.update(assistant.id, payload)
-    await fetchAssistants()
-    editingAssistantId.value = null
-  } catch (err) {
-    console.error(err)
-    editError.value = err.response?.data?.message || 'Не вдалося оновити асистента'
-  } finally {
-    savingEdit.value = false
-  }
-}
-
 const deleteAssistant = async (assistant) => {
   if (!window.confirm(`Видалити асистента "${assistantName(assistant)}"?`)) return
   editError.value = null
@@ -250,16 +220,39 @@ const deleteAssistant = async (assistant) => {
   }
 }
 
+const assistantClinic = (assistant) => {
+  return assistant.clinics?.[0]?.name || '—'
+}
+
 const assistantName = (assistant) => {
   return (
     assistant.full_name ||
     assistant.name ||
-    `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim()
+    `${assistant.first_name || ''} ${assistant.last_name || ''}`.trim() ||
+    assistant.email
   )
 }
 
-const assistantClinic = (assistant) => {
-  return assistant.clinics?.[0]?.name || '—'
+const openAssistant = (assistant: any) => {
+  selectedAssistantId.value = assistant.id
+  drawerOpen.value = true
+}
+
+const handleManageClick = (assistant: any, event: Event) => {
+  event.stopPropagation()
+  openAssistant(assistant)
+}
+
+const goToDetails = (id: number | string) => {
+  router.push({ name: 'assistant-details', params: { id } })
+}
+
+const handleAction = (assistant: any, actionId: string) => {
+  console.log(`Assistant action`, { assistantId: assistant.id, actionId })
+}
+
+const handleDelete = (assistant: any) => {
+  deleteAssistant(assistant)
 }
 
 watch(selectedClinicId, () => {
@@ -294,15 +287,12 @@ const goToPage = async (page) => {
   <div class="space-y-6">
     <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 class="text-2xl font-semibold">Асистенти</h1>
+        <h1 class="text-2xl font-bold text-text">Асистенти</h1>
         <p class="text-sm text-text/70">Створення та перегляд асистентів клініки.</p>
       </div>
-      <button
-        class="px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400"
-        @click="toggleForm"
-      >
+      <UIButton variant="secondary" size="sm" @click="toggleForm">
         {{ showForm ? 'Приховати форму' : 'Новий асистент' }}
-      </button>
+      </UIButton>
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
@@ -318,6 +308,7 @@ const goToPage = async (page) => {
         name="clinic_id"
         class="rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
       >
+        <option value="">Всі клініки</option>
         <option v-for="clinic in clinics" :key="clinic.id" :value="clinic.id">
           {{ clinic.name }}
         </option>
@@ -419,97 +410,73 @@ const goToPage = async (page) => {
       <div v-else-if="!assistants.length" class="text-sm text-text/70">Немає асистентів.</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead class="text-text/70 text-xs uppercase">
-            <tr>
-              <th class="text-left py-2 px-3">Ім'я</th>
-              <th class="text-left py-2 px-3">Email</th>
-              <th class="text-left py-2 px-3">Клініка</th>
-              <th class="text-right py-2 px-3">Дії</th>
+          <thead class="bg-card/80 border-b border-border">
+            <tr class="text-left text-text/70">
+              <th class="px-4 py-2">Ім'я</th>
+              <th class="px-4 py-2">Клініка</th>
+              <th class="px-4 py-2">Email</th>
+              <th class="px-4 py-2">Статус</th>
+              <th class="px-4 py-2 text-right">Дії</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="assistant in pagedAssistants"
               :key="assistant.id"
-              class="border-t border-border"
+              class="border-t border-border/60 hover:bg-card/80 cursor-pointer transition-colors"
+              :class="assistant.id === selectedAssistantId ? 'bg-emerald-500/5' : ''"
+              @click="openAssistant(assistant)"
             >
-              <td class="py-2 px-3">
-                <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
-                  <label :for="`assistant-edit-first-name-${assistant.id}`" class="sr-only">Ім'я</label>
-                  <input
-                    v-model="editForm.first_name"
-                    :id="`assistant-edit-first-name-${assistant.id}`"
-                    name="first_name"
-                    type="text"
-                    placeholder="Ім'я"
-                    class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
-                  />
-                  <label :for="`assistant-edit-last-name-${assistant.id}`" class="sr-only">Прізвище</label>
-                  <input
-                    v-model="editForm.last_name"
-                    :id="`assistant-edit-last-name-${assistant.id}`"
-                    name="last_name"
-                    type="text"
-                    placeholder="Прізвище"
-                    class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
-                  />
-                </div>
-                <span v-else class="text-text/90">{{ assistantName(assistant) }}</span>
-              </td>
-              <td class="py-2 px-3">
-                <div v-if="editingAssistantId === assistant.id" class="grid gap-2">
-                  <label :for="`assistant-edit-email-${assistant.id}`" class="sr-only">Email</label>
-                  <input
-                    v-model="editForm.email"
-                    :id="`assistant-edit-email-${assistant.id}`"
-                    name="email"
-                    type="email"
-                    placeholder="Email"
-                    class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
-                  />
-                  <label :for="`assistant-edit-password-${assistant.id}`" class="sr-only">
-                    Новий пароль
-                  </label>
-                  <input
-                    v-model="editForm.password"
-                    :id="`assistant-edit-password-${assistant.id}`"
-                    name="password"
-                    type="password"
-                    placeholder="Новий пароль (опційно)"
-                    class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
-                  />
-                </div>
-                <span v-else class="text-text/70">{{ assistant.email }}</span>
-              </td>
-              <td class="py-2 px-3 text-text/70">{{ assistantClinic(assistant) }}</td>
-              <td class="py-2 px-3 text-right text-xs">
-                <div v-if="editingAssistantId === assistant.id" class="flex justify-end gap-3">
-                  <button
-                    class="text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
-                    :disabled="savingEdit"
-                    @click="updateAssistant(assistant)"
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-text font-bold shadow-md overflow-hidden"
                   >
-                    {{ savingEdit ? 'Збереження...' : 'Зберегти' }}
-                  </button>
-                  <button class="text-text/70 hover:text-text/90" @click="cancelEdit">
-                    Скасувати
-                  </button>
-                </div>
-                <div v-else class="flex justify-end gap-3">
-                  <button
-                    class="text-emerald-300 hover:text-emerald-200"
-                    @click="startEdit(assistant)"
-                  >
-                    Редагувати
-                  </button>
-                  <button
-                    class="text-red-400 hover:text-red-300"
-                    @click="deleteAssistant(assistant)"
-                  >
-                    Видалити
-                  </button>
+                    <span>{{ assistantName(assistant)?.[0] || '?' }}</span>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-text">{{ assistantName(assistant) }}</p>
+                    <p class="text-xs text-text/60">{{ assistant.email }}</p>
+                  </div>
                 </div>
               </td>
+              <td class="px-4 py-3 text-text/80">
+                {{ assistantClinic(assistant) }}
+              </td>
+              <td class="px-4 py-3 text-text/70">{{ assistant.email }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300"
+                >
+                  Активний
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-2" @click.stop>
+                  <UIDropdown
+                    :items="quickActions"
+                    placement="bottom-end"
+                    @select="(id) => handleAction(assistant, id)"
+                  >
+                    <template #trigger="{ toggle }">
+                      <UIButton variant="secondary" size="sm" @click="toggle">Дії ▾</UIButton>
+                    </template>
+                  </UIDropdown>
+                  <UIButton
+                    variant="primary"
+                    size="sm"
+                    @click="handleManageClick(assistant, $event)"
+                  >
+                    Керувати
+                  </UIButton>
+                  <UIButton variant="ghost" size="sm" @click="goToDetails(assistant.id)">
+                    Деталі
+                  </UIButton>
+                </div>
+              </td>
+              </tr>
+            <tr v-if="!pagedAssistants.length">
+              <td colspan="5" class="px-4 py-4 text-sm text-text/70">Нічого не знайдено.</td>
             </tr>
           </tbody>
         </table>
@@ -555,5 +522,18 @@ const goToPage = async (page) => {
         </div>
       </div>
     </section>
+
+    <UIDrawer
+      v-model="drawerOpen"
+      title="Асистент"
+      width="520px"
+      @close="selectedAssistantId = null"
+    >
+      <AssistantQuickView
+        :assistant="activeAssistant"
+        @close="drawerOpen = false"
+        @details="goToDetails"
+      />
+    </UIDrawer>
   </div>
 </template>

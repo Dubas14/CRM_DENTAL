@@ -5,6 +5,7 @@ import { UIButton, UIAvatar, UIBadge, UITabs } from '../../ui'
 import { doctorsApi } from './api'
 import type { Doctor, DoctorProcedure } from './types'
 import clinicApi from '../../services/clinicApi'
+import specializationApi from '../../services/specializationApi'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +29,8 @@ const selectedClinicIds = ref<number[]>([])
 const availableClinics = computed(() =>
   Array.isArray(clinics.value) ? clinics.value : []
 )
+const allSpecializations = ref<{ id: number; name: string }[]>([])
+const selectedSpecializationIds = ref<number[]>([])
 
 const contactForm = ref({
   phone: '',
@@ -71,12 +74,14 @@ const loadDoctor = async () => {
   loading.value = true
   error.value = null
   try {
-    const [{ data: doctorData }, { data: proceduresData }, { data: clinicsData }] = await Promise.all([
+    const [{ data: doctorData }, { data: proceduresData }, { data: clinicsData }, { data: specsData }] = await Promise.all([
       doctorsApi.get(doctorId.value),
       doctorsApi.procedures(doctorId.value),
-      clinicApi.list()
+      clinicApi.list(),
+      specializationApi.list()
     ])
     clinics.value = Array.isArray(clinicsData) ? clinicsData : Array.isArray(clinicsData?.data) ? clinicsData.data : []
+    allSpecializations.value = Array.isArray(specsData) ? specsData : specsData?.data ?? []
     doctor.value = doctorData
     status.value = (doctorData.status as any) || (doctorData.is_active === false ? 'inactive' : 'active')
     selectedClinicIds.value = (doctorData.clinics || [])
@@ -97,6 +102,9 @@ const loadDoctor = async () => {
       vacation_from: doctorData.vacation_from || '',
       vacation_to: doctorData.vacation_to || ''
     }
+    selectedSpecializationIds.value = (doctorData.specializations || [])
+      .map((s: any) => Number(s.id))
+      .filter((v) => Number.isFinite(v))
     procedures.value = Array.isArray(proceduresData) ? proceduresData : []
   } catch (e: any) {
     console.error(e)
@@ -226,7 +234,8 @@ const saveContact = async () => {
       ...contactForm.value,
       is_active: status.value === 'active',
       status: status.value,
-      clinic_ids: selectedClinicIds.value
+      clinic_ids: selectedClinicIds.value,
+      specialization_ids: selectedSpecializationIds.value
     }
     await doctorsApi.update(doctorId.value, payload)
     contactMessage.value = 'Дані оновлено'
@@ -276,7 +285,13 @@ const saveContact = async () => {
                     : 'Активний'
               }}
             </UIBadge>
-            <p class="text-sm text-text/70">{{ doctor?.specialization || 'Спеціалізація не вказана' }}</p>
+            <p class="text-sm text-text/70">
+              {{
+                doctor?.specializations?.length
+                  ? doctor.specializations.map((s: any) => s.name).join(', ')
+                  : doctor?.specialization || 'Спеціалізація не вказана'
+              }}
+            </p>
           </div>
         </div>
 
@@ -315,6 +330,39 @@ const saveContact = async () => {
               </div>
               <p v-if="!availableClinics.length" class="text-xs text-text/60">
                 Немає доступних клінік. Додайте клініку або надайте доступ.
+              </p>
+            </div>
+          </div>
+
+          <div class="rounded-lg border border-border/60 bg-bg/40 p-3 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-semibold text-text/90">Спеціалізації</div>
+            </div>
+
+            <div v-if="!isEditingContacts" class="text-text">
+              {{
+                doctor?.specializations?.length
+                  ? doctor.specializations.map((s: any) => s.name).join(', ')
+                  : doctor?.specialization || 'Спеціалізація не вказана'
+              }}
+            </div>
+
+            <div v-else class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+              <label
+                v-for="spec in allSpecializations"
+                :key="spec.id"
+                class="flex items-center gap-2 text-sm text-text/90"
+              >
+                <input
+                  v-model="selectedSpecializationIds"
+                  :value="spec.id"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-border/80 bg-bg"
+                />
+                <span>{{ spec.name }}</span>
+              </label>
+              <p v-if="!allSpecializations.length" class="text-xs text-text/60">
+                Немає створених спеціалізацій. Додайте їх у довіднику «Спеціалізації».
               </p>
             </div>
           </div>

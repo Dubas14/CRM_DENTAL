@@ -5,6 +5,7 @@ import calendarApi from '../services/calendarApi'
 
 const props = defineProps({
   doctorId: { type: [Number, String], required: true },
+  clinicId: { type: [Number, String, null], default: null },
   procedureId: { type: [Number, String, null], default: null },
   equipmentId: { type: [Number, String, null], default: null },
   roomId: { type: [Number, String, null], default: null },
@@ -133,6 +134,7 @@ const loadSlots = async () => {
   try {
     const { data } = await calendarApi.getDoctorSlots(props.doctorId, {
       date: props.date,
+      clinic_id: props.clinicId || undefined,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
       room_id: props.roomId || undefined,
@@ -163,6 +165,7 @@ const loadRecommended = async () => {
   try {
     const { data } = await calendarApi.getRecommendedSlots(props.doctorId, {
       from_date: props.date,
+      clinic_id: props.clinicId || undefined,
       procedure_id: props.procedureId || undefined,
       equipment_id: props.equipmentId || undefined,
       room_id: props.roomId || undefined,
@@ -184,7 +187,8 @@ watch(
     props.procedureId,
     props.equipmentId,
     props.roomId,
-    props.assistantId
+    props.assistantId,
+    props.clinicId
   ],
   () => {
     if (props.autoLoad && !props.disabled) {

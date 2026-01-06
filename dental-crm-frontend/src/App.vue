@@ -22,7 +22,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  GraduationCap
 } from 'lucide-vue-next'
 
 const { user, logout, initAuth } = useAuth()
@@ -246,6 +247,17 @@ const onProfileUpdated = async () => {
             >
               <ClipboardList :size="20" />
               <span class="font-medium">Процедури</span>
+            </router-link>
+
+            <router-link
+              :to="{ name: 'specializations' }"
+              :class="[
+                route.name === 'specializations' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <GraduationCap :size="20" />
+              <span class="font-medium">Спеціалізації</span>
             </router-link>
 
             <router-link

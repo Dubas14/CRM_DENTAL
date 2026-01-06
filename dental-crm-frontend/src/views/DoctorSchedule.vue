@@ -1175,6 +1175,7 @@ onUnmounted(() => {
         <CalendarSlotPicker
           v-if="selectedDoctorId"
           :doctor-id="selectedDoctorId"
+          :clinic-id="clinicId"
           :procedure-id="selectedProcedureId"
           :room-id="selectedRoomId"
           :equipment-id="selectedEquipmentId"

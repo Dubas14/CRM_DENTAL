@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Doctor;
+use App\Models\Clinic;
 use App\Models\User;
 use App\Support\RoleHierarchy;
 use Illuminate\Http\Request;
@@ -66,6 +68,7 @@ class RoleController extends Controller
         $data = $request->validate([
             'roles' => ['array'],
             'roles.*' => ['string'],
+            'clinic_id' => ['nullable', 'integer', 'exists:clinics,id'], // для автоматичного прив'язування лікаря/асистента
         ]);
 
         RoleHierarchy::ensureRolesExist();
@@ -75,8 +78,76 @@ class RoleController extends Controller
 
         $user->syncRoles($roles);
 
+        // Auto-provision doctor/assistant profile & clinic binding
+        $clinicId = $data['clinic_id'] ?? null;
+        $this->ensureDoctorProfile($user, $clinicId);
+        $this->ensureAssistantBinding($user, $clinicId);
+
         return response()->json([
             'roles' => $user->getRoleNames()->values(),
         ]);
+    }
+
+    private function ensureDoctorProfile(User $user, ?int $clinicId = null): void
+    {
+        if (! $user->hasRole('doctor')) {
+            return;
+        }
+
+        $primaryClinicId = $clinicId;
+        if (! $primaryClinicId) {
+            $primaryClinicId = $user->clinics()->pluck('clinics.id')->first();
+        }
+
+        // Без клініки не створюємо профіль, щоб не порушити NOT NULL.
+        if (! $primaryClinicId) {
+            abort(422, 'Необхідно вказати clinic_id для ролі doctor');
+        }
+
+        $doctor = $user->doctor;
+
+        if (! $doctor) {
+            $fullName = trim(($user->name ?? '').' '.($user->last_name ?? ''));
+            if ($fullName === '') {
+                $fullName = $user->email ?? 'Лікар';
+            }
+
+            $doctor = Doctor::create([
+                'user_id'   => $user->id,
+                'clinic_id' => $primaryClinicId,
+                'full_name' => $fullName,
+                'email'     => $user->email,
+                'is_active' => true,
+            ]);
+        } elseif ($primaryClinicId && $doctor->clinic_id === null) {
+            $doctor->clinic_id = $primaryClinicId;
+            $doctor->save();
+        }
+
+        // Прив'язуємо до клініки як лікаря
+        if ($primaryClinicId) {
+            $user->clinics()->syncWithoutDetaching([
+                $primaryClinicId => ['clinic_role' => 'doctor'],
+            ]);
+            $doctor->clinics()->syncWithoutDetaching([$primaryClinicId]);
+        }
+    }
+
+    private function ensureAssistantBinding(User $user, ?int $clinicId = null): void
+    {
+        if (! $user->hasRole('assistant')) {
+            return;
+        }
+
+        $targetClinicId = $clinicId;
+        if (! $targetClinicId) {
+            $targetClinicId = $user->clinics()->pluck('clinics.id')->first();
+        }
+
+        if ($targetClinicId) {
+            $user->clinics()->syncWithoutDetaching([
+                $targetClinicId => ['clinic_role' => 'assistant'],
+            ]);
+        }
     }
 }
