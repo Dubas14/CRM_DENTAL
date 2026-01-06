@@ -48,4 +48,9 @@ class Patient extends Model
     {
         return $this->hasMany(PatientNote::class)->latest(); // Сортуємо: нові зверху
     }
+
+    public function files()
+    {
+        return $this->hasMany(PatientFile::class);
+    }
 }

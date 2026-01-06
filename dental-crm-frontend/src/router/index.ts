@@ -13,11 +13,14 @@ import EquipmentsList from '../views/EquipmentsList.vue'
 import ProceduresList from '../views/ProceduresList.vue'
 import AssistantsList from '../views/AssistantsList.vue'
 import AssistantDetails from '../views/AssistantDetails.vue'
-import RolesManager from '../views/RolesManager.vue'
+import Employees from '../views/Employees.vue'
+import RoleManager from '../views/Settings/RoleManager.vue'
 import ClinicSettings from '../views/ClinicSettings.vue'
 import SpecializationsList from '../views/SpecializationsList.vue'
+import InventoryListPage from '../views/InventoryListPage.vue'
 
 import { useAuth } from '../composables/useAuth'
+import { usePermissions } from '../composables/usePermissions'
 
 const routes: import('vue-router').RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: Login },
@@ -48,44 +51,93 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     path: '/equipments',
     name: 'equipments',
     component: EquipmentsList,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['equipment.view', 'equipment.manage', 'inventory.manage']
+    }
   },
   {
     path: '/procedures',
     name: 'procedures',
     component: ProceduresList,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['procedure.view', 'procedure.manage', 'inventory.manage']
+    }
   },
   {
     path: '/specializations',
     name: 'specializations',
     component: SpecializationsList,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      // спеціалізації немає в явних правах, дозволяємо через procedure.view/manage
+      allowedPermissions: ['procedure.view', 'procedure.manage']
+    }
+  },
+  {
+    path: '/inventory',
+    name: 'inventory',
+    component: InventoryListPage,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['inventory.view', 'inventory.manage']
+    }
   },
   {
     path: '/assistants',
     name: 'assistants',
     component: AssistantsList,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['user.view']
+    }
   },
   {
     path: '/assistants/:id',
     name: 'assistant-details',
     component: AssistantDetails,
     props: true,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['user.view']
+    }
   },
   {
-    path: '/roles',
-    name: 'roles',
-    component: RolesManager,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    path: '/employees',
+    name: 'employees',
+    component: Employees,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['role.manage', 'user.view']
+    }
+  },
+  {
+    path: '/settings/roles',
+    name: 'role-manager',
+    component: RoleManager,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['role.manage']
+    }
   },
   {
     path: '/clinic-settings',
     name: 'clinic-settings',
     component: ClinicSettings,
-    meta: { requiresAuth: true, allowedRoles: ['super_admin', 'clinic_admin'] }
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['clinic.view', 'clinic.update']
+    }
   },
 
   {
@@ -107,7 +159,11 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     path: '/clinics',
     name: 'clinics',
     component: ClinicsList,
-    meta: { requiresAuth: true, superOnly: true }
+    meta: {
+      requiresAuth: true,
+      superOnly: true,
+      allowedPermissions: ['clinic.view', 'clinic.update']
+    }
   },
   {
     path: '/doctors',
@@ -153,6 +209,7 @@ router.beforeEach(async (to, from, next) => {
   if (publicPages.includes(String(to.name ?? ''))) return next()
 
   const { user, fetchUser } = useAuth()
+  const { permissions } = usePermissions()
 
   if (!user.value) {
     await fetchUser().catch(() => { })
@@ -167,11 +224,19 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'schedule' })
   }
 
-  // 🔹 ролі
-  if (Array.isArray(to.meta.allowedRoles)) {
-    const userRole = user.value.global_role
+  const hasRequiredPermission = () => {
+    if (!Array.isArray(to.meta.allowedPermissions)) return false
+    const userPerms: string[] = permissions.value || []
+    return to.meta.allowedPermissions.some((p: string) => userPerms.includes(p))
+  }
 
-    const isAllowed = to.meta.allowedRoles.includes(userRole)
+  // 🔹 ролі / пермішени
+  if (Array.isArray(to.meta.allowedRoles) || Array.isArray(to.meta.allowedPermissions)) {
+    const userRole = user.value.global_role
+    const roleAllowed = Array.isArray(to.meta.allowedRoles)
+      ? to.meta.allowedRoles.includes(userRole)
+      : false
+    const permAllowed = hasRequiredPermission()
 
     const isOwnDoctorRoute =
       to.meta.allowOwnDoctor &&
@@ -179,7 +244,7 @@ router.beforeEach(async (to, from, next) => {
       user.value.doctor &&
       Number(to.params.id) === Number(user.value.doctor.id)
 
-    if (!isAllowed && !isOwnDoctorRoute) {
+    if (!roleAllowed && !permAllowed && !isOwnDoctorRoute) {
       return next({ name: 'schedule' })
     }
   }

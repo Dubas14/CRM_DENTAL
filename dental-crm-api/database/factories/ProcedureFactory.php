@@ -42,6 +42,8 @@ class ProcedureFactory extends Factory
             'requires_assistant' => fake()->boolean(60),
             'default_room_id' => Room::factory(),
             'equipment_id' => Equipment::factory(),
+            'price' => fake()->randomFloat(2, 300, 6000),
+            'code' => 'A-' . fake()->unique()->numberBetween(100, 999),
             'metadata' => [
                 'price_uah' => fake()->numberBetween(600, 4500),
                 'notes' => fake()->optional()->sentence(),

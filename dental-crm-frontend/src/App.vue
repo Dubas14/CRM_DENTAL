@@ -23,11 +23,13 @@ import {
   LogOut,
   Menu,
   X,
-  GraduationCap
+  GraduationCap,
+  Warehouse
 } from 'lucide-vue-next'
 
 const { user, logout, initAuth } = useAuth()
-const { isSuperAdmin, isDoctor, canManageCatalog, canManageRoles } = usePermissions()
+const { isSuperAdmin, isClinicAdmin, isDoctor, canManageCatalog, canManageRoles, hasPermission } =
+  usePermissions()
 const router = useRouter()
 const route = useRoute()
 const themeStore = useThemeStore()
@@ -194,7 +196,15 @@ const onProfileUpdated = async () => {
           </router-link>
 
           <!-- Блок Адміністратора -->
-          <div v-if="isSuperAdmin" class="mt-6">
+          <div
+            v-if="
+              isSuperAdmin ||
+              isClinicAdmin ||
+              hasPermission('clinic.view') ||
+              hasPermission('user.view')
+            "
+            class="mt-6"
+          >
             <p class="px-4 text-xs font-bold text-text/60 uppercase tracking-wider mb-2 mt-6">
               Управління
             </p>
@@ -222,7 +232,21 @@ const onProfileUpdated = async () => {
             </router-link>
           </div>
 
-          <div v-if="canManageCatalog" class="mt-6">
+          <div
+            v-if="
+              isSuperAdmin ||
+              isClinicAdmin ||
+              canManageCatalog ||
+              hasPermission('inventory.view') ||
+              hasPermission('inventory.manage') ||
+              hasPermission('procedure.view') ||
+              hasPermission('procedure.manage') ||
+              hasPermission('equipment.view') ||
+              hasPermission('equipment.manage') ||
+              hasPermission('clinic.view')
+            "
+            class="mt-6"
+          >
             <p class="px-4 text-xs font-bold text-text/60 uppercase tracking-wider mb-2 mt-6">
               Каталог
             </p>
@@ -261,6 +285,17 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
+              :to="{ name: 'inventory' }"
+              :class="[
+                route.name === 'inventory' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Warehouse :size="20" />
+              <span class="font-medium">Склад</span>
+            </router-link>
+
+            <router-link
               :to="{ name: 'assistants' }"
               :class="[
                 route.name === 'assistants' ? activeClass : inactiveClass,
@@ -289,14 +324,25 @@ const onProfileUpdated = async () => {
             </p>
 
             <router-link
-              :to="{ name: 'roles' }"
+              :to="{ name: 'employees' }"
               :class="[
-                route.name === 'roles' ? activeClass : inactiveClass,
+                route.name === 'employees' ? activeClass : inactiveClass,
                 'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
               ]"
             >
               <Shield :size="20" />
-              <span class="font-medium">Ролі</span>
+              <span class="font-medium">Співробітники</span>
+            </router-link>
+
+            <router-link
+              :to="{ name: 'role-manager' }"
+              :class="[
+                route.name === 'role-manager' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Shield :size="20" />
+              <span class="font-medium">Налаштування Ролей</span>
             </router-link>
           </div>
         </nav>

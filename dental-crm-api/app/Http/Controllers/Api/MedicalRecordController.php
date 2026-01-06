@@ -85,12 +85,23 @@ class MedicalRecordController extends Controller
     {
         $request->validate([
             'tooth_number' => 'required|integer',
-            'status'       => 'required|string'
+            'status'       => 'required|string',
+            'surfaces'     => 'nullable|array',
+            'surfaces.*'   => 'string|in:M,D,O,B,L'
         ]);
+
+        $data = [
+            'status' => $request->status,
+            'note' => $request->note ?? null
+        ];
+
+        if ($request->has('surfaces')) {
+            $data['surfaces'] = $request->surfaces;
+        }
 
         $status = PatientToothStatus::updateOrCreate(
             ['patient_id' => $patient->id, 'tooth_number' => $request->tooth_number],
-            ['status' => $request->status, 'note' => $request->note ?? null]
+            $data
         );
 
         return $status;

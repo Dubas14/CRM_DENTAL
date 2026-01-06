@@ -21,10 +21,13 @@ export function useAuth() {
       loadingUser.value = true
       const result = await authApi.login(email, password)
 
-      user.value = result
+      user.value = {
+        ...(result || {}),
+        permissions: Array.isArray(result?.permissions) ? result.permissions : []
+      }
 
       showToast('Успішний вхід!', 'success')
-      return result
+      return user.value
     } catch (error) {
       const message = error.message || 'Помилка входу'
       showToast(message, 'error')
@@ -57,8 +60,11 @@ export function useAuth() {
     try {
       loadingUser.value = true
       const userData = await authApi.getCurrentUser()
-      user.value = userData
-      return userData
+      user.value = {
+        ...(userData || {}),
+        permissions: Array.isArray(userData?.permissions) ? userData.permissions : []
+      }
+      return user.value
     } catch (error) {
       console.error('Fetch user error:', error)
       user.value = null

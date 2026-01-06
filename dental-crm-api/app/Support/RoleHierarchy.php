@@ -22,7 +22,8 @@ class RoleHierarchy
 
     public static function ensureRolesExist(): void
     {
-        $guard = config('auth.defaults.guard', 'web');
+        // Використовуємо guard Sanctum, щоб збігався з токен-авторизацією
+        $guard = config('auth.defaults.guard', 'sanctum');
 
         foreach (self::ROLES as $role) {
             Role::findOrCreate($role, $guard);

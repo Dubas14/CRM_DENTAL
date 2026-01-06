@@ -24,6 +24,8 @@ use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Database\Seeders\FutureAppointmentsSeeder;
 use Database\Seeders\SpecializationSeeder;
+use Database\Seeders\PermissionsSeeder;
+use Database\Seeders\RolePermissionSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -128,6 +130,8 @@ class DatabaseSeeder extends Seeder
                     'requires_assistant' => $requiresAssistant,
                     'default_room_id' => $requiresRoom ? $rooms->random()->id : null,
                     'equipment_id' => $equipments->random()->id,
+                    'price' => fake()->randomFloat(2, 300, 6000),
+                    'code' => 'A-' . fake()->unique()->numberBetween(100, 999),
                     'metadata' => [
                         'price_uah' => fake()->numberBetween(600, 4500),
                         'notes' => fake()->optional()->sentence(),
@@ -244,5 +248,9 @@ class DatabaseSeeder extends Seeder
 
         // Заповнюємо майбутні записи на 6 місяців вперед з урахуванням розкладів/кліник
         $this->call(FutureAppointmentsSeeder::class);
+
+        // Права та ролі
+        $this->call(PermissionsSeeder::class);
+        $this->call(RolePermissionSeeder::class);
     }
 }

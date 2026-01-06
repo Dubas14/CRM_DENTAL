@@ -15,6 +15,11 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
+     * Spatie guard name must match Sanctum auth guard to resolve roles/permissions.
+     */
+    protected string $guard_name = 'sanctum';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

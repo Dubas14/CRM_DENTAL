@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import apiClient from '../services/apiClient'
+import ToothSurfaceSelector from './dental/ToothSurfaceSelector.vue'
+import { UIBadge } from '../ui'
 
 const props = defineProps({
   patientId: { type: Number, required: true }
 })
 
-const teethMap = ref<Record<number, string>>({}) // Зберігаємо стан зубів { "18": "healthy", "21": "caries" }
+const teethMap = ref<Record<number, { status: string; surfaces?: string[] | null }>>({}) // Зберігаємо стан зубів та поверхні
 const loading = ref(false)
 const selectedTooth = ref<number | null>(null) // Який зуб зараз редагуємо
+const showSurfaceSelector = ref(false)
 
 // Генерація номерів зубів (Дорослі)
 // Верхня щелепа: Q1 (18-11), Q2 (21-28)
@@ -58,6 +61,7 @@ const statuses = [
 interface DentalMapItem {
   tooth_number: number
   status: string
+  surfaces?: string[] | null
 }
 
 // Завантаження даних
@@ -65,11 +69,17 @@ const loadMap = async () => {
   loading.value = true
   try {
     const { data } = await apiClient.get(`/patients/${props.patientId}/dental-map`)
-    // Перетворюємо масив об'єктів у зручний об'єкт { "18": "status" }
-    teethMap.value = (data as DentalMapItem[]).reduce((acc: Record<number, string>, item: DentalMapItem) => {
-      acc[item.tooth_number] = item.status
-      return acc
-    }, {})
+    // Перетворюємо масив об'єктів у зручний об'єкт { "18": { status, surfaces } }
+    teethMap.value = (data as DentalMapItem[]).reduce(
+      (acc: Record<number, { status: string; surfaces?: string[] | null }>, item: DentalMapItem) => {
+        acc[item.tooth_number] = {
+          status: item.status,
+          surfaces: item.surfaces || null
+        }
+        return acc
+      },
+      {}
+    )
   } catch (e) {
     console.error('Помилка завантаження карти:', e)
   } finally {
@@ -82,14 +92,16 @@ const setStatus = async (statusId: string) => {
   if (!selectedTooth.value) return
 
   const toothNum = selectedTooth.value
+  const currentData = teethMap.value[toothNum] || { status: 'healthy', surfaces: null }
   // Оптимістичне оновлення інтерфейсу
-  teethMap.value[toothNum] = statusId
+  teethMap.value[toothNum] = { ...currentData, status: statusId }
   selectedTooth.value = null // Закрити меню
 
   try {
     await apiClient.post(`/patients/${props.patientId}/dental-map`, {
       tooth_number: toothNum,
-      status: statusId
+      status: statusId,
+      surfaces: currentData.surfaces
     })
   } catch {
     alert('Не вдалося зберегти статус зуба')
@@ -97,11 +109,50 @@ const setStatus = async (statusId: string) => {
   }
 }
 
+// Збереження поверхонь
+const saveSurfaces = async (surfaces: string[]) => {
+  if (!selectedTooth.value) return
+
+  const toothNum = selectedTooth.value
+  const currentData = teethMap.value[toothNum] || { status: 'healthy', surfaces: null }
+  // Оптимістичне оновлення інтерфейсу
+  teethMap.value[toothNum] = { ...currentData, surfaces }
+  showSurfaceSelector.value = false
+  selectedTooth.value = null
+
+  try {
+    await apiClient.post(`/patients/${props.patientId}/dental-map`, {
+      tooth_number: toothNum,
+      status: currentData.status,
+      surfaces: surfaces.length > 0 ? surfaces : null
+    })
+  } catch {
+    alert('Не вдалося зберегти поверхні зуба')
+    loadMap() // Відкат змін
+  }
+}
+
+const openSurfaceSelector = () => {
+  showSurfaceSelector.value = true
+}
+
 // Отримати колір для SVG
 const getFillColor = (toothNum: number) => {
-  const statusId = teethMap.value[toothNum] || 'healthy'
+  const data = teethMap.value[toothNum]
+  const statusId = data?.status || 'healthy'
   const status = statuses.find((s) => s.id === statusId)
   return status ? status.fill : '#ffffff'
+}
+
+// Отримати поверхні для зуба
+const getSurfaces = (toothNum: number): string[] | null => {
+  return teethMap.value[toothNum]?.surfaces || null
+}
+
+// Отримати бейдж поверхонь
+const getSurfacesBadge = (toothNum: number): string | null => {
+  const surfaces = getSurfaces(toothNum)
+  return surfaces && surfaces.length > 0 ? surfaces.join('') : null
 }
 
 onMounted(loadMap)
@@ -124,25 +175,35 @@ onMounted(loadMap)
               class="cursor-pointer flex flex-col items-center group"
             >
               <span class="text-xs text-text/70 mb-1">{{ t }}</span>
-              <svg
-                width="40"
-                height="50"
-                viewBox="0 0 40 50"
-                class="text-border transition-transform group-hover:scale-110"
-              >
-                <path
-                  d="M5,15 Q5,0 20,0 Q35,0 35,15 L35,40 Q35,50 20,50 Q5,50 5,40 Z"
-                  :fill="getFillColor(t)"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-                <path
-                  v-if="teethMap[t] === 'missing'"
-                  d="M10,10 L30,40 M30,10 L10,40"
-                  stroke="currentColor"
-                  stroke-width="3"
-                />
-              </svg>
+              <div class="relative">
+                <svg
+                  width="40"
+                  height="50"
+                  viewBox="0 0 40 50"
+                  class="text-border transition-transform group-hover:scale-110"
+                >
+                  <path
+                    d="M5,15 Q5,0 20,0 Q35,0 35,15 L35,40 Q35,50 20,50 Q5,50 5,40 Z"
+                    :fill="getFillColor(t)"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    v-if="teethMap[t]?.status === 'missing'"
+                    d="M10,10 L30,40 M30,10 L10,40"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  />
+                </svg>
+                <UIBadge
+                  v-if="getSurfacesBadge(t)"
+                  variant="info"
+                  small
+                  class="absolute -top-1 -right-1 text-[8px] px-1 py-0"
+                >
+                  {{ getSurfacesBadge(t) }}
+                </UIBadge>
+              </div>
             </div>
           </div>
           <div class="w-px bg-border mx-2"></div>
@@ -154,25 +215,35 @@ onMounted(loadMap)
               class="cursor-pointer flex flex-col items-center group"
             >
               <span class="text-xs text-text/70 mb-1">{{ t }}</span>
-              <svg
-                width="40"
-                height="50"
-                viewBox="0 0 40 50"
-                class="text-border transition-transform group-hover:scale-110"
-              >
-                <path
-                  d="M5,15 Q5,0 20,0 Q35,0 35,15 L35,40 Q35,50 20,50 Q5,50 5,40 Z"
-                  :fill="getFillColor(t)"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-                <path
-                  v-if="teethMap[t] === 'missing'"
-                  d="M10,10 L30,40 M30,10 L10,40"
-                  stroke="currentColor"
-                  stroke-width="3"
-                />
-              </svg>
+              <div class="relative">
+                <svg
+                  width="40"
+                  height="50"
+                  viewBox="0 0 40 50"
+                  class="text-border transition-transform group-hover:scale-110"
+                >
+                  <path
+                    d="M5,15 Q5,0 20,0 Q35,0 35,15 L35,40 Q35,50 20,50 Q5,50 5,40 Z"
+                    :fill="getFillColor(t)"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    v-if="teethMap[t]?.status === 'missing'"
+                    d="M10,10 L30,40 M30,10 L10,40"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  />
+                </svg>
+                <UIBadge
+                  v-if="getSurfacesBadge(t)"
+                  variant="info"
+                  small
+                  class="absolute -top-1 -right-1 text-[8px] px-1 py-0"
+                >
+                  {{ getSurfacesBadge(t) }}
+                </UIBadge>
+              </div>
             </div>
           </div>
         </div>
@@ -185,25 +256,35 @@ onMounted(loadMap)
               @click="selectedTooth = t"
               class="cursor-pointer flex flex-col items-center group"
             >
-              <svg
-                width="40"
-                height="50"
-                viewBox="0 0 40 50"
-                class="text-border transition-transform group-hover:scale-110"
-              >
-                <path
-                  d="M5,35 Q5,50 20,50 Q35,50 35,35 L35,10 Q35,0 20,0 Q5,0 5,10 Z"
-                  :fill="getFillColor(t)"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-                <path
-                  v-if="teethMap[t] === 'missing'"
-                  d="M10,10 L30,40 M30,10 L10,40"
-                  stroke="currentColor"
-                  stroke-width="3"
-                />
-              </svg>
+              <div class="relative">
+                <svg
+                  width="40"
+                  height="50"
+                  viewBox="0 0 40 50"
+                  class="text-border transition-transform group-hover:scale-110"
+                >
+                  <path
+                    d="M5,35 Q5,50 20,50 Q35,50 35,35 L35,10 Q35,0 20,0 Q5,0 5,10 Z"
+                    :fill="getFillColor(t)"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    v-if="teethMap[t]?.status === 'missing'"
+                    d="M10,10 L30,40 M30,10 L10,40"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  />
+                </svg>
+                <UIBadge
+                  v-if="getSurfacesBadge(t)"
+                  variant="info"
+                  small
+                  class="absolute -top-1 -right-1 text-[8px] px-1 py-0"
+                >
+                  {{ getSurfacesBadge(t) }}
+                </UIBadge>
+              </div>
               <span class="text-xs text-text/70 mt-1">{{ t }}</span>
             </div>
           </div>
@@ -215,25 +296,35 @@ onMounted(loadMap)
               @click="selectedTooth = t"
               class="cursor-pointer flex flex-col items-center group"
             >
-              <svg
-                width="40"
-                height="50"
-                viewBox="0 0 40 50"
-                class="text-border transition-transform group-hover:scale-110"
-              >
-                <path
-                  d="M5,35 Q5,50 20,50 Q35,50 35,35 L35,10 Q35,0 20,0 Q5,0 5,10 Z"
-                  :fill="getFillColor(t)"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-                <path
-                  v-if="teethMap[t] === 'missing'"
-                  d="M10,10 L30,40 M30,10 L10,40"
-                  stroke="currentColor"
-                  stroke-width="3"
-                />
-              </svg>
+              <div class="relative">
+                <svg
+                  width="40"
+                  height="50"
+                  viewBox="0 0 40 50"
+                  class="text-border transition-transform group-hover:scale-110"
+                >
+                  <path
+                    d="M5,35 Q5,50 20,50 Q35,50 35,35 L35,10 Q35,0 20,0 Q5,0 5,10 Z"
+                    :fill="getFillColor(t)"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  />
+                  <path
+                    v-if="teethMap[t]?.status === 'missing'"
+                    d="M10,10 L30,40 M30,10 L10,40"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  />
+                </svg>
+                <UIBadge
+                  v-if="getSurfacesBadge(t)"
+                  variant="info"
+                  small
+                  class="absolute -top-1 -right-1 text-[8px] px-1 py-0"
+                >
+                  {{ getSurfacesBadge(t) }}
+                </UIBadge>
+              </div>
               <span class="text-xs text-text/70 mt-1">{{ t }}</span>
             </div>
           </div>
@@ -254,7 +345,7 @@ onMounted(loadMap)
       </div>
 
       <div
-        v-if="selectedTooth"
+        v-if="selectedTooth && !showSurfaceSelector"
         class="fixed inset-0 bg-text/20 dark:bg-bg/50 flex items-center justify-center z-50"
         @click.self="selectedTooth = null"
       >
@@ -275,13 +366,27 @@ onMounted(loadMap)
           </div>
 
           <button
+            @click="openSurfaceSelector"
+            class="mt-4 w-full py-2 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/30 text-sm font-medium hover:bg-emerald-500/20 transition"
+          >
+            Оберіть поверхні
+          </button>
+
+          <button
             @click="selectedTooth = null"
-            class="mt-4 w-full py-2 text-text/70 text-sm hover:text-text/60"
+            class="mt-2 w-full py-2 text-text/70 text-sm hover:text-text/60"
           >
             Скасувати
           </button>
         </div>
       </div>
+
+      <ToothSurfaceSelector
+        v-model="showSurfaceSelector"
+        :tooth-number="selectedTooth || 0"
+        :initial-surfaces="selectedTooth ? getSurfaces(selectedTooth) : null"
+        @save="saveSurfaces"
+      />
     </div>
   </div>
 </template>

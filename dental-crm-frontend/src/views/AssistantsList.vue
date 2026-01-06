@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { debounce } from 'lodash-es'
+import roleApi from '../services/roleApi'
 import assistantApi from '../services/assistantApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
@@ -112,20 +113,32 @@ const fetchAssistants = async () => {
   try {
     const params: Record<string, any> = {
       page: currentPage.value,
-      per_page: perPage
+      per_page: perPage,
+      role: 'assistant' // Filter by assistant role
     }
     if (selectedClinicId.value) {
       params.clinic_id = selectedClinicId.value
     }
     if (search.value.trim()) params.search = search.value.trim()
 
-    const { data } = await assistantApi.list(params)
+    const { data } = await roleApi.listUsers(params)
     
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
     const items = data.data ?? data
-    assistants.value = items
+    // Transform users to assistant format
+    assistants.value = items.map((user: any) => ({
+      id: user.id,
+      name: user.name,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      full_name: user.first_name && user.last_name 
+        ? `${user.first_name} ${user.last_name}`.trim()
+        : user.name || user.email,
+      clinics: user.clinics || []
+    }))
     const hasPagination =
       data?.current_page !== undefined || data?.last_page !== undefined || data?.total !== undefined
     isServerPaginated.value = hasPagination
@@ -200,7 +213,7 @@ const createAssistant = async () => {
     showForm.value = false
     resetForm()
     await fetchAssistants()
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
     createError.value = err.response?.data?.message || 'Помилка створення асистента'
   } finally {
@@ -208,13 +221,13 @@ const createAssistant = async () => {
   }
 }
 
-const deleteAssistant = async (assistant) => {
+const deleteAssistant = async (assistant: any) => {
   if (!window.confirm(`Видалити асистента "${assistantName(assistant)}"?`)) return
   editError.value = null
   try {
     await assistantApi.delete(assistant.id)
     await fetchAssistants()
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
     editError.value = err.response?.data?.message || 'Не вдалося видалити асистента'
   }

@@ -21,6 +21,11 @@ use App\Http\Controllers\Api\DoctorProcedureController;
 use App\Http\Controllers\Api\BookingSuggestionController;
 use App\Http\Controllers\Api\UserPasswordController;
 use App\Http\Controllers\Api\UserAvatarController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\InventoryItemController;
+use App\Http\Controllers\Api\InventoryTransactionController;
+use App\Http\Controllers\Api\PatientFileController;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -62,12 +67,17 @@ Route::post('/login', function (Request $request) {
     // Підтягуємо ролі + зв'язки для фронта
     $user->load('doctor.clinic', 'roles');
     $roleNames = $user->getRoleNames();
+    $permissions = $user->getAllPermissions()->pluck('name');
+
+    // Скидаємо кеш прав перед обчисленням
+    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
     // ✅ Стабільний global_role з пріоритетом (а не "first()")
     RoleHierarchy::ensureRolesExist();
     $globalRole = RoleHierarchy::highestRole($roleNames->all()) ?? 'user';
 
     $user->setAttribute('global_role', $globalRole);
+    $user->setAttribute('permissions', $permissions);
 
     // 5. Відповідь
     return response()->json([
@@ -86,12 +96,16 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     $user = $request->user()->load('doctor.clinic', 'roles');
     $roleNames = $user->getRoleNames();
+    $permissions = $user->getAllPermissions()->pluck('name');
+
+    app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
     // ✅ Стабільний global_role з пріоритетом
     RoleHierarchy::ensureRolesExist();
     $globalRole = RoleHierarchy::highestRole($roleNames->all()) ?? 'user';
 
     $user->setAttribute('global_role', $globalRole);
+    $user->setAttribute('permissions', $permissions);
     $user->setAttribute('roles', $roleNames);
 
     return $user;
@@ -121,8 +135,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('roles', [RoleController::class, 'index']);
+    Route::get('roles/list', [RoleController::class, 'listRoles']); // All roles with permissions (for RoleManager)
+    Route::post('roles', [RoleController::class, 'storeRole']); // Create role
+    Route::put('roles/{role}', [RoleController::class, 'updateRole']); // Update role
     Route::get('roles/users', [RoleController::class, 'users']);
     Route::put('roles/users/{user}', [RoleController::class, 'updateUserRoles']);
+    Route::post('users/{user}/assign-role', [RoleController::class, 'assignRole']); // Assign single role
 
     Route::apiResource('clinics', ClinicController::class);
     Route::get('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'show']);
@@ -135,12 +153,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
     Route::apiResource('specializations', SpecializationController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'store']);
+    Route::post('invoices/{invoice}/items', [InvoiceController::class, 'addItems']);
+    Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store']);
+    Route::apiResource('inventory-items', InventoryItemController::class);
+    Route::apiResource('inventory-transactions', InventoryTransactionController::class)->only(['index', 'store']);
 
     // Медична картка
     Route::get('patients/{patient}/records', [MedicalRecordController::class, 'index']);
     Route::post('patients/{patient}/records', [MedicalRecordController::class, 'store']);
     Route::get('patients/{patient}/notes', [\App\Http\Controllers\Api\PatientController::class, 'getNotes']);
     Route::post('patients/{patient}/notes', [\App\Http\Controllers\Api\PatientController::class, 'addNote']);
+    Route::get('patients/{patient}/files', [PatientFileController::class, 'index']);
+    Route::post('patients/{patient}/files', [PatientFileController::class, 'store']);
+    Route::delete('patients/{patient}/files/{patientFile}', [PatientFileController::class, 'destroy']);
 
     // Зубна формула
     Route::get('patients/{patient}/dental-map', [MedicalRecordController::class, 'getDentalMap']);

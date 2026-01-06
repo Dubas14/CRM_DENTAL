@@ -20,6 +20,8 @@ class Procedure extends Model
         'default_room_id',
         'equipment_id',
         'metadata',
+        'price',
+        'code',
     ];
 
     protected $casts = [
@@ -27,6 +29,7 @@ class Procedure extends Model
         'requires_assistant' => 'boolean',
         'requires_prepayment' => 'boolean',
         'metadata' => 'array',
+        'price' => 'decimal:2',
     ];
 
     public function clinic()

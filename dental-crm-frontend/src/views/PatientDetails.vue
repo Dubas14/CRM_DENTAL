@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../services/apiClient'
 import DentalMap from '../components/DentalMap.vue'
+import PatientFiles from '../components/patients/PatientFiles.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -256,6 +257,17 @@ const validatePhone = (event) => {
           >
             Історія лікування
           </button>
+          <button
+            @click="activeTab = 'files'"
+            :class="[
+              activeTab === 'files'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-text/70 hover:text-text/90 hover:border-border/70',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+            ]"
+          >
+            📁 Файли
+          </button>
         </nav>
       </div>
 
@@ -466,6 +478,10 @@ const validatePhone = (event) => {
             </div>
           </div>
         </div>
+      </div>
+
+      <div v-if="activeTab === 'files'">
+        <PatientFiles :patient-id="patientId" />
       </div>
     </div>
   </div>
