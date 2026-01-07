@@ -1296,10 +1296,7 @@ onUnmounted(() => {
                 <div class="text-text/70 text-sm">{{ selectedPatientForBooking.phone }}</div>
               </div>
               <button
-                @click="
-                  selectedPatientForBooking = null
-                  bookingName = ''
-                "
+                @click="selectedPatientForBooking = null; bookingName = ''"
                 class="px-3 py-1 bg-card/80 hover:bg-card/70 text-text/90 text-xs rounded border border-border/70 transition-colors"
               >
                 Змінити

@@ -830,10 +830,7 @@ onMounted(async () => {
             <UIButton
               variant="ghost"
               size="sm"
-              @click="
-                open = false
-                emit('cancel')
-              "
+              @click="open = false; emit('cancel')"
               >Скасувати</UIButton
             >
             <UIButton

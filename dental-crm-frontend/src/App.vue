@@ -517,19 +517,13 @@ const onProfileUpdated = async () => {
               >
                 <button
                   class="w-full text-left px-4 py-3 hover:bg-card/80 text-sm"
-                  @click.stop="
-                    showProfileModal = true
-                    closeProfileMenu()
-                  "
+                  @click.stop="showProfileModal = true; closeProfileMenu()"
                 >
                   Редагувати профіль
                 </button>
                 <button
                   class="w-full text-left px-4 py-3 hover:bg-card/80 text-sm text-rose-400"
-                  @click.stop="
-                    handleLogout()
-                    closeProfileMenu()
-                  "
+                  @click.stop="handleLogout(); closeProfileMenu()"
                 >
                   Вийти
                 </button>
