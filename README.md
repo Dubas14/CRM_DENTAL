@@ -61,7 +61,7 @@ CRM_DENTAL/
 - **Styling**: Tailwind CSS
 - **State Management**: Pinia
 - **HTTP Client**: Axios
-- **UI Components**: TUI Grid, TUI Calendar
+- **UI Components**: Кастомні компоненти + кастомний календар
 - **Table Library**: TanStack Table (headless)
 - **UI Kit**: Custom abstraction layer (готовий до заміни на Ant Design Vue / Naive UI)
 
