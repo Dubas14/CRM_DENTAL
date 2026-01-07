@@ -24,7 +24,8 @@ import {
   Menu,
   X,
   GraduationCap,
-  Warehouse
+  Warehouse,
+  Banknote
 } from 'lucide-vue-next'
 
 const { user, logout, initAuth } = useAuth()
@@ -318,6 +319,18 @@ const onProfileUpdated = async () => {
             >
               <Warehouse :size="20" />
               <span class="font-medium">Склад</span>
+            </router-link>
+
+            <router-link
+              v-if="isSuperAdmin || isClinicAdmin || hasPermission('invoice.view') || hasPermission('payment.view') || hasPermission('finance.stats')"
+              :to="{ name: 'finance' }"
+              :class="[
+                route.name === 'finance' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Banknote :size="20" />
+              <span class="font-medium">Фінанси</span>
             </router-link>
 
             <router-link

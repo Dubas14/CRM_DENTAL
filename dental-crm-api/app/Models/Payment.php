@@ -19,10 +19,17 @@ class Payment extends Model
         'method',
         'transaction_id',
         'created_by',
+        'is_refund',
+        'refund_reason',
+        'original_payment_id',
+        'refunded_by',
+        'refunded_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'is_refund' => 'boolean',
+        'refunded_at' => 'datetime',
     ];
 
     public function invoice(): BelongsTo
@@ -38,6 +45,16 @@ class Payment extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function refundedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'refunded_by');
+    }
+
+    public function originalPayment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'original_payment_id');
     }
 }
 

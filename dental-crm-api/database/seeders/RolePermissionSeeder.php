@@ -32,9 +32,13 @@ class RolePermissionSeeder extends Seeder
                 // Finance
                 'invoice.view',
                 'invoice.create',
-                'invoice.update',
-                'payment.collect',
+                'invoice.edit',
+                'invoice.delete',
                 'payment.view',
+                'payment.create',
+                'payment.refund',
+                'finance.stats',
+                'finance.export',
                 // Inventory
                 'inventory.view',
                 'inventory.manage',
@@ -72,6 +76,9 @@ class RolePermissionSeeder extends Seeder
                 'medical.record.update',
                 'patient.view',
                 'patient.update',
+                // Finance (тільки перегляд своїх рахунків)
+                'invoice.view',
+                'invoice.create',
                 // Catalogs read
                 'procedure.view',
                 'specialization.view',
@@ -96,6 +103,12 @@ class RolePermissionSeeder extends Seeder
                 'patient.view',
                 'patient.create',
                 'patient.update',
+                // Finance (рецепція може створювати рахунки та приймати оплати)
+                'invoice.view',
+                'invoice.create',
+                'invoice.edit',
+                'payment.view',
+                'payment.create',
             ],
         ];
 

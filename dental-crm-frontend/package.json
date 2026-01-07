@@ -12,6 +12,7 @@
     "type-check": "vue-tsc -b"
   },
   "dependencies": {
+    "@tanstack/vue-table": "^8.20.5",
     "axios": "^1.13.2",
     "lodash-es": "^4.17.22",
     "lucide-vue-next": "^0.555.0",

@@ -34,11 +34,26 @@ const invoiceApi = {
   }>) {
     return apiClient.post(`/invoices/${invoiceId}/items`, { items })
   },
+  replaceItems(invoiceId: number | string, items: Array<{
+    procedure_id?: number | null
+    name: string
+    quantity: number
+    price: number
+    total: number
+  }>) {
+    return apiClient.put(`/invoices/${invoiceId}/items`, { items })
+  },
   update(id: number | string, payload: any) {
     return apiClient.put(`/invoices/${id}`, payload)
   },
   delete(id: number | string) {
     return apiClient.delete(`/invoices/${id}`)
+  },
+  applyDiscount(id: number | string, type: 'percent' | 'fixed', value: number) {
+    return apiClient.post(`/invoices/${id}/discount`, { type, value })
+  },
+  cancel(id: number | string) {
+    return apiClient.post(`/invoices/${id}/cancel`)
   }
 }
 

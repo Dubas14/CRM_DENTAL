@@ -1,6 +1,11 @@
 import apiClient from './apiClient'
 
 export default {
+  // Список пацієнтів
+  list(params?: { search?: string; clinic_id?: number; per_page?: number }) {
+    return apiClient.get('/patients', { params })
+  },
+
   // Отримати дані пацієнта
   getPatient(id) {
     return apiClient.get(`/patients/${id}`)

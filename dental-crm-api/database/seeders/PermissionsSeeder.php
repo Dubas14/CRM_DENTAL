@@ -25,10 +25,13 @@ class PermissionsSeeder extends Seeder
             // Finance module
             'invoice.view',
             'invoice.create',
-            'invoice.update',
+            'invoice.edit',
             'invoice.delete',
-            'payment.collect',
             'payment.view',
+            'payment.create',
+            'payment.refund',
+            'finance.stats',
+            'finance.export',
 
             // Inventory module
             'inventory.view',

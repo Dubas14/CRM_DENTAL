@@ -156,9 +156,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('equipments', EquipmentController::class);
     Route::apiResource('procedures', ProcedureController::class);
     Route::apiResource('specializations', SpecializationController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'store']);
+    Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'store', 'update']);
     Route::post('invoices/{invoice}/items', [InvoiceController::class, 'addItems']);
+    Route::put('invoices/{invoice}/items', [InvoiceController::class, 'replaceItems']);
+    Route::post('invoices/{invoice}/discount', [InvoiceController::class, 'applyDiscount']);
+    Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
+    Route::get('payments', [PaymentController::class, 'index']);
     Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store']);
+    Route::post('payments/{payment}/refund', [PaymentController::class, 'refund']);
+    Route::get('finance/stats', [\App\Http\Controllers\Api\FinanceStatsController::class, 'stats']);
+    Route::post('finance/stats/invalidate', [\App\Http\Controllers\Api\FinanceStatsController::class, 'invalidateCache']);
     Route::apiResource('inventory-items', InventoryItemController::class);
     Route::apiResource('inventory-transactions', InventoryTransactionController::class)->only(['index', 'store']);
 

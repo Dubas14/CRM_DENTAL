@@ -7,6 +7,7 @@ use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -30,6 +31,8 @@ class InvoiceService
 
             $this->syncItems($invoice, $data['items'] ?? []);
             $this->recalculateTotals($invoice);
+            
+            $this->invalidateStatsCache($invoice->clinic_id);
 
             return $invoice->fresh(['items', 'payments']);
         });
@@ -46,9 +49,36 @@ class InvoiceService
         });
     }
 
+    public function replaceItems(Invoice $invoice, array $items): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $items) {
+            $this->assertEditable($invoice);
+            
+            // Видалити всі існуючі items
+            $invoice->items()->delete();
+            
+            // Створити нові items
+            $this->syncItems($invoice, $items, append: false);
+            $this->recalculateTotals($invoice);
+            
+            $this->invalidateStatsCache($invoice->clinic_id);
+
+            return $invoice->fresh(['items', 'payments']);
+        });
+    }
+
     public function recalculateTotals(Invoice $invoice): void
     {
-        $total = (float) $invoice->items()->sum('total');
+        $subtotal = (float) $invoice->items()->sum('total');
+        $discountAmount = (float) ($invoice->discount_amount ?? 0);
+        
+        // Застосувати знижку
+        $total = $subtotal - $discountAmount;
+        if ($total < 0) {
+            $total = 0;
+        }
+        
+        // Сумуємо всі платежі (refund мають від'ємну суму)
         $paid = (float) $invoice->payments()->sum('amount');
 
         $invoice->amount = $this->formatMoney($total);
@@ -83,6 +113,8 @@ class InvoiceService
             ]);
 
             $this->recalculateTotals($invoice);
+            
+            $this->invalidateStatsCache($invoice->clinic_id);
 
             return $payment;
         });
@@ -90,7 +122,12 @@ class InvoiceService
 
     public function assertEditable(Invoice $invoice): void
     {
-        if ($invoice->payments()->exists()) {
+        // Перевіряємо тільки не-refund платежі
+        $hasNonRefundPayments = $invoice->payments()
+            ->where('is_refund', false)
+            ->exists();
+            
+        if ($hasNonRefundPayments) {
             throw ValidationException::withMessages([
                 'invoice' => 'Інвойс уже має оплати. Редагування позицій заборонено.',
             ]);
@@ -127,6 +164,68 @@ class InvoiceService
     private function formatMoney($value): string
     {
         return number_format((float) $value, 2, '.', '');
+    }
+
+    public function applyDiscount(Invoice $invoice, string $type, float $value): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $type, $value) {
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            
+            $currentAmount = (float) $invoice->amount;
+            $paidAmount = (float) $invoice->paid_amount;
+            
+            $discountAmount = 0;
+            if ($type === 'percent') {
+                $discountAmount = $currentAmount * ($value / 100);
+            } else {
+                $discountAmount = $value;
+            }
+            
+            $newAmount = $currentAmount - $discountAmount;
+            
+            // Валідація: нова сума не може бути меншою за вже сплачену
+            if ($newAmount < $paidAmount) {
+                throw ValidationException::withMessages([
+                    'discount' => "Знижка неможлива: нова сума ({$this->formatMoney($newAmount)}) менша за сплачену ({$this->formatMoney($paidAmount)})"
+                ]);
+            }
+            
+            $invoice->discount_amount = $this->formatMoney($discountAmount);
+            $invoice->discount_type = $type;
+            $invoice->amount = $this->formatMoney($newAmount);
+            $invoice->syncStatusFromTotals();
+            $invoice->save();
+            
+            $this->invalidateStatsCache($invoice->clinic_id);
+            
+            return $invoice->fresh(['items', 'payments']);
+        });
+    }
+
+    public function cancel(Invoice $invoice): Invoice
+    {
+        return DB::transaction(function () use ($invoice) {
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            
+            // Перевірка: якщо є оплати, скасування заборонено
+            if ($invoice->payments()->where('is_refund', false)->exists()) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Неможливо скасувати рахунок з наявними оплатами. Спочатку зробіть повернення коштів.'
+                ]);
+            }
+            
+            $invoice->status = Invoice::STATUS_CANCELLED;
+            $invoice->save();
+            
+            $this->invalidateStatsCache($invoice->clinic_id);
+            
+            return $invoice->fresh(['items', 'payments']);
+        });
+    }
+
+    private function invalidateStatsCache(int $clinicId): void
+    {
+        Cache::forget("finance_stats:{$clinicId}");
     }
 
     private function toFloat($value): float

@@ -17,7 +17,7 @@ const props = defineProps({
 })
 
 // Додаємо подію 'create-patient'
-const emit = defineEmits(['close', 'saved', 'create-patient'])
+const emit = defineEmits(['close', 'saved', 'create-patient', 'open-payment', 'open-invoice'])
 
 const form = ref({
   diagnosis: '',
@@ -474,7 +474,37 @@ const saveRecord = async () => {
       if (startDate && !Number.isNaN(startDate.getTime()) && startDate.getTime() > now.getTime()) {
         alert('Цей запис ще не почався. Неможливо завершити прийом раніше початку.')
       } else {
-        await calendarApi.finishAppointment(appointmentId.value)
+        const finishResponse = await calendarApi.finishAppointment(appointmentId.value)
+        
+        // Обробка пропозиції рахунку
+        if (finishResponse.data?.invoice_suggestion) {
+          const suggestion = finishResponse.data.invoice_suggestion
+          if (suggestion.action === 'pay_existing') {
+            const confirmPay = confirm(
+              `Є неоплачений рахунок ${suggestion.invoice_number}. ` +
+              `Борг: ${suggestion.debt_amount} грн. Відкрити для оплати?`
+            )
+            if (confirmPay) {
+              // Emit event to open payment modal
+              emit('open-payment', { invoiceId: suggestion.existing_invoice_id })
+            }
+          } else if (suggestion.action === 'create') {
+            const confirmCreate = confirm(
+              `Процедура: ${suggestion.procedure_name}. ` +
+              `Ціна: ${suggestion.procedure_price} грн. Створити рахунок?`
+            )
+            if (confirmCreate) {
+              // Emit event to open invoice form
+              emit('open-invoice', {
+                patientId: patientId.value,
+                appointmentId: appointmentId.value,
+                procedureId: suggestion.procedure_id,
+                procedureName: suggestion.procedure_name,
+                procedurePrice: suggestion.procedure_price
+              })
+            }
+          }
+        }
       }
     }
 

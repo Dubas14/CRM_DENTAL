@@ -17,14 +17,49 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = Invoice::query()->with(['items', 'payments']);
+        $user = $request->user();
+        
+        // Doctor Scope: лікар бачить тільки рахунки своїх прийомів
+        $query = Invoice::query()->with(['items', 'payments', 'appointment.doctor', 'patient', 'clinic']);
 
-        if ($request->filled('clinic_id')) {
-            $query->where('clinic_id', $request->integer('clinic_id'));
+        if ($user->hasRole('doctor') && !$user->isSuperAdmin()) {
+            $doctorId = $user->doctor?->id;
+            if ($doctorId) {
+                $query->whereHas('appointment', fn($q) => $q->where('doctor_id', $doctorId));
+            } else {
+                // Якщо у користувача немає doctor_id, повертаємо порожній список
+                return response()->json(['data' => [], 'total' => 0]);
+            }
+        } else {
+            // Для super_admin та clinic_admin - фільтр по клініці
+            if ($request->filled('clinic_id')) {
+                $query->where('clinic_id', $request->integer('clinic_id'));
+            } elseif (!$user->isSuperAdmin()) {
+                // Якщо не super_admin, фільтруємо по клініці користувача
+                $userClinicIds = $user->clinics()->pluck('clinics.id')->toArray();
+                if (!empty($userClinicIds)) {
+                    $query->whereIn('clinic_id', $userClinicIds);
+                } else {
+                    return response()->json(['data' => [], 'total' => 0]);
+                }
+            }
         }
 
         if ($request->filled('patient_id')) {
             $query->where('patient_id', $request->integer('patient_id'));
+        }
+
+        // Фільтри по статусу
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        // Фільтри по даті
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date('date_to'));
         }
 
         $perPage = min(max($request->integer('per_page', 20), 1), 100);
@@ -32,9 +67,21 @@ class InvoiceController extends Controller
         return $query->orderByDesc('id')->paginate($perPage);
     }
 
-    public function show(Invoice $invoice)
+    public function show(Request $request, Invoice $invoice)
     {
-        return $invoice->load(['items', 'payments']);
+        $user = $request->user();
+        
+        // Doctor Scope: перевірка доступу
+        if ($user->hasRole('doctor') && !$user->isSuperAdmin()) {
+            $doctorId = $user->doctor?->id;
+            if ($doctorId && $invoice->appointment && $invoice->appointment->doctor_id !== $doctorId) {
+                abort(403, 'Немає доступу до цього рахунку');
+            }
+        } else {
+            $this->assertClinicAccess($user, $invoice->clinic_id);
+        }
+
+        return $invoice->load(['items', 'payments', 'appointment.doctor', 'patient', 'clinic']);
     }
 
     public function store(Request $request)
@@ -61,6 +108,25 @@ class InvoiceController extends Controller
         return response()->json($invoice, 201);
     }
 
+    public function update(Request $request, Invoice $invoice)
+    {
+        $data = $request->validate([
+            'description' => ['nullable', 'string'],
+            'due_date' => ['nullable', 'date'],
+        ]);
+
+        $this->assertClinicAccess($request->user(), $invoice->clinic_id);
+        
+        // Редагування дозволено тільки якщо немає оплат
+        if ($invoice->payments()->where('is_refund', false)->exists()) {
+            abort(422, 'Неможливо редагувати рахунок з наявними оплатами');
+        }
+
+        $invoice->update($data);
+
+        return response()->json($invoice->fresh(['items', 'payments']));
+    }
+
     public function addItems(Request $request, Invoice $invoice)
     {
         $data = $request->validate([
@@ -74,6 +140,51 @@ class InvoiceController extends Controller
         $this->assertClinicAccess($request->user(), $invoice->clinic_id);
 
         $invoice = $this->invoiceService->addItems($invoice, $data['items']);
+
+        return response()->json($invoice);
+    }
+
+    public function replaceItems(Request $request, Invoice $invoice)
+    {
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.procedure_id' => ['nullable', 'exists:procedures,id'],
+            'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $this->assertClinicAccess($request->user(), $invoice->clinic_id);
+        
+        // Редагування дозволено тільки якщо немає оплат
+        if ($invoice->payments()->where('is_refund', false)->exists()) {
+            abort(422, 'Неможливо редагувати рахунок з наявними оплатами');
+        }
+
+        $invoice = $this->invoiceService->replaceItems($invoice, $data['items']);
+
+        return response()->json($invoice);
+    }
+
+    public function applyDiscount(Request $request, Invoice $invoice)
+    {
+        $data = $request->validate([
+            'type' => ['required', Rule::in(['percent', 'fixed'])],
+            'value' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $this->assertClinicAccess($request->user(), $invoice->clinic_id);
+
+        $invoice = $this->invoiceService->applyDiscount($invoice, $data['type'], $data['value']);
+
+        return response()->json($invoice);
+    }
+
+    public function cancel(Request $request, Invoice $invoice)
+    {
+        $this->assertClinicAccess($request->user(), $invoice->clinic_id);
+
+        $invoice = $this->invoiceService->cancel($invoice);
 
         return response()->json($invoice);
     }

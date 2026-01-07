@@ -23,6 +23,8 @@ class Invoice extends Model
         'appointment_id',
         'invoice_number',
         'amount',
+        'discount_amount',
+        'discount_type',
         'paid_amount',
         'status',
         'is_prepayment',
@@ -33,6 +35,7 @@ class Invoice extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'is_prepayment' => 'boolean',
         'due_date' => 'datetime',

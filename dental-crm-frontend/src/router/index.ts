@@ -18,6 +18,7 @@ import RoleManager from '../views/Settings/RoleManager.vue'
 import ClinicSettings from '../views/ClinicSettings.vue'
 import SpecializationsList from '../views/SpecializationsList.vue'
 import InventoryListPage from '../views/InventoryListPage.vue'
+import FinancePage from '../features/finance/FinancePage.vue'
 
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
@@ -85,6 +86,16 @@ const routes: import('vue-router').RouteRecordRaw[] = [
       requiresAuth: true,
       allowedRoles: ['super_admin', 'clinic_admin'],
       allowedPermissions: ['inventory.view', 'inventory.manage']
+    }
+  },
+  {
+    path: '/finance',
+    name: 'finance',
+    component: FinancePage,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin', 'receptionist'],
+      allowedPermissions: ['invoice.view', 'payment.view', 'finance.stats']
     }
   },
   {

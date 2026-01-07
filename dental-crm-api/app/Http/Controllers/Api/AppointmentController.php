@@ -7,6 +7,7 @@ use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Equipment;
+use App\Models\Invoice;
 use App\Models\Procedure;
 use App\Models\ProcedureStep;
 use App\Models\Room;
@@ -879,12 +880,82 @@ class AppointmentController extends Controller
         }
         $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
 
+        // Перевірка рахунку для пропозиції
+        $invoiceSuggestion = $this->getInvoiceSuggestion($appointment);
+
         return response()->json([
             'status' => 'done',
             'appointment' => new AppointmentResource(
                 $appointment->fresh(['clinic', 'doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment', 'invoice'])
             ),
+            'invoice_suggestion' => $invoiceSuggestion,
         ]);
+    }
+
+    /**
+     * Отримати пропозицію рахунку для прийому
+     */
+    private function getInvoiceSuggestion(Appointment $appointment): ?array
+    {
+        // Якщо вже є рахунок
+        if ($appointment->invoice_id) {
+            $invoice = Invoice::find($appointment->invoice_id);
+            if ($invoice) {
+                $debt = (float) $invoice->amount - (float) $invoice->paid_amount;
+                if ($debt > 0) {
+                    return [
+                        'action' => 'pay_existing',
+                        'existing_invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'debt_amount' => $debt,
+                        'total_amount' => (float) $invoice->amount,
+                        'paid_amount' => (float) $invoice->paid_amount,
+                    ];
+                }
+                // Якщо рахунок повністю оплачено - немає пропозиції
+                return null;
+            }
+        }
+
+        // Перевірка наявності авансу (prepayment)
+        $prepaymentInvoice = Invoice::where('patient_id', $appointment->patient_id)
+            ->where('is_prepayment', true)
+            ->whereIn('status', [Invoice::STATUS_UNPAID, Invoice::STATUS_PARTIALLY_PAID])
+            ->where(function ($q) use ($appointment) {
+                if ($appointment->procedure_id) {
+                    $q->where('procedure_id', $appointment->procedure_id)
+                        ->orWhere('appointment_id', $appointment->id);
+                } else {
+                    $q->where('appointment_id', $appointment->id);
+                }
+            })
+            ->first();
+
+        if ($prepaymentInvoice) {
+            $debt = (float) $prepaymentInvoice->amount - (float) $prepaymentInvoice->paid_amount;
+            if ($debt > 0) {
+                return [
+                    'action' => 'pay_existing',
+                    'existing_invoice_id' => $prepaymentInvoice->id,
+                    'invoice_number' => $prepaymentInvoice->invoice_number,
+                    'debt_amount' => $debt,
+                    'total_amount' => (float) $prepaymentInvoice->amount,
+                    'paid_amount' => (float) $prepaymentInvoice->paid_amount,
+                ];
+            }
+        }
+
+        // Якщо немає рахунку - пропонуємо створити
+        if ($appointment->procedure) {
+            return [
+                'action' => 'create',
+                'procedure_id' => $appointment->procedure_id,
+                'procedure_name' => $appointment->procedure->name,
+                'procedure_price' => (float) ($appointment->procedure->price ?? 0),
+            ];
+        }
+
+        return null;
     }
 
     /**
