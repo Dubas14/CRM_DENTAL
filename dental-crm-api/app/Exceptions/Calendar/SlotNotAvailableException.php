@@ -7,9 +7,10 @@ use Exception;
 class SlotNotAvailableException extends Exception
 {
     protected $message = 'The requested time slot is not available';
+
     protected $code = 422;
 
-    public function __construct(string $message = null, int $code = 422)
+    public function __construct(?string $message = null, int $code = 422)
     {
         parent::__construct($message ?? $this->message, $code);
     }
@@ -22,4 +23,3 @@ class SlotNotAvailableException extends Exception
         ], $this->code);
     }
 }
-

@@ -27,4 +27,3 @@ class MedicalRecordResource extends JsonResource
         ];
     }
 }
-

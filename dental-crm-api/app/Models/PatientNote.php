@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PatientNote extends Model
 {
     use HasFactory;
+
     protected $fillable = ['patient_id', 'user_id', 'content'];
 
     // Автор нотатки

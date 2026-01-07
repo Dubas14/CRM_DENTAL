@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
             $table->foreignId('appointment_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('procedure_id')->nullable()->constrained()->nullOnDelete();
-            
+
             $table->string('invoice_number')->unique();
             $table->decimal('amount', 10, 2);
             $table->decimal('paid_amount', 10, 2)->default(0);
@@ -26,9 +26,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->dateTime('due_date')->nullable();
             $table->dateTime('paid_at')->nullable();
-            
+
             $table->timestamps();
-            
+
             $table->index(['patient_id', 'status']);
             $table->index(['appointment_id']);
             $table->index(['clinic_id', 'status']);
@@ -43,4 +43,3 @@ return new class extends Migration
         Schema::dropIfExists('invoices');
     }
 };
-

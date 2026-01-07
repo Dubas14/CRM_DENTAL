@@ -18,7 +18,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   placeholder: 'Оберіть...',
   searchable: false,
-  disabled: false,
+  disabled: false
 })
 
 const emit = defineEmits<{
@@ -63,7 +63,7 @@ const toggleOpen = () => {
         'w-full rounded-lg border border-border/80 bg-bg px-3 py-2 text-left text-sm text-text',
         'focus:outline-none focus:ring-2 focus:ring-emerald-500/50',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        'hover:border-border transition-colors',
+        'hover:border-border transition-colors'
       ]"
       @click="toggleOpen"
     >
@@ -96,16 +96,17 @@ const toggleOpen = () => {
             :class="[
               'w-full px-3 py-2 text-left text-sm transition-colors',
               'hover:bg-card/80',
-              modelValue === option.value
-                ? 'bg-emerald-500/10 text-emerald-300'
-                : 'text-text',
-              option.disabled && 'opacity-50 cursor-not-allowed',
+              modelValue === option.value ? 'bg-emerald-500/10 text-emerald-300' : 'text-text',
+              option.disabled && 'opacity-50 cursor-not-allowed'
             ]"
             @click="selectOption(option)"
           >
             {{ option.label }}
           </button>
-          <div v-if="filteredOptions.length === 0" class="px-3 py-2 text-sm text-text/60 text-center">
+          <div
+            v-if="filteredOptions.length === 0"
+            class="px-3 py-2 text-sm text-text/60 text-center"
+          >
             Нічого не знайдено
           </div>
         </div>
@@ -113,18 +114,16 @@ const toggleOpen = () => {
     </transition>
 
     <!-- Click outside to close -->
-    <div
-      v-if="isOpen"
-      class="fixed inset-0 z-40"
-      @click="isOpen = false"
-    />
+    <div v-if="isOpen" class="fixed inset-0 z-40" @click="isOpen = false" />
   </div>
 </template>
 
 <style scoped>
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
 }
 .dropdown-enter-from {
   opacity: 0;
@@ -135,4 +134,3 @@ const toggleOpen = () => {
   transform: translateY(-4px);
 }
 </style>
-

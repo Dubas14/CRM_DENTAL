@@ -248,7 +248,7 @@ const queryDate = computed(() => (typeof route.query.date === 'string' ? route.q
 
 const applyQuerySelections = () => {
   let changed = false
-  
+
   if (queryDate.value && selectedDate.value !== queryDate.value) {
     selectedDate.value = queryDate.value
     changed = true
@@ -273,7 +273,7 @@ const applyQuerySelections = () => {
       changed = true
     }
   }
-  
+
   // Only trigger refresh if something actually changed
   // The watch on selectedDoctorId/selectedDate will handle the refresh with debounce
 }
@@ -684,7 +684,8 @@ const bookSelectedSlot = async () => {
       procedure_id: ctx.procedure_id ?? (selectedProcedureId.value || null),
       room_id: ctx.room_id ?? (selectedRoomId.value || null),
       equipment_id: ctx.equipment_id ?? (selectedEquipmentId.value || null),
-      assistant_id: ctx.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
+      assistant_id:
+        ctx.assistant_id ?? (selectedAssistantId.value ? Number(selectedAssistantId.value) : null),
       clinic_id: (ctx.clinic_id ?? (clinicId.value ? Number(clinicId.value) : null)) || undefined,
       is_follow_up: ctx.is_follow_up ?? !!isFollowUp.value,
       allow_soft_conflicts: ctx.allow_soft_conflicts ?? !!allowSoftConflicts.value,
@@ -975,10 +976,7 @@ onUnmounted(() => {
       class="flex flex-wrap items-end gap-4 rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4"
     >
       <div v-if="showClinicSelector" class="flex flex-col gap-1 min-w-[200px]">
-        <label
-          for="doctor-schedule-clinic"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-clinic" class="text-xs uppercase tracking-wide text-text/70">
           Клініка
         </label>
         <select
@@ -995,10 +993,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="!isDoctor" class="flex flex-col gap-1">
-        <label
-          for="doctor-schedule-doctor"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-doctor" class="text-xs uppercase tracking-wide text-text/70">
           Лікар
         </label>
         <select
@@ -1024,10 +1019,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1">
-        <label
-          for="doctor-schedule-date"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-date" class="text-xs uppercase tracking-wide text-text/70">
           Дата
         </label>
         <input
@@ -1040,10 +1032,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <label
-          for="doctor-schedule-procedure"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-procedure" class="text-xs uppercase tracking-wide text-text/70">
           Процедура
         </label>
         <select
@@ -1061,10 +1050,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[200px]">
-        <label
-          for="doctor-schedule-room"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-room" class="text-xs uppercase tracking-wide text-text/70">
           Кабінет<span v-if="requiresRoom" class="text-rose-400"> *</span>
         </label>
         <select
@@ -1085,10 +1071,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <label
-          for="doctor-schedule-equipment"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-equipment" class="text-xs uppercase tracking-wide text-text/70">
           Обладнання
         </label>
         <select
@@ -1106,10 +1089,7 @@ onUnmounted(() => {
       </div>
 
       <div class="flex flex-col gap-1 min-w-[220px]">
-        <label
-          for="doctor-schedule-assistant"
-          class="text-xs uppercase tracking-wide text-text/70"
-        >
+        <label for="doctor-schedule-assistant" class="text-xs uppercase tracking-wide text-text/70">
           Асистент<span v-if="requiresAssistant" class="text-rose-400"> *</span>
         </label>
         <select
@@ -1317,7 +1297,7 @@ onUnmounted(() => {
               </div>
               <button
                 @click="
-                  selectedPatientForBooking = null;
+                  selectedPatientForBooking = null
                   bookingName = ''
                 "
                 class="px-3 py-1 bg-card/80 hover:bg-card/70 text-text/90 text-xs rounded border border-border/70 transition-colors"

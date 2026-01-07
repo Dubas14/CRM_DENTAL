@@ -53,4 +53,3 @@ class UserAvatarController extends Controller
         ]);
     }
 }
-

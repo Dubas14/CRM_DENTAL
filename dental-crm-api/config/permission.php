@@ -24,7 +24,6 @@ return [
     'display_permission_in_exception' => false,
     'display_role_in_exception' => false,
 
-
     'cache' => [
         'expiration_time' => \DateInterval::createFromDateString('24 hours'),
         'key' => 'spatie.permission.cache',

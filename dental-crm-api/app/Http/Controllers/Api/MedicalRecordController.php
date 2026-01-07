@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\MedicalRecord;
 use App\Models\Patient;
 use App\Models\PatientToothStatus;
 use Illuminate\Http\Request;
@@ -22,11 +21,11 @@ class MedicalRecordController extends Controller
         // Валідація
         $validated = $request->validate([
             'appointment_id' => 'nullable|exists:appointments,id',
-            'tooth_number'   => 'nullable|integer|min:11|max:85',
-            'diagnosis'      => 'nullable|string|max:1000',
-            'treatment'      => 'nullable|string|max:1000',
-            'complaints'     => 'nullable|string|max:1000',
-            'update_tooth_status' => 'nullable|string'
+            'tooth_number' => 'nullable|integer|min:11|max:85',
+            'diagnosis' => 'nullable|string|max:1000',
+            'treatment' => 'nullable|string|max:1000',
+            'complaints' => 'nullable|string|max:1000',
+            'update_tooth_status' => 'nullable|string',
         ]);
 
         // 1. Визначаємо лікаря
@@ -38,14 +37,14 @@ class MedicalRecordController extends Controller
         if ($doctor) {
             // Якщо це робить сам лікар
             $doctorId = $doctor->id;
-        } elseif (!empty($request->appointment_id)) {
+        } elseif (! empty($request->appointment_id)) {
             // Якщо це робить Адмін -> беремо лікаря з візиту
             $appointment = \App\Models\Appointment::find($request->appointment_id);
             $doctorId = $appointment ? $appointment->doctor_id : null;
         }
 
         // Якщо так і не знайшли лікаря (наприклад, адмін пише нотатку без візиту)
-        if (!$doctorId) {
+        if (! $doctorId) {
             // Можна видати помилку, або дозволити (якщо запис робить клініка)
             // Поки що кинемо помилку, щоб дані були цілісними
             return response()->json(['message' => 'Неможливо визначити лікаря для цього запису'], 422);
@@ -58,7 +57,7 @@ class MedicalRecordController extends Controller
         $record = $patient->medicalRecords()->create($data);
 
         // 3. Оновлюємо статус зуба на карті
-        if (!empty($request->tooth_number) && !empty($request->update_tooth_status)) {
+        if (! empty($request->tooth_number) && ! empty($request->update_tooth_status)) {
             PatientToothStatus::updateOrCreate(
                 ['patient_id' => $patient->id, 'tooth_number' => $request->tooth_number],
                 ['status' => $request->update_tooth_status]
@@ -66,7 +65,7 @@ class MedicalRecordController extends Controller
         }
 
         // 4. Закриваємо візит (статус "done")
-        if (!empty($request->appointment_id)) {
+        if (! empty($request->appointment_id)) {
             \App\Models\Appointment::where('id', $request->appointment_id)
                 ->update(['status' => 'done']);
         }
@@ -85,14 +84,14 @@ class MedicalRecordController extends Controller
     {
         $request->validate([
             'tooth_number' => 'required|integer',
-            'status'       => 'required|string',
-            'surfaces'     => 'nullable|array',
-            'surfaces.*'   => 'string|in:M,D,O,B,L'
+            'status' => 'required|string',
+            'surfaces' => 'nullable|array',
+            'surfaces.*' => 'string|in:M,D,O,B,L',
         ]);
 
         $data = [
             'status' => $request->status,
-            'note' => $request->note ?? null
+            'note' => $request->note ?? null,
         ];
 
         if ($request->has('surfaces')) {

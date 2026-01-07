@@ -71,7 +71,10 @@ const loadMap = async () => {
     const { data } = await apiClient.get(`/patients/${props.patientId}/dental-map`)
     // Перетворюємо масив об'єктів у зручний об'єкт { "18": { status, surfaces } }
     teethMap.value = (data as DentalMapItem[]).reduce(
-      (acc: Record<number, { status: string; surfaces?: string[] | null }>, item: DentalMapItem) => {
+      (
+        acc: Record<number, { status: string; surfaces?: string[] | null }>,
+        item: DentalMapItem
+      ) => {
         acc[item.tooth_number] = {
           status: item.status,
           surfaces: item.surfaces || null

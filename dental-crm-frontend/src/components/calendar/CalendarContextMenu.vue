@@ -7,10 +7,13 @@
     @contextmenu.prevent
   >
     <div class="p-1">
-      <div v-if="title" class="px-2 py-1.5 text-xs font-semibold text-text/50 border-b border-border/50 mb-1">
+      <div
+        v-if="title"
+        class="px-2 py-1.5 text-xs font-semibold text-text/50 border-b border-border/50 mb-1"
+      >
         {{ title }}
       </div>
-      
+
       <button
         v-for="action in actions"
         :key="action.key"

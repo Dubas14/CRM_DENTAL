@@ -155,7 +155,7 @@ export const useInventoryStore = defineStore('inventory', () => {
       }
 
       const { data } = await inventoryApi.createTransaction(payload)
-      
+
       // Update item stock in local state
       const itemIndex = items.value.findIndex((i) => i.id === payload.inventory_item_id)
       if (itemIndex !== -1) {
@@ -167,7 +167,7 @@ export const useInventoryStore = defineStore('inventory', () => {
       }
 
       transactions.value.unshift(data)
-      
+
       const messages: Record<string, string> = {
         purchase: 'Прихід товару зафіксовано',
         usage: 'Матеріал списано',
@@ -199,4 +199,3 @@ export const useInventoryStore = defineStore('inventory', () => {
     addTransaction
   }
 })
-

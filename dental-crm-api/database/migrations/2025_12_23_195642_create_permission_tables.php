@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -34,7 +34,7 @@ return new class extends Migration
             return;
         }
 
-        if (!$schema->hasTable($tableNames['permissions'])) {
+        if (! $schema->hasTable($tableNames['permissions'])) {
             $schema->create($tableNames['permissions'], function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->string('name');
@@ -44,7 +44,7 @@ return new class extends Migration
             });
         }
 
-        if (!$schema->hasTable($tableNames['roles'])) {
+        if (! $schema->hasTable($tableNames['roles'])) {
             $schema->create($tableNames['roles'], function (Blueprint $table) {
                 $table->bigIncrements('id');
                 $table->string('name');
@@ -54,7 +54,7 @@ return new class extends Migration
             });
         }
 
-        if (!$schema->hasTable($tableNames['model_has_permissions'])) {
+        if (! $schema->hasTable($tableNames['model_has_permissions'])) {
             $schema->create($tableNames['model_has_permissions'], function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission) {
                 $table->unsignedBigInteger($pivotPermission);
 
@@ -71,7 +71,7 @@ return new class extends Migration
             });
         }
 
-        if (!$schema->hasTable($tableNames['model_has_roles'])) {
+        if (! $schema->hasTable($tableNames['model_has_roles'])) {
             $schema->create($tableNames['model_has_roles'], function (Blueprint $table) use ($tableNames, $columnNames, $pivotRole) {
                 $table->unsignedBigInteger($pivotRole);
 
@@ -88,7 +88,7 @@ return new class extends Migration
             });
         }
 
-        if (!$schema->hasTable($tableNames['role_has_permissions'])) {
+        if (! $schema->hasTable($tableNames['role_has_permissions'])) {
             $schema->create($tableNames['role_has_permissions'], function (Blueprint $table) use ($tableNames, $pivotRole, $pivotPermission) {
                 $table->unsignedBigInteger($pivotPermission);
                 $table->unsignedBigInteger($pivotRole);

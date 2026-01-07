@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Procedure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Support\QuerySearch;
 
 class ProcedureController extends Controller
 {
@@ -23,8 +22,8 @@ class ProcedureController extends Controller
         // search filter (case-insensitive)
         if ($search = $request->string('search')->toString()) {
             $searchTerm = trim($search);
-            if (!empty($searchTerm)) {
-                $like = '%' . addcslashes($searchTerm, '%_') . '%';
+            if (! empty($searchTerm)) {
+                $like = '%'.addcslashes($searchTerm, '%_').'%';
                 $query->where(function ($q) use ($like) {
                     $q->where('name', 'ilike', $like)
                         ->orWhere('category', 'ilike', $like)
@@ -41,27 +40,27 @@ class ProcedureController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'clinic_id'          => ['required', 'exists:clinics,id'],
-            'name'               => ['required', 'string', 'max:255'],
-            'category'           => ['nullable', 'string', 'max:255'],
-            'duration_minutes'   => ['required', 'integer', 'min:5', 'max:480'],
-            'requires_room'      => ['boolean'],
+            'clinic_id' => ['required', 'exists:clinics,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'duration_minutes' => ['required', 'integer', 'min:5', 'max:480'],
+            'requires_room' => ['boolean'],
             'requires_assistant' => ['boolean'],
-            'default_room_id'    => ['nullable', 'exists:rooms,id'],
-            'equipment_id'       => ['nullable', 'exists:equipments,id'],
-            'metadata'           => ['nullable', 'array'],
-            'steps'              => ['nullable', 'array'],
-            'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
+            'default_room_id' => ['nullable', 'exists:rooms,id'],
+            'equipment_id' => ['nullable', 'exists:equipments,id'],
+            'metadata' => ['nullable', 'array'],
+            'steps' => ['nullable', 'array'],
+            'steps.*.name' => ['required_with:steps', 'string', 'max:255'],
             'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
-            'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
-            'room_ids'           => ['nullable', 'array'],
-            'room_ids.*'         => ['integer', 'exists:rooms,id'],
+            'steps.*.order' => ['required_with:steps', 'integer', 'min:1'],
+            'room_ids' => ['nullable', 'array'],
+            'room_ids.*' => ['integer', 'exists:rooms,id'],
         ]);
 
         $procedure = DB::transaction(function () use ($data) {
             $procedure = Procedure::create($data);
 
-            if (!empty($data['steps'])) {
+            if (! empty($data['steps'])) {
                 $steps = collect($data['steps'])
                     ->sortBy('order')
                     ->values();
@@ -87,20 +86,20 @@ class ProcedureController extends Controller
     public function update(Request $request, Procedure $procedure)
     {
         $data = $request->validate([
-            'name'               => ['sometimes', 'string', 'max:255'],
-            'category'           => ['sometimes', 'nullable', 'string', 'max:255'],
-            'duration_minutes'   => ['sometimes', 'integer', 'min:5', 'max:480'],
-            'requires_room'      => ['sometimes', 'boolean'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'category' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'duration_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
+            'requires_room' => ['sometimes', 'boolean'],
             'requires_assistant' => ['sometimes', 'boolean'],
-            'default_room_id'    => ['sometimes', 'nullable', 'exists:rooms,id'],
-            'equipment_id'       => ['sometimes', 'nullable', 'exists:equipments,id'],
-            'metadata'           => ['sometimes', 'nullable', 'array'],
-            'steps'              => ['sometimes', 'array'],
-            'steps.*.name'       => ['required_with:steps', 'string', 'max:255'],
+            'default_room_id' => ['sometimes', 'nullable', 'exists:rooms,id'],
+            'equipment_id' => ['sometimes', 'nullable', 'exists:equipments,id'],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+            'steps' => ['sometimes', 'array'],
+            'steps.*.name' => ['required_with:steps', 'string', 'max:255'],
             'steps.*.duration_minutes' => ['required_with:steps', 'integer', 'min:5', 'max:480'],
-            'steps.*.order'      => ['required_with:steps', 'integer', 'min:1'],
-            'room_ids'           => ['sometimes', 'nullable', 'array'],
-            'room_ids.*'         => ['integer', 'exists:rooms,id'],
+            'steps.*.order' => ['required_with:steps', 'integer', 'min:1'],
+            'room_ids' => ['sometimes', 'nullable', 'array'],
+            'room_ids.*' => ['integer', 'exists:rooms,id'],
         ]);
 
         DB::transaction(function () use ($procedure, $data) {
@@ -109,7 +108,7 @@ class ProcedureController extends Controller
             if (array_key_exists('steps', $data)) {
                 $procedure->steps()->delete();
 
-                if (!empty($data['steps'])) {
+                if (! empty($data['steps'])) {
                     $steps = collect($data['steps'])
                         ->sortBy('order')
                         ->values();

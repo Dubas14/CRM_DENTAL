@@ -15,12 +15,12 @@ use Illuminate\Database\Seeder;
 class FutureAppointmentsSeeder extends Seeder
 {
     /**
-    * Генерує записи на 6 місяців вперед для всіх лікарів та клінік,
-    * використовуючи наявний розклад/слоти, щоб не ламати слоти.
-    */
+     * Генерує записи на 6 місяців вперед для всіх лікарів та клінік,
+     * використовуючи наявний розклад/слоти, щоб не ламати слоти.
+     */
     public function run(): void
     {
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
 
         // Мінімальний пул пацієнтів/процедур
         $patients = Patient::all();
@@ -76,8 +76,8 @@ class FutureAppointmentsSeeder extends Seeder
                             $daySlots = collect($slots)->shuffle()->take(rand(1, 2));
 
                             foreach ($daySlots as $slot) {
-                                $startAt = Carbon::parse($date->toDateString() . ' ' . $slot['start']);
-                                $endAt = Carbon::parse($date->toDateString() . ' ' . $slot['end']);
+                                $startAt = Carbon::parse($date->toDateString().' '.$slot['start']);
+                                $endAt = Carbon::parse($date->toDateString().' '.$slot['end']);
 
                                 // Пропускаємо минулі слоти (для сьогодні)
                                 if ($startAt->isToday() && $endAt->isPast()) {
@@ -124,4 +124,3 @@ class FutureAppointmentsSeeder extends Seeder
             });
     }
 }
-

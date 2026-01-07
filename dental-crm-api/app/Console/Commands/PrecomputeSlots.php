@@ -32,7 +32,7 @@ class PrecomputeSlots extends Command
         $this->info("Precomputing slots for the next {$days} days...");
 
         $doctors = Doctor::where('is_active', true)->get();
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $today = Carbon::today();
 
         $totalProcessed = 0;
@@ -43,24 +43,23 @@ class PrecomputeSlots extends Command
 
             for ($i = 0; $i < $days; $i++) {
                 $date = $today->copy()->addDays($i);
-                
+
                 try {
                     // Отримуємо слоти для стандартної тривалості (30 хвилин)
                     $slots = $availability->getAvailableSlots($doctor, $date, 30);
-                    
+
                     // Кешування відбувається автоматично в getAvailableSlots
                     $slotCount = count($slots['slots'] ?? []);
                     $totalSlots += $slotCount;
                     $totalProcessed++;
                 } catch (\Exception $e) {
-                    $this->error("Error processing {$doctor->full_name} for {$date->toDateString()}: " . $e->getMessage());
+                    $this->error("Error processing {$doctor->full_name} for {$date->toDateString()}: ".$e->getMessage());
                 }
             }
         }
 
         $this->info("Completed! Processed {$totalProcessed} doctor-days, found {$totalSlots} total slots.");
-        
+
         return Command::SUCCESS;
     }
 }
-

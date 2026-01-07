@@ -112,15 +112,18 @@ dental-crm-frontend/
 ### Автоматичний logout
 
 При отриманні 401 відповіді від API:
+
 1. Токен видаляється з localStorage
 2. Користувач перенаправляється на сторінку входу
 
 ## 🛣️ Маршрутизація
 
 ### Публічні маршрути
+
 - `/login` - Сторінка входу
 
 ### Захищені маршрути (потребують аутентифікації)
+
 - `/` - Дашборд
 - `/clinics` - Список клінік
 - `/doctors` - Список лікарів
@@ -139,7 +142,7 @@ dental-crm-frontend/
 // Приклад з router/index.ts
 {
   path: '/clinics',
-  meta: { 
+  meta: {
     requiresAuth: true,
     roles: ['super_admin'] // Доступ тільки для super_admin
   }
@@ -178,7 +181,7 @@ const response = await apiClient.post('/appointments', data)
 ### Перехоплювачі (Interceptors)
 
 - **Request Interceptor**: Додає Bearer token до всіх запитів
-- **Response Interceptor**: 
+- **Response Interceptor**:
   - Обробляє 401 помилки (logout)
   - Логує помилки API
 
@@ -191,9 +194,7 @@ const response = await apiClient.post('/appointments', data)
 ```vue
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-      Hello World
-    </h1>
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Hello World</h1>
   </div>
 </template>
 ```
@@ -216,6 +217,7 @@ theme: {
 ## 📱 Адаптивність
 
 Додаток повністю адаптивний та працює на:
+
 - Desktop (1920px+)
 - Laptop (1280px - 1919px)
 - Tablet (768px - 1279px)
@@ -386,12 +388,15 @@ const patientsStore = usePatientsStore()
 ## 🆘 Troubleshooting
 
 ### CORS помилки
+
 Переконайтеся що backend налаштований для прийому запитів з frontend домену.
 
 ### 401 Unauthorized
+
 Перевірте що токен валідний та не прострочений.
 
 ### Vite не запускається
+
 ```bash
 rm -rf node_modules package-lock.json
 npm install

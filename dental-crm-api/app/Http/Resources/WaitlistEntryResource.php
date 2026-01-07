@@ -23,11 +23,11 @@ class WaitlistEntryResource extends JsonResource
             'priority' => $this->priority,
             'status' => $this->status,
             'note' => $this->note,
-            
+
             'patient' => $this->whenLoaded('patient', fn () => new PatientResource($this->patient)),
             'doctor' => $this->whenLoaded('doctor', fn () => new DoctorResource($this->doctor)),
             'procedure' => $this->whenLoaded('procedure', fn () => new ProcedureResource($this->procedure)),
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

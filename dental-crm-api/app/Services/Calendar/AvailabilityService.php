@@ -34,6 +34,7 @@ class AvailabilityService
             ->where('rooms.clinic_id', $clinicId)
             ->exists();
     }
+
     public function getDailyPlan(Doctor $doctor, Carbon $date, ?int $clinicId = null): array
     {
         if (! $doctor->isActive()) {
@@ -41,6 +42,7 @@ class AvailabilityService
             if ($doctor->status === 'vacation' && $doctor->vacation_from && $doctor->vacation_to) {
                 $reason = 'doctor_vacation';
             }
+
             return [
                 'reason' => $reason,
                 'slot_duration' => null,
@@ -69,14 +71,14 @@ class AvailabilityService
         }
 
         $schedule = Schedule::where('doctor_id', $doctor->id)
-            ->when($clinicId, fn($q) => $q->where(function ($qq) use ($clinicId) {
+            ->when($clinicId, fn ($q) => $q->where(function ($qq) use ($clinicId) {
                 $qq->where('clinic_id', $clinicId)->orWhereNull('clinic_id');
             }))
             ->where('weekday', $weekday)
             ->orderByDesc('clinic_id') // віддавати прив'язаний до клініки запис у пріоритеті
             ->first();
 
-        if (!$schedule && !$exception) {
+        if (! $schedule && ! $exception) {
             return ['slots' => [], 'reason' => 'no_schedule'];
         }
 
@@ -88,18 +90,18 @@ class AvailabilityService
             ? $exception->end_time
             : ($schedule?->end_time ?? $exception?->end_time);
 
-        if (!$startTime || !$endTime) {
+        if (! $startTime || ! $endTime) {
             return ['slots' => [], 'reason' => 'invalid_schedule'];
         }
 
         return [
-            'start' => Carbon::parse($date->toDateString() . ' ' . $startTime),
-            'end'   => Carbon::parse($date->toDateString() . ' ' . $endTime),
+            'start' => Carbon::parse($date->toDateString().' '.$startTime),
+            'end' => Carbon::parse($date->toDateString().' '.$endTime),
             'break_start' => $schedule?->break_start
-                ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_start)
+                ? Carbon::parse($date->toDateString().' '.$schedule->break_start)
                 : null,
             'break_end' => $schedule?->break_end
-                ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_end)
+                ? Carbon::parse($date->toDateString().' '.$schedule->break_end)
                 : null,
             'slot_duration' => $schedule?->slot_duration_minutes ?? 30,
         ];
@@ -107,7 +109,7 @@ class AvailabilityService
 
     public function resolveProcedureDuration(Doctor $doctor, ?Procedure $procedure, int $fallbackDuration): int
     {
-        if (!$procedure) {
+        if (! $procedure) {
             return $fallbackDuration;
         }
 
@@ -304,7 +306,7 @@ class AvailabilityService
 
                 $slots[] = [
                     'start' => $start->format('H:i'),
-                    'end'   => $end->format('H:i'),
+                    'end' => $end->format('H:i'),
                 ];
             }
 
@@ -412,9 +414,11 @@ class AvailabilityService
             }
         }
 
-        if ($room) return $room;
+        if ($room) {
+            return $room;
+        }
 
-        if (!$procedure->requires_room && !$procedure->default_room_id) {
+        if (! $procedure->requires_room && ! $procedure->default_room_id) {
             return null;
         }
 
@@ -444,7 +448,9 @@ class AvailabilityService
                 })
                 ->exists();
 
-            if (! $hasConflict) return $candidate;
+            if (! $hasConflict) {
+                return $candidate;
+            }
         }
 
         return null;
@@ -463,6 +469,7 @@ class AvailabilityService
                     }
                 }
             }
+
             return $equipment;
         }
 
@@ -493,7 +500,9 @@ class AvailabilityService
                 })
                 ->exists();
 
-            if (! $hasConflict) return $candidate;
+            if (! $hasConflict) {
+                return $candidate;
+            }
         }
 
         return null;
@@ -526,7 +535,7 @@ class AvailabilityService
                 $peakHours = config('calendar.peak_hours', ['09:00-12:00', '14:00-18:00']);
                 $isPeakHour = false;
                 $slotTime = $slotStart->format('H:i');
-                
+
                 foreach ($peakHours as $peakRange) {
                     [$peakStart, $peakEnd] = explode('-', $peakRange);
                     if ($slotTime >= $peakStart && $slotTime < $peakEnd) {
@@ -573,10 +582,11 @@ class AvailabilityService
             if ($b['score'] !== $a['score']) {
                 return $b['score'] <=> $a['score'];
             }
+
             // Якщо score однаковий, сортуємо за датою (ближчі спочатку)
             return strcmp($a['date'], $b['date']);
         });
-        
+
         $topSlots = array_slice($slots, 0, $limit);
 
         return array_map(fn ($slot) => [
@@ -622,4 +632,3 @@ class AvailabilityService
         return $procedure->rooms()->where('rooms.id', $room->id)->exists();
     }
 }
-

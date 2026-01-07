@@ -54,10 +54,7 @@ export function addRetryInterceptor(
       }
 
       // Перевірити чи можна повторити запит
-      if (
-        originalRequest._retryCount < config.maxRetries &&
-        shouldRetry(error, config)
-      ) {
+      if (originalRequest._retryCount < config.maxRetries && shouldRetry(error, config)) {
         originalRequest._retryCount++
 
         // Експоненціальна затримка: 1s, 2s, 4s...
@@ -121,4 +118,3 @@ export default {
   addRetryInterceptor,
   retryRequest
 }
-

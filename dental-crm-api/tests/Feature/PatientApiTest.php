@@ -14,6 +14,7 @@ class PatientApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Clinic $clinic;
 
     protected function setUp(): void
@@ -201,4 +202,3 @@ class PatientApiTest extends TestCase
         $response->assertStatus(401);
     }
 }
-

@@ -19,10 +19,15 @@ class AppointmentApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Clinic $clinic;
+
     private Doctor $doctor;
+
     private Patient $patient;
+
     private Procedure $procedure;
+
     private Room $room;
 
     protected function setUp(): void
@@ -31,7 +36,7 @@ class AppointmentApiTest extends TestCase
 
         // Create test data
         $this->clinic = Clinic::factory()->create();
-        
+
         $this->user = User::factory()->create();
         $this->user->assignRole('super_admin');
 
@@ -216,4 +221,3 @@ class AppointmentApiTest extends TestCase
         $response->assertStatus(401);
     }
 }
-

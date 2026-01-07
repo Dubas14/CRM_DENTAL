@@ -12,8 +12,7 @@ class WaitlistOfferNotification extends Notification
         private string $doctorName,
         private string $dateTime,
         private string $claimUrl
-    ) {
-    }
+    ) {}
 
     public function via(mixed $notifiable): array
     {
@@ -32,7 +31,7 @@ class WaitlistOfferNotification extends Notification
 
     public function toMail(mixed $notifiable): MailMessage
     {
-        return (new MailMessage())
+        return (new MailMessage)
             ->subject('Зʼявився вільний слот для запису')
             ->greeting('Доброго дня!')
             ->line("Є вільний слот до лікаря {$this->doctorName} на {$this->dateTime}.")

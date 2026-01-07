@@ -48,5 +48,3 @@ class PatientFileController extends Controller
         return response()->noContent();
     }
 }
-
-

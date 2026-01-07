@@ -7,9 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class SmsChannel
 {
-    public function __construct(private SmsGateway $gateway)
-    {
-    }
+    public function __construct(private SmsGateway $gateway) {}
 
     public function send(mixed $notifiable, Notification $notification): void
     {

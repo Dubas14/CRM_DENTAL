@@ -117,10 +117,7 @@ const submit = async () => {
 
         <form @submit.prevent="submit" class="space-y-4">
           <div v-if="!isDoctor && clinics.length > 0">
-            <label
-              for="patient-create-clinic"
-              class="block text-xs uppercase text-text/70 mb-1"
-            >
+            <label for="patient-create-clinic" class="block text-xs uppercase text-text/70 mb-1">
               Клініка
             </label>
             <select
@@ -136,9 +133,7 @@ const submit = async () => {
           </div>
 
           <div>
-            <label
-              for="patient-create-full-name"
-              class="block text-xs uppercase text-text/70 mb-1"
+            <label for="patient-create-full-name" class="block text-xs uppercase text-text/70 mb-1"
               >ПІБ <span class="text-red-400">*</span></label
             >
             <input

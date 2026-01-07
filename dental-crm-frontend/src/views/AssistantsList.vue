@@ -122,7 +122,7 @@ const fetchAssistants = async () => {
     if (search.value.trim()) params.search = search.value.trim()
 
     const { data } = await roleApi.listUsers(params)
-    
+
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
@@ -134,9 +134,10 @@ const fetchAssistants = async () => {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      full_name: user.first_name && user.last_name 
-        ? `${user.first_name} ${user.last_name}`.trim()
-        : user.name || user.email,
+      full_name:
+        user.first_name && user.last_name
+          ? `${user.first_name} ${user.last_name}`.trim()
+          : user.name || user.email,
       clinics: user.clinics || []
     }))
     const hasPagination =
@@ -181,8 +182,8 @@ const quickActions = [
   { id: 'message', label: 'Надіслати повідомлення', icon: '💬' }
 ]
 
-const activeAssistant = computed(() =>
-  pagedAssistants.value.find((a: any) => a.id === selectedAssistantId.value) || null
+const activeAssistant = computed(
+  () => pagedAssistants.value.find((a: any) => a.id === selectedAssistantId.value) || null
 )
 
 const resetForm = () => {
@@ -487,7 +488,7 @@ const goToPage = async (page) => {
                   </UIButton>
                 </div>
               </td>
-              </tr>
+            </tr>
             <tr v-if="!pagedAssistants.length">
               <td colspan="5" class="px-4 py-4 text-sm text-text/70">Нічого не знайдено.</td>
             </tr>

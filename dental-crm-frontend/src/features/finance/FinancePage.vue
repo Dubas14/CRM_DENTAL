@@ -7,8 +7,8 @@ import InvoiceList from './components/InvoiceList.vue'
 import FinanceStats from './components/FinanceStats.vue'
 import InvoiceForm from '../../components/finance/InvoiceForm.vue'
 
-const { user } = useAuth()
-const financeStore = useFinanceStore()
+const { user: _user } = useAuth() // Reserved for permissions
+const _financeStore = useFinanceStore() // Reserved for state
 
 const activeTab = ref<'invoices' | 'stats' | 'reports'>('invoices')
 const showCreateInvoice = ref(false)
@@ -18,7 +18,7 @@ const onInvoiceCreated = () => {
   showCreateInvoice.value = false
   // Reload invoice list
   if (invoiceListRef.value && typeof (invoiceListRef.value as any).loadInvoices === 'function') {
-    (invoiceListRef.value as any).loadInvoices()
+    ;(invoiceListRef.value as any).loadInvoices()
   }
 }
 </script>
@@ -37,11 +37,14 @@ const onInvoiceCreated = () => {
       </UIButton>
     </div>
 
-    <UITabs v-model="activeTab" :tabs="[
-      { id: 'invoices', label: 'Рахунки' },
-      { id: 'stats', label: 'Статистика' },
-      { id: 'reports', label: 'Звіти' },
-    ]" />
+    <UITabs
+      v-model="activeTab"
+      :tabs="[
+        { id: 'invoices', label: 'Рахунки' },
+        { id: 'stats', label: 'Статистика' },
+        { id: 'reports', label: 'Звіти' }
+      ]"
+    />
 
     <div v-if="activeTab === 'invoices'">
       <InvoiceList ref="invoiceListRef" />
@@ -52,28 +55,25 @@ const onInvoiceCreated = () => {
     </div>
 
     <div v-if="activeTab === 'reports'">
-      <div class="text-center py-12 text-text/60">
-        Розділ звітів в розробці
-      </div>
+      <div class="text-center py-12 text-text/60">Розділ звітів в розробці</div>
     </div>
 
     <!-- Create Invoice Modal -->
-    <UIDrawer 
-      v-model="showCreateInvoice" 
+    <UIDrawer
+      v-model="showCreateInvoice"
       title="Новий рахунок"
       position="center"
       width="600px"
       max-width="95vw"
       resizable
     >
-      <InvoiceForm 
+      <InvoiceForm
         v-if="showCreateInvoice"
-        inline 
-        @created="onInvoiceCreated" 
+        inline
+        @created="onInvoiceCreated"
         @saved="onInvoiceCreated"
-        @cancel="showCreateInvoice = false" 
+        @cancel="showCreateInvoice = false"
       />
     </UIDrawer>
   </div>
 </template>
-

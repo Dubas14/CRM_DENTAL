@@ -9,13 +9,10 @@ use App\Services\Finance\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
-    public function __construct(private InvoiceService $invoiceService)
-    {
-    }
+    public function __construct(private InvoiceService $invoiceService) {}
 
     public function index(Request $request)
     {
@@ -23,19 +20,19 @@ class PaymentController extends Controller
         $query = Payment::query()->with(['invoice', 'creator']);
 
         // Doctor Scope
-        if ($user->hasRole('doctor') && !$user->isSuperAdmin()) {
+        if ($user->hasRole('doctor') && ! $user->isSuperAdmin()) {
             $doctorId = $user->doctor?->id;
             if ($doctorId) {
-                $query->whereHas('invoice.appointment', fn($q) => $q->where('doctor_id', $doctorId));
+                $query->whereHas('invoice.appointment', fn ($q) => $q->where('doctor_id', $doctorId));
             } else {
                 return response()->json(['data' => [], 'total' => 0]);
             }
         } else {
             if ($request->filled('clinic_id')) {
                 $query->where('clinic_id', $request->integer('clinic_id'));
-            } elseif (!$user->isSuperAdmin()) {
+            } elseif (! $user->isSuperAdmin()) {
                 $userClinicIds = $user->clinics()->pluck('clinics.id')->toArray();
-                if (!empty($userClinicIds)) {
+                if (! empty($userClinicIds)) {
                     $query->whereIn('clinic_id', $userClinicIds);
                 } else {
                     return response()->json(['data' => [], 'total' => 0]);
@@ -95,7 +92,7 @@ class PaymentController extends Controller
             'invoice_id' => $payment->invoice_id,
             'amount' => -abs((float) $payment->amount), // Від'ємна сума
             'method' => $payment->method,
-            'transaction_id' => $payment->transaction_id ? 'REFUND-' . $payment->transaction_id : null,
+            'transaction_id' => $payment->transaction_id ? 'REFUND-'.$payment->transaction_id : null,
             'created_by' => $request->user()->id,
             'is_refund' => true,
             'refund_reason' => $data['reason'],
@@ -107,7 +104,7 @@ class PaymentController extends Controller
         // Перерахувати totals інвойсу
         $invoice = $payment->invoice;
         $this->invoiceService->recalculateTotals($invoice);
-        
+
         // Інвалідувати кеш статистики
         Cache::forget("finance_stats:{$invoice->clinic_id}");
 
@@ -124,5 +121,3 @@ class PaymentController extends Controller
         }
     }
 }
-
-

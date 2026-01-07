@@ -9,7 +9,10 @@ const props = defineProps<{
   tabs: Tab[]
 }>()
 
-const emit = defineEmits<{ (e: 'update:modelValue', id: string): void; (e: 'change', id: string): void }>()
+const emit = defineEmits<{
+  (e: 'update:modelValue', id: string): void
+  (e: 'change', id: string): void
+}>()
 
 const activeId = computed(() => props.modelValue || props.tabs[0]?.id || '')
 
@@ -49,4 +52,3 @@ const onSelect = (id: string) => {
     </div>
   </div>
 </template>
-

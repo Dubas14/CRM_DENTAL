@@ -168,7 +168,10 @@ watch(
 
       <form class="grid gap-4 md:grid-cols-2" @submit.prevent="createClinic">
         <div class="md:col-span-2">
-          <label for="clinic-create-name" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-name"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Назва *
           </label>
           <input
@@ -200,7 +203,10 @@ watch(
         </div>
 
         <div>
-          <label for="clinic-create-city" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-city"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Місто
           </label>
           <input
@@ -214,7 +220,10 @@ watch(
         </div>
 
         <div>
-          <label for="clinic-create-address" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-address"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Адреса
           </label>
           <input
@@ -228,7 +237,10 @@ watch(
         </div>
 
         <div>
-          <label for="clinic-create-phone" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-phone"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Телефон
           </label>
           <input
@@ -242,7 +254,10 @@ watch(
         </div>
 
         <div>
-          <label for="clinic-create-email" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-email"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Email
           </label>
           <input
@@ -256,7 +271,10 @@ watch(
         </div>
 
         <div class="md:col-span-2">
-          <label for="clinic-create-website" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="clinic-create-website"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Сайт
           </label>
           <input

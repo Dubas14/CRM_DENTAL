@@ -152,7 +152,7 @@ const calendarApi = {
         start_at: payload.start_at,
         end_at: payload.end_at
       }
-      
+
       return apiClient.put(`/appointments/${appointmentId}`, requestPayload)
     }
 

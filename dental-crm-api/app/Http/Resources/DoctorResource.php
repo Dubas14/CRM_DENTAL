@@ -25,10 +25,10 @@ class DoctorResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'default_slot_duration' => $this->default_slot_duration,
             'avatar_url' => $this->avatar_url,
-            
+
             'clinic' => $this->whenLoaded('clinic', fn () => new ClinicResource($this->clinic)),
             'user' => $this->whenLoaded('user', fn () => new UserResource($this->user)),
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

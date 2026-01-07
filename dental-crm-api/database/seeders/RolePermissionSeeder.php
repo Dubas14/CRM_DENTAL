@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Support\RoleHierarchy;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use App\Support\RoleHierarchy;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -127,4 +127,3 @@ class RolePermissionSeeder extends Seeder
         }
     }
 }
-

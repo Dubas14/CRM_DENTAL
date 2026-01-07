@@ -35,12 +35,12 @@ class CalendarBlockController extends Controller
             ->when($validated['assistant_id'] ?? null, fn ($q, $assistantId) => $q->where('assistant_id', $assistantId))
             ->when($validated['type'] ?? null, fn ($q, $type) => $q->where('type', $type));
 
-        if (!empty($validated['from'])) {
+        if (! empty($validated['from'])) {
             $from = Carbon::parse($validated['from'])->startOfDay();
             $query->where('end_at', '>=', $from);
         }
 
-        if (!empty($validated['to'])) {
+        if (! empty($validated['to'])) {
             $to = Carbon::parse($validated['to'])->endOfDay();
             $query->where('start_at', '<=', $to);
         }

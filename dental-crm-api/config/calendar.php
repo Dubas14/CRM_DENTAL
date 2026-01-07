@@ -10,7 +10,7 @@ return [
     | Формат: масив рядків у форматі 'HH:MM-HH:MM'
     |
     */
-    'peak_hours' => env('CALENDAR_PEAK_HOURS', '09:00-12:00,14:00-18:00') 
+    'peak_hours' => env('CALENDAR_PEAK_HOURS', '09:00-12:00,14:00-18:00')
         ? explode(',', env('CALENDAR_PEAK_HOURS', '09:00-12:00,14:00-18:00'))
         : ['09:00-12:00', '14:00-18:00'],
 
@@ -34,4 +34,3 @@ return [
     */
     'time_between_appointments' => env('CALENDAR_TIME_BETWEEN_APPOINTMENTS', 5),
 ];
-

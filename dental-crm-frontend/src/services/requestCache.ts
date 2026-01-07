@@ -48,4 +48,3 @@ export function clearRequestCache() {
   cache.clear()
   pending.clear()
 }
-

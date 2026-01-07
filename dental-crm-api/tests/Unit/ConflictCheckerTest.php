@@ -15,14 +15,16 @@ class ConflictCheckerTest extends TestCase
     use RefreshDatabase;
 
     protected ConflictChecker $checker;
+
     protected Doctor $doctor;
+
     protected Room $room;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->checker = new ConflictChecker();
+        $this->checker = new ConflictChecker;
         $this->doctor = Doctor::factory()->create();
         $this->room = Room::factory()->create();
     }

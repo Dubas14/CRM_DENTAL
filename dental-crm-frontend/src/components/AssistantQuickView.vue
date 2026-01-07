@@ -14,12 +14,7 @@ const emit = defineEmits<{
 const fullName = computed(() => {
   const a = props.assistant
   if (!a) return ''
-  return (
-    a.full_name ||
-    a.name ||
-    `${a.first_name || ''} ${a.last_name || ''}`.trim() ||
-    a.email
-  )
+  return a.full_name || a.name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email
 })
 
 const avatarUrl = computed(() => props.assistant?.avatar_url || null)
@@ -38,11 +33,7 @@ const handleDetails = () => {
   <div v-if="assistant" class="space-y-6">
     <header class="flex items-start justify-between gap-4">
       <div class="flex items-center gap-3">
-        <UIAvatar
-          :src="avatarUrl || ''"
-          :fallback-text="fullName?.[0] || '?'"
-          :size="72"
-        />
+        <UIAvatar :src="avatarUrl || ''" :fallback-text="fullName?.[0] || '?'" :size="72" />
         <div>
           <h2 class="text-lg font-semibold text-text">
             {{ fullName }}
@@ -55,13 +46,7 @@ const handleDetails = () => {
           </div>
         </div>
       </div>
-      <button
-        class="text-text/60 hover:text-text"
-        type="button"
-        @click="emit('close')"
-      >
-        ✕
-      </button>
+      <button class="text-text/60 hover:text-text" type="button" @click="emit('close')">✕</button>
     </header>
 
     <section class="space-y-3 text-sm">
@@ -84,5 +69,3 @@ const handleDetails = () => {
     </footer>
   </div>
 </template>
-
-

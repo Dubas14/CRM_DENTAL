@@ -17,15 +17,18 @@ class WaitlistServiceTest extends TestCase
     use RefreshDatabase;
 
     private WaitlistService $service;
+
     private Clinic $clinic;
+
     private Doctor $doctor;
+
     private Procedure $procedure;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->service = new WaitlistService();
+        $this->service = new WaitlistService;
         $this->clinic = Clinic::factory()->create();
         $this->doctor = Doctor::factory()->create(['clinic_id' => $this->clinic->id]);
         $this->procedure = Procedure::factory()->create(['clinic_id' => $this->clinic->id]);
@@ -37,7 +40,7 @@ class WaitlistServiceTest extends TestCase
         // Create waitlist entries in different clinics
         $patient1 = Patient::factory()->create(['clinic_id' => $this->clinic->id]);
         $patient2 = Patient::factory()->create(['clinic_id' => $this->clinic->id]);
-        
+
         $otherClinic = Clinic::factory()->create();
         $patient3 = Patient::factory()->create(['clinic_id' => $otherClinic->id]);
 
@@ -235,4 +238,3 @@ class WaitlistServiceTest extends TestCase
         $this->assertEquals($patient2->id, $candidates->first()->patient_id);
     }
 }
-

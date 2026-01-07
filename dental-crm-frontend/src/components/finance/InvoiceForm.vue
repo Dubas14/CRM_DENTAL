@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useFinanceStore } from '../../stores/useFinanceStore'
-import { UIButton, UIBadge, UISelect } from '../../ui'
+import { UIButton, UISelect } from '../../ui'
 import { useToast } from '../../composables/useToast'
 import { useAuth } from '../../composables/useAuth'
 import invoiceApi from '../../services/invoiceApi'
@@ -17,19 +17,22 @@ interface InvoiceItem {
   total: number
 }
 
-const props = withDefaults(defineProps<{
-  modelValue?: boolean
-  patientId?: number
-  appointmentId?: number | null
-  invoiceId?: number | null
-  inline?: boolean // Без власної модалки, для використання в drawer
-}>(), {
-  modelValue: true,
-  patientId: undefined,
-  appointmentId: null,
-  invoiceId: null,
-  inline: false,
-})
+const props = withDefaults(
+  defineProps<{
+    modelValue?: boolean
+    patientId?: number
+    appointmentId?: number | null
+    invoiceId?: number | null
+    inline?: boolean // Без власної модалки, для використання в drawer
+  }>(),
+  {
+    modelValue: true,
+    patientId: undefined,
+    appointmentId: null,
+    invoiceId: null,
+    inline: false
+  }
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
@@ -73,7 +76,7 @@ const resolvedClinicId = computed(() => {
 
 // Опції для вибору клініки
 const clinicOptions = computed(() => {
-  return clinics.value.map(c => ({
+  return clinics.value.map((c) => ({
     value: c.id,
     label: c.name
   }))
@@ -82,11 +85,11 @@ const clinicOptions = computed(() => {
 // Завантажити клініки для супер-адміна
 const loadClinics = async () => {
   if (!isSuperAdmin.value) return
-  
+
   loadingClinics.value = true
   try {
     const { data } = await clinicApi.list()
-    clinics.value = Array.isArray(data) ? data : (data?.data || [])
+    clinics.value = Array.isArray(data) ? data : data?.data || []
     // Автовибір першої клініки
     if (clinics.value.length > 0 && !selectedClinicId.value) {
       selectedClinicId.value = clinics.value[0].id
@@ -102,12 +105,12 @@ const loadClinics = async () => {
 const selectedPatientId = ref<number | null>(null)
 const patients = ref<any[]>([])
 const loadingPatients = ref(false)
-const patientSearchQuery = ref('')
+const _patientSearchQuery = ref('') // Reserved for future search
 const patientName = ref<string>('') // Ім'я пацієнта для режиму редагування
 
 // Опції для вибору пацієнта
 const patientOptions = computed(() => {
-  return patients.value.map(p => ({
+  return patients.value.map((p) => ({
     value: p.id,
     label: `${p.full_name || ''}`.trim() + (p.phone ? ` (${p.phone})` : '')
   }))
@@ -120,9 +123,9 @@ const searchPatients = async (query?: string) => {
     const params: any = { per_page: 50 }
     if (query) params.search = query
     if (resolvedClinicId.value) params.clinic_id = resolvedClinicId.value
-    
+
     const { data } = await patientApi.list(params)
-    patients.value = Array.isArray(data) ? data : (data?.data || [])
+    patients.value = Array.isArray(data) ? data : data?.data || []
   } catch (err) {
     console.error('Failed to load patients:', err)
   } finally {
@@ -203,7 +206,7 @@ const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
 const loadInvoice = async () => {
   if (!props.invoiceId) return
   await financeStore.fetchInvoice(props.invoiceId)
-  
+
   if (financeStore.currentInvoice) {
     const inv = financeStore.currentInvoice
     // Конвертувати price/total/quantity в числа (з бекенду приходять як strings)
@@ -211,19 +214,19 @@ const loadInvoice = async () => {
       ...item,
       quantity: Number(item.quantity) || 1,
       price: Number(item.price) || 0,
-      total: Number(item.total) || 0,
+      total: Number(item.total) || 0
     }))
     description.value = inv.description || ''
     dueDate.value = inv.due_date || null
     discount.value = Number(inv.discount_amount) || 0
     discountType.value = inv.discount_type || 'percentage'
-    
+
     // Встановити пацієнта для редагування
     if (inv.patient_id) {
       selectedPatientId.value = inv.patient_id
       patientName.value = inv.patient?.full_name || ''
     }
-    
+
     // Встановити клініку для редагування (супер-адмін)
     if (isSuperAdmin.value && inv.clinic_id) {
       selectedClinicId.value = inv.clinic_id
@@ -249,17 +252,16 @@ const save = async () => {
   }
 
   try {
-
     if (props.invoiceId) {
       // Update existing invoice - replace items
       await invoiceApi.replaceItems(props.invoiceId, items.value)
-      
+
       // Update description and due_date
       await invoiceApi.update(props.invoiceId, {
         description: description.value || null,
         due_date: dueDate.value || null
       })
-      
+
       // Apply discount if any
       if (discount.value > 0) {
         await invoiceApi.applyDiscount(
@@ -268,7 +270,7 @@ const save = async () => {
           discount.value
         )
       }
-      
+
       // Refresh invoice data
       await financeStore.fetchInvoice(props.invoiceId)
       emit('saved', financeStore.currentInvoice)
@@ -294,7 +296,7 @@ const save = async () => {
 
     open.value = false
     emit('cancel')
-  } catch (err: any) {
+  } catch {
     // Error already handled in store
   }
 }
@@ -321,16 +323,16 @@ onMounted(async () => {
   if (isSuperAdmin.value) {
     await loadClinics()
   }
-  
+
   // Завантажити пацієнтів якщо не передано patientId
   if (!props.patientId) {
     await searchPatients()
   }
-  
+
   // Для inline режиму - завжди ініціалізувати
   if (props.inline) {
     await financeStore.fetchProcedures()
-    
+
     // Якщо редагування - завантажити дані рахунку
     if (props.invoiceId) {
       await loadInvoice()
@@ -353,7 +355,9 @@ onMounted(async () => {
   <div v-if="inline" class="space-y-6">
     <!-- Вибір клініки для супер-адміна -->
     <div v-if="isSuperAdmin" class="space-y-2">
-      <label class="block text-xs uppercase text-text/70">Клініка <span class="text-red-400">*</span></label>
+      <label class="block text-xs uppercase text-text/70"
+        >Клініка <span class="text-red-400">*</span></label
+      >
       <UISelect
         v-model="selectedClinicId"
         :options="clinicOptions"
@@ -371,7 +375,9 @@ onMounted(async () => {
       </div>
     </div>
     <div v-else-if="!patientId" class="space-y-2">
-      <label class="block text-xs uppercase text-text/70">Пацієнт <span class="text-red-400">*</span></label>
+      <label class="block text-xs uppercase text-text/70"
+        >Пацієнт <span class="text-red-400">*</span></label
+      >
       <UISelect
         v-model="selectedPatientId"
         :options="patientOptions"
@@ -464,7 +470,9 @@ onMounted(async () => {
                   min="1"
                   :readonly="isLocked"
                   class="w-full rounded bg-bg/50 border border-border/60 px-2 py-1 text-sm text-text"
-                  @input="updateItem(index, 'quantity', Number(($event.target as HTMLInputElement).value))"
+                  @input="
+                    updateItem(index, 'quantity', Number(($event.target as HTMLInputElement).value))
+                  "
                 />
               </td>
               <td class="px-4 py-2">
@@ -475,12 +483,12 @@ onMounted(async () => {
                   step="0.01"
                   :readonly="isLocked"
                   class="w-full rounded bg-bg/50 border border-border/60 px-2 py-1 text-sm text-text"
-                  @input="updateItem(index, 'price', Number(($event.target as HTMLInputElement).value))"
+                  @input="
+                    updateItem(index, 'price', Number(($event.target as HTMLInputElement).value))
+                  "
                 />
               </td>
-              <td class="px-4 py-2 font-medium text-text">
-                {{ formatMoney(item.total) }} грн
-              </td>
+              <td class="px-4 py-2 font-medium text-text">{{ formatMoney(item.total) }} грн</td>
               <td v-if="!isLocked" class="px-4 py-2">
                 <button
                   type="button"
@@ -596,7 +604,9 @@ onMounted(async () => {
           <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             <!-- Вибір клініки для супер-адміна -->
             <div v-if="isSuperAdmin" class="space-y-2">
-              <label class="block text-xs uppercase text-text/70">Клініка <span class="text-red-400">*</span></label>
+              <label class="block text-xs uppercase text-text/70"
+                >Клініка <span class="text-red-400">*</span></label
+              >
               <UISelect
                 v-model="selectedClinicId"
                 :options="clinicOptions"
@@ -613,7 +623,9 @@ onMounted(async () => {
               </div>
             </div>
             <div v-else-if="!patientId" class="space-y-2">
-              <label class="block text-xs uppercase text-text/70">Пацієнт <span class="text-red-400">*</span></label>
+              <label class="block text-xs uppercase text-text/70"
+                >Пацієнт <span class="text-red-400">*</span></label
+              >
               <UISelect
                 v-model="selectedPatientId"
                 :options="patientOptions"
@@ -623,7 +635,10 @@ onMounted(async () => {
               />
             </div>
 
-            <div v-if="isLocked" class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+            <div
+              v-if="isLocked"
+              class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3"
+            >
               <p class="text-sm text-yellow-300">
                 ⚠️ Редагування заблоковано через наявність оплат. Зробіть повернення коштів для
                 розблокування.
@@ -696,7 +711,9 @@ onMounted(async () => {
                           type="text"
                           :readonly="isLocked"
                           class="w-full bg-transparent border-0 focus:outline-none text-text"
-                          @input="updateItem(index, 'name', ($event.target as HTMLInputElement).value)"
+                          @input="
+                            updateItem(index, 'name', ($event.target as HTMLInputElement).value)
+                          "
                         />
                       </td>
                       <td class="px-4 py-2">
@@ -706,7 +723,13 @@ onMounted(async () => {
                           min="1"
                           :readonly="isLocked"
                           class="w-full rounded bg-bg/50 border border-border/60 px-2 py-1 text-sm text-text"
-                          @input="updateItem(index, 'quantity', Number(($event.target as HTMLInputElement).value))"
+                          @input="
+                            updateItem(
+                              index,
+                              'quantity',
+                              Number(($event.target as HTMLInputElement).value)
+                            )
+                          "
                         />
                       </td>
                       <td class="px-4 py-2">
@@ -717,7 +740,13 @@ onMounted(async () => {
                           step="0.01"
                           :readonly="isLocked"
                           class="w-full rounded bg-bg/50 border border-border/60 px-2 py-1 text-sm text-text"
-                          @input="updateItem(index, 'price', Number(($event.target as HTMLInputElement).value))"
+                          @input="
+                            updateItem(
+                              index,
+                              'price',
+                              Number(($event.target as HTMLInputElement).value)
+                            )
+                          "
                         />
                       </td>
                       <td class="px-4 py-2 font-medium text-text">
@@ -798,7 +827,15 @@ onMounted(async () => {
           </div>
 
           <div class="p-6 border-t border-border flex justify-end gap-3">
-            <UIButton variant="ghost" size="sm" @click="open = false; emit('cancel')">Скасувати</UIButton>
+            <UIButton
+              variant="ghost"
+              size="sm"
+              @click="
+                open = false
+                emit('cancel')
+              "
+              >Скасувати</UIButton
+            >
             <UIButton
               variant="primary"
               size="sm"
@@ -825,4 +862,3 @@ onMounted(async () => {
   opacity: 0;
 }
 </style>
-

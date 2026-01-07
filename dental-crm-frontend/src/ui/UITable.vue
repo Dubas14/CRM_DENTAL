@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useVueTable, getCoreRowModel, type ColumnDef, type SortingState, type PaginationState } from '@tanstack/vue-table'
+import {
+  useVueTable,
+  getCoreRowModel,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState
+} from '@tanstack/vue-table'
 
 interface Props {
   data: any[]
@@ -22,7 +28,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
-  sorting: () => [],
+  sorting: () => []
 })
 
 const emit = defineEmits<Emits>()
@@ -30,7 +36,7 @@ const emit = defineEmits<Emits>()
 // Server-side pagination state
 const paginationState = computed<PaginationState>(() => ({
   pageIndex: (props.pagination?.page ?? 1) - 1, // TanStack uses 0-based index
-  pageSize: props.pagination?.perPage ?? 20,
+  pageSize: props.pagination?.perPage ?? 20
 }))
 
 // Server-side sorting state
@@ -47,20 +53,20 @@ const table = useVueTable({
   pageCount: props.pagination ? Math.ceil(props.pagination.total / props.pagination.perPage) : 0,
   state: {
     pagination: paginationState.value,
-    sorting: sortingState.value,
+    sorting: sortingState.value
   },
   onPaginationChange: (updater) => {
     const newPagination = typeof updater === 'function' ? updater(paginationState.value) : updater
     emit('page-change', {
       page: newPagination.pageIndex + 1, // Convert back to 1-based
-      perPage: newPagination.pageSize,
+      perPage: newPagination.pageSize
     })
   },
   onSortingChange: (updater) => {
     const newSorting = typeof updater === 'function' ? updater(sortingState.value) : updater
     sortingState.value = newSorting
     emit('sort', newSorting)
-  },
+  }
 })
 
 const totalPages = computed(() => {
@@ -72,7 +78,10 @@ const totalPages = computed(() => {
 <template>
   <div class="w-full">
     <!-- Loading overlay -->
-    <div v-if="loading" class="absolute inset-0 bg-black/20 backdrop-blur-sm z-10 flex items-center justify-center">
+    <div
+      v-if="loading"
+      class="absolute inset-0 bg-black/20 backdrop-blur-sm z-10 flex items-center justify-center"
+    >
       <div class="text-text/70">Завантаження...</div>
     </div>
 
@@ -86,7 +95,7 @@ const totalPages = computed(() => {
               :key="header.id"
               :class="[
                 'px-4 py-3 text-left text-xs font-semibold text-text/70 uppercase tracking-wider',
-                header.column.getCanSort() && 'cursor-pointer select-none hover:bg-card/60',
+                header.column.getCanSort() && 'cursor-pointer select-none hover:bg-card/60'
               ]"
               @click="header.column.getToggleSortingHandler()?.($event)"
             >
@@ -162,4 +171,3 @@ const totalPages = computed(() => {
     </div>
   </div>
 </template>
-

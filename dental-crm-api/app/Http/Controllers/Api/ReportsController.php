@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
@@ -20,7 +19,7 @@ class ReportsController extends Controller
             'doctor_id' => ['sometimes', 'nullable', 'exists:doctors,id'],
             'from_date' => ['sometimes', 'nullable', 'date'],
             'to_date' => ['sometimes', 'nullable', 'date'],
-            'status' => ['sometimes', 'nullable', 'string', 'in:' . implode(',', Appointment::ALLOWED_STATUSES)],
+            'status' => ['sometimes', 'nullable', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
             'format' => ['sometimes', 'nullable', 'string', 'in:json,csv'],
         ]);
 
@@ -78,7 +77,7 @@ class ReportsController extends Controller
      */
     private function exportToCsv($appointments)
     {
-        $filename = 'appointments_' . Carbon::now()->format('Y-m-d_His') . '.csv';
+        $filename = 'appointments_'.Carbon::now()->format('Y-m-d_His').'.csv';
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
@@ -86,10 +85,10 @@ class ReportsController extends Controller
 
         $callback = function () use ($appointments) {
             $file = fopen('php://output', 'w');
-            
+
             // BOM для правильного відображення кирилиці в Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             // Заголовки
             fputcsv($file, [
                 'ID',
@@ -126,4 +125,3 @@ class ReportsController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 }
-

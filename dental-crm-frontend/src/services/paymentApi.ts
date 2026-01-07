@@ -4,11 +4,14 @@ const paymentApi = {
   list(params?: any) {
     return apiClient.get('/payments', { params })
   },
-  create(invoiceId: number | string, payload: {
-    amount: number
-    method: 'cash' | 'card' | 'bank_transfer' | 'insurance'
-    transaction_id?: string | null
-  }) {
+  create(
+    invoiceId: number | string,
+    payload: {
+      amount: number
+      method: 'cash' | 'card' | 'bank_transfer' | 'insurance'
+      transaction_id?: string | null
+    }
+  ) {
     return apiClient.post(`/invoices/${invoiceId}/payments`, payload)
   },
   refund(paymentId: number | string, reason: string) {
@@ -17,4 +20,3 @@ const paymentApi = {
 }
 
 export default paymentApi
-

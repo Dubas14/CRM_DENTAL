@@ -188,9 +188,7 @@ onMounted(loadFiles)
     <div
       class="border-2 border-dashed rounded-xl p-8 text-center transition cursor-pointer"
       :class="
-        dragActive
-          ? 'border-emerald-500 bg-emerald-500/10'
-          : 'border-border/60 hover:border-border'
+        dragActive ? 'border-emerald-500 bg-emerald-500/10' : 'border-border/60 hover:border-border'
       "
       @click="openFileDialog"
       @drop.prevent="handleDrop"
@@ -203,9 +201,7 @@ onMounted(loadFiles)
 
     <!-- Files List -->
     <div v-if="loading" class="text-center py-8 text-text/70">Завантаження...</div>
-    <div v-else-if="files.length === 0" class="text-center py-8 text-text/60">
-      Немає файлів
-    </div>
+    <div v-else-if="files.length === 0" class="text-center py-8 text-text/60">Немає файлів</div>
     <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       <div
         v-for="file in files"
@@ -288,4 +284,3 @@ onMounted(loadFiles)
   opacity: 0;
 }
 </style>
-

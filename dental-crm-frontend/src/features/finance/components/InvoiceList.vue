@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { UISelect, UIDateRangePicker, UIButton, UIBadge, UIConfirmDialog, UIDrawer, UIDropdown } from '../../../ui'
+import {
+  UISelect,
+  UIDateRangePicker,
+  UIButton,
+  UIBadge,
+  UIConfirmDialog,
+  UIDrawer,
+  UIDropdown
+} from '../../../ui'
 import { useFinanceStore } from '../../../stores/useFinanceStore'
 import { useAuth } from '../../../composables/useAuth'
 import { useToast } from '../../../composables/useToast'
@@ -9,9 +17,9 @@ import invoiceApi from '../../../services/invoiceApi'
 import PaymentModal from '../../../components/finance/PaymentModal.vue'
 import InvoiceForm from '../../../components/finance/InvoiceForm.vue'
 
-const router = useRouter()
-const { user } = useAuth()
-const financeStore = useFinanceStore()
+const _router = useRouter() // Reserved for navigation
+const { user: _user } = useAuth() // Reserved for permissions
+const _financeStore = useFinanceStore() // Reserved for state
 const { showToast } = useToast()
 
 const invoices = ref<any[]>([])
@@ -20,7 +28,7 @@ const pagination = ref({ page: 1, perPage: 20, total: 0 })
 const filters = ref({
   status: '' as string,
   patient_id: null as number | null,
-  dateRange: { from: null as string | null, to: null as string | null },
+  dateRange: { from: null as string | null, to: null as string | null }
 })
 
 // Modals
@@ -36,15 +44,18 @@ const statusOptions = [
   { value: 'unpaid', label: 'Не оплачено' },
   { value: 'partially_paid', label: 'Частково оплачено' },
   { value: 'paid', label: 'Оплачено' },
-  { value: 'cancelled', label: 'Скасовано' },
+  { value: 'cancelled', label: 'Скасовано' }
 ]
 
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, { variant: 'success' | 'warning' | 'danger' | 'default'; label: string }> = {
+  const variants: Record<
+    string,
+    { variant: 'success' | 'warning' | 'danger' | 'default'; label: string }
+  > = {
     paid: { variant: 'success', label: 'Оплачено' },
     partially_paid: { variant: 'warning', label: 'Частково' },
     unpaid: { variant: 'danger', label: 'Не оплачено' },
-    cancelled: { variant: 'default', label: 'Скасовано' },
+    cancelled: { variant: 'default', label: 'Скасовано' }
   }
   return variants[status] || { variant: 'default', label: status }
 }
@@ -52,7 +63,7 @@ const getStatusBadge = (status: string) => {
 const formatMoney = (amount: number | string) => {
   return new Intl.NumberFormat('uk-UA', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(Number(amount) || 0)
 }
 
@@ -64,7 +75,7 @@ const isOverdue = (invoice: any) => {
 
 const getInvoiceActions = (invoice: any) => {
   const actions: { id: string; label: string; icon?: string }[] = []
-  
+
   if (Number(invoice.paid_amount) === 0 && invoice.status !== 'cancelled') {
     actions.push({ id: 'edit', label: 'Редагувати', icon: '✏️' })
   }
@@ -74,7 +85,7 @@ const getInvoiceActions = (invoice: any) => {
   if (invoice.status !== 'cancelled' && invoice.status !== 'paid') {
     actions.push({ id: 'cancel', label: 'Скасувати', icon: '❌' })
   }
-  
+
   return actions
 }
 
@@ -97,7 +108,7 @@ const loadInvoices = async () => {
   try {
     const params: any = {
       page: pagination.value.page,
-      per_page: pagination.value.perPage,
+      per_page: pagination.value.perPage
     }
     if (filters.value.status) params.status = filters.value.status
     if (filters.value.patient_id) params.patient_id = filters.value.patient_id
@@ -109,7 +120,7 @@ const loadInvoices = async () => {
     pagination.value = {
       page: data.current_page || 1,
       perPage: data.per_page || 20,
-      total: data.total || 0,
+      total: data.total || 0
     }
   } catch (error) {
     console.error('Failed to load invoices:', error)
@@ -182,20 +193,13 @@ onMounted(() => {
       </div>
       <div>
         <label class="block text-xs uppercase text-text/70 mb-1">Період</label>
-        <UIDateRangePicker
-          v-model="filters.dateRange"
-          @update:model-value="loadInvoices"
-        />
+        <UIDateRangePicker v-model="filters.dateRange" @update:model-value="loadInvoices" />
       </div>
-      <UIButton variant="secondary" size="sm" @click="loadInvoices">
-        Оновити
-      </UIButton>
+      <UIButton variant="secondary" size="sm" @click="loadInvoices"> Оновити </UIButton>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center py-12 text-text/60">
-      Завантаження...
-    </div>
+    <div v-if="loading" class="text-center py-12 text-text/60">Завантаження...</div>
 
     <!-- Table -->
     <div v-else class="relative">
@@ -243,7 +247,10 @@ onMounted(() => {
             <td class="px-4 py-3 text-sm text-text/70">
               {{ new Date(invoice.created_at).toLocaleDateString('uk-UA') }}
             </td>
-            <td class="px-4 py-3 text-sm" :class="isOverdue(invoice) ? 'text-red-400 font-medium' : 'text-text/70'">
+            <td
+              class="px-4 py-3 text-sm"
+              :class="isOverdue(invoice) ? 'text-red-400 font-medium' : 'text-text/70'"
+            >
               {{ invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('uk-UA') : '—' }}
             </td>
             <td class="px-4 py-3 text-sm text-text/70">
@@ -256,17 +263,13 @@ onMounted(() => {
                 @select="(action) => handleAction(action, invoice)"
               >
                 <template #trigger="{ toggle }">
-                  <UIButton variant="ghost" size="sm" @click.stop="toggle">
-                    ⋮
-                  </UIButton>
+                  <UIButton variant="ghost" size="sm" @click.stop="toggle"> ⋮ </UIButton>
                 </template>
               </UIDropdown>
             </td>
           </tr>
           <tr v-if="invoices.length === 0">
-            <td colspan="10" class="px-4 py-8 text-center text-text/60">
-              Немає рахунків
-            </td>
+            <td colspan="10" class="px-4 py-8 text-center text-text/60">Немає рахунків</td>
           </tr>
         </tbody>
       </table>
@@ -322,8 +325,8 @@ onMounted(() => {
     />
 
     <!-- Edit Invoice Modal -->
-    <UIDrawer 
-      v-model="showEditDrawer" 
+    <UIDrawer
+      v-model="showEditDrawer"
       title="Редагувати рахунок"
       position="center"
       width="600px"
@@ -341,4 +344,3 @@ onMounted(() => {
     </UIDrawer>
   </div>
 </template>
-

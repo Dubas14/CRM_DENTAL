@@ -7,6 +7,7 @@ use Exception;
 class BusinessLogicException extends Exception
 {
     protected $errorCode;
+
     protected $errorData;
 
     public function __construct(
@@ -28,7 +29,7 @@ class BusinessLogicException extends Exception
             'error' => $this->errorCode,
         ];
 
-        if (!empty($this->errorData)) {
+        if (! empty($this->errorData)) {
             $response['data'] = $this->errorData;
         }
 
@@ -45,4 +46,3 @@ class BusinessLogicException extends Exception
         return $this->errorData;
     }
 }
-

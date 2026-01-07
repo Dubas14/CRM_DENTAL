@@ -7,25 +7,22 @@ use App\Models\Invoice;
 use App\Services\Finance\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private InvoiceService $invoiceService)
-    {
-    }
+    public function __construct(private InvoiceService $invoiceService) {}
 
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         // Doctor Scope: лікар бачить тільки рахунки своїх прийомів
         $query = Invoice::query()->with(['items', 'payments', 'appointment.doctor', 'patient', 'clinic']);
 
-        if ($user->hasRole('doctor') && !$user->isSuperAdmin()) {
+        if ($user->hasRole('doctor') && ! $user->isSuperAdmin()) {
             $doctorId = $user->doctor?->id;
             if ($doctorId) {
-                $query->whereHas('appointment', fn($q) => $q->where('doctor_id', $doctorId));
+                $query->whereHas('appointment', fn ($q) => $q->where('doctor_id', $doctorId));
             } else {
                 // Якщо у користувача немає doctor_id, повертаємо порожній список
                 return response()->json(['data' => [], 'total' => 0]);
@@ -34,10 +31,10 @@ class InvoiceController extends Controller
             // Для super_admin та clinic_admin - фільтр по клініці
             if ($request->filled('clinic_id')) {
                 $query->where('clinic_id', $request->integer('clinic_id'));
-            } elseif (!$user->isSuperAdmin()) {
+            } elseif (! $user->isSuperAdmin()) {
                 // Якщо не super_admin, фільтруємо по клініці користувача
                 $userClinicIds = $user->clinics()->pluck('clinics.id')->toArray();
-                if (!empty($userClinicIds)) {
+                if (! empty($userClinicIds)) {
                     $query->whereIn('clinic_id', $userClinicIds);
                 } else {
                     return response()->json(['data' => [], 'total' => 0]);
@@ -70,9 +67,9 @@ class InvoiceController extends Controller
     public function show(Request $request, Invoice $invoice)
     {
         $user = $request->user();
-        
+
         // Doctor Scope: перевірка доступу
-        if ($user->hasRole('doctor') && !$user->isSuperAdmin()) {
+        if ($user->hasRole('doctor') && ! $user->isSuperAdmin()) {
             $doctorId = $user->doctor?->id;
             if ($doctorId && $invoice->appointment && $invoice->appointment->doctor_id !== $doctorId) {
                 abort(403, 'Немає доступу до цього рахунку');
@@ -116,7 +113,7 @@ class InvoiceController extends Controller
         ]);
 
         $this->assertClinicAccess($request->user(), $invoice->clinic_id);
-        
+
         // Редагування дозволено тільки якщо немає оплат
         if ($invoice->payments()->where('is_refund', false)->exists()) {
             abort(422, 'Неможливо редагувати рахунок з наявними оплатами');
@@ -155,7 +152,7 @@ class InvoiceController extends Controller
         ]);
 
         $this->assertClinicAccess($request->user(), $invoice->clinic_id);
-        
+
         // Редагування дозволено тільки якщо немає оплат
         if ($invoice->payments()->where('is_refund', false)->exists()) {
             abort(422, 'Неможливо редагувати рахунок з наявними оплатами');
@@ -196,5 +193,3 @@ class InvoiceController extends Controller
         }
     }
 }
-
-

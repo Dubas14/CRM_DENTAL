@@ -4,11 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Clinic;
-use App\Models\Doctor;
-use App\Models\Equipment;
-use App\Models\Room;
-use App\Models\User;
 
 class CalendarBlock extends Model
 {

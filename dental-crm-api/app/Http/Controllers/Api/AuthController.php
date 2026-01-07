@@ -43,6 +43,7 @@ class AuthController extends Controller
     {
         // Видаляємо токен при виході
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Logged out']);
     }
 

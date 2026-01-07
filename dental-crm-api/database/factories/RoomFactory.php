@@ -17,7 +17,7 @@ class RoomFactory extends Factory
     {
         return [
             'clinic_id' => Clinic::factory(),
-            'name' => 'Кабінет ' . fake()->numberBetween(1, 12),
+            'name' => 'Кабінет '.fake()->numberBetween(1, 12),
             'is_active' => fake()->boolean(95),
             'equipment' => fake()->optional()->sentence(3),
             'notes' => fake()->optional()->sentence(),

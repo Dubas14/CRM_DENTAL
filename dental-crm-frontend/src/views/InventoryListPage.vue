@@ -5,4 +5,3 @@ import InventoryList from '../components/inventory/InventoryList.vue'
 <template>
   <InventoryList />
 </template>
-

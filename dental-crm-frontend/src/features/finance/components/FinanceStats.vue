@@ -15,7 +15,7 @@ const clinics = ref<any[]>([])
 const selectedClinicId = ref<number | null>(null)
 
 const clinicOptions = computed(() => {
-  return clinics.value.map(c => ({
+  return clinics.value.map((c) => ({
     value: c.id,
     label: c.name
   }))
@@ -32,7 +32,7 @@ const loadClinics = async () => {
   if (!isSuperAdmin.value) return
   try {
     const { data } = await clinicApi.list()
-    clinics.value = Array.isArray(data) ? data : (data?.data || [])
+    clinics.value = Array.isArray(data) ? data : data?.data || []
     if (clinics.value.length > 0 && !selectedClinicId.value) {
       selectedClinicId.value = clinics.value[0].id
     }
@@ -43,7 +43,7 @@ const loadClinics = async () => {
 
 const loadStats = async () => {
   if (!resolvedClinicId.value) return
-  
+
   loading.value = true
   try {
     const { data } = await financeApi.getStats(resolvedClinicId.value)
@@ -85,9 +85,7 @@ defineExpose({ loadStats })
           placeholder="Оберіть клініку"
         />
       </div>
-      <UIButton variant="secondary" size="sm" @click="loadStats">
-        Оновити
-      </UIButton>
+      <UIButton variant="secondary" size="sm" @click="loadStats"> Оновити </UIButton>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-text/60">Завантаження...</div>
@@ -99,22 +97,18 @@ defineExpose({ loadStats })
         title="Загальний борг"
         :value="stats.total_debt"
         variant="danger"
-        :trend="stats.month_trend ? {
-          value: Math.abs(stats.month_trend),
-          direction: stats.month_trend > 0 ? 'up' : 'down',
-          label: 'vs минулий місяць'
-        } : undefined"
+        :trend="
+          stats.month_trend
+            ? {
+                value: Math.abs(stats.month_trend),
+                direction: stats.month_trend > 0 ? 'up' : 'down',
+                label: 'vs минулий місяць'
+              }
+            : undefined
+        "
       />
-      <UIStatsCard
-        title="Оплачено сьогодні"
-        :value="stats.paid_today"
-        variant="success"
-      />
-      <UIStatsCard
-        title="Оплачено за тиждень"
-        :value="stats.paid_this_week"
-        variant="success"
-      />
+      <UIStatsCard title="Оплачено сьогодні" :value="stats.paid_today" variant="success" />
+      <UIStatsCard title="Оплачено за тиждень" :value="stats.paid_this_week" variant="success" />
       <UIStatsCard
         title="Неоплачених рахунків"
         :value="stats.unpaid_invoices_count"
@@ -123,4 +117,3 @@ defineExpose({ loadStats })
     </div>
   </div>
 </template>
-

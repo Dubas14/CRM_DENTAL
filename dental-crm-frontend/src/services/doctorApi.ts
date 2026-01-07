@@ -12,4 +12,3 @@ const doctorApi = {
 }
 
 export default doctorApi
-

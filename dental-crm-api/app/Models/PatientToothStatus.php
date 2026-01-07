@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PatientToothStatus extends Model
 {
     use HasFactory;
+
     protected $fillable = ['patient_id', 'tooth_number', 'surfaces', 'status', 'note'];
 
     protected $casts = [

@@ -110,7 +110,7 @@ const fetchDoctors = async () => {
     if (search.value.trim()) params.search = search.value.trim()
 
     const { data } = await doctorApi.list(params)
-    
+
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
@@ -237,11 +237,7 @@ const goToPage = async (page) => {
 
     <!-- фільтри -->
     <div class="flex flex-wrap items-center gap-3">
-      <SearchField
-        v-model="search"
-        id="doctors-search"
-        placeholder="Пошук (ПІБ / спеціалізація)"
-      />
+      <SearchField v-model="search" id="doctors-search" placeholder="Пошук (ПІБ / спеціалізація)" />
     </div>
 
     <!-- Форма створення лікаря (тільки для супер адміна) -->

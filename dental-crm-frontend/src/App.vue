@@ -6,7 +6,7 @@ import { useAuth } from './composables/useAuth'
 import { usePermissions } from './composables/usePermissions'
 import ToastContainer from './components/ToastContainer.vue'
 import { useThemeStore } from './stores/theme'
-// @ts-ignore
+// @ts-expect-error - missing types for UserProfileModal
 import UserProfileModal from './components/UserProfileModal'
 import {
   LayoutDashboard,
@@ -29,7 +29,7 @@ import {
 } from 'lucide-vue-next'
 
 const { user, logout, initAuth } = useAuth()
-const { isSuperAdmin, isClinicAdmin, isDoctor, canManageCatalog, canManageRoles, hasPermission } =
+const { isSuperAdmin, isClinicAdmin, isDoctor, canManageRoles, hasPermission } =
   usePermissions()
 const router = useRouter()
 const route = useRoute()
@@ -165,7 +165,12 @@ const onProfileUpdated = async () => {
             <p class="px-4 text-xs font-bold text-text/60 uppercase tracking-wider mb-2">Головне</p>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('appointment.view') || hasPermission('calendar.view')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('appointment.view') ||
+                hasPermission('calendar.view')
+              "
               :to="{ name: 'dashboard' }"
               :class="[
                 route.name === 'dashboard' ? activeClass : inactiveClass,
@@ -177,7 +182,12 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('appointment.view') || hasPermission('calendar.view')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('appointment.view') ||
+                hasPermission('calendar.view')
+              "
               :to="{ name: 'schedule' }"
               :class="[
                 route.name === 'schedule' ? activeClass : inactiveClass,
@@ -190,7 +200,12 @@ const onProfileUpdated = async () => {
 
             <!-- ✅ Новий календар у стилі Google Calendar (board/grid) -->
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('calendar.view') || hasPermission('appointment.view')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('calendar.view') ||
+                hasPermission('appointment.view')
+              "
               :to="{ name: 'calendar-board' }"
               :class="[
                 route.name === 'calendar-board' ? activeClass : inactiveClass,
@@ -274,7 +289,12 @@ const onProfileUpdated = async () => {
             </p>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('equipment.view') || hasPermission('equipment.manage')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('equipment.view') ||
+                hasPermission('equipment.manage')
+              "
               :to="{ name: 'equipments' }"
               :class="[
                 route.name === 'equipments' ? activeClass : inactiveClass,
@@ -286,7 +306,12 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('procedure.view') || hasPermission('procedure.manage')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('procedure.view') ||
+                hasPermission('procedure.manage')
+              "
               :to="{ name: 'procedures' }"
               :class="[
                 route.name === 'procedures' ? activeClass : inactiveClass,
@@ -298,7 +323,12 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('specialization.view') || hasPermission('specialization.manage')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('specialization.view') ||
+                hasPermission('specialization.manage')
+              "
               :to="{ name: 'specializations' }"
               :class="[
                 route.name === 'specializations' ? activeClass : inactiveClass,
@@ -310,7 +340,12 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('inventory.view') || hasPermission('inventory.manage')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('inventory.view') ||
+                hasPermission('inventory.manage')
+              "
               :to="{ name: 'inventory' }"
               :class="[
                 route.name === 'inventory' ? activeClass : inactiveClass,
@@ -322,7 +357,13 @@ const onProfileUpdated = async () => {
             </router-link>
 
             <router-link
-              v-if="isSuperAdmin || isClinicAdmin || hasPermission('invoice.view') || hasPermission('payment.view') || hasPermission('finance.stats')"
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('invoice.view') ||
+                hasPermission('payment.view') ||
+                hasPermission('finance.stats')
+              "
               :to="{ name: 'finance' }"
               :class="[
                 route.name === 'finance' ? activeClass : inactiveClass,
@@ -419,7 +460,9 @@ const onProfileUpdated = async () => {
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
               <span class="text-xs text-text/60 hidden md:inline">Тема</span>
-              <div class="flex items-center gap-2 rounded-full border border-border bg-card/70 px-2 py-1">
+              <div
+                class="flex items-center gap-2 rounded-full border border-border bg-card/70 px-2 py-1"
+              >
                 <button
                   v-for="option in themeOptions"
                   :key="option.value"
@@ -454,8 +497,15 @@ const onProfileUpdated = async () => {
                     {{ isDoctor ? 'Лікар' : isSuperAdmin ? 'Адміністратор' : 'Користувач' }}
                   </p>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-text font-bold shadow-md overflow-hidden">
-                  <img v-if="avatarUrl" :src="avatarUrl" alt="avatar" class="w-full h-full object-cover" />
+                <div
+                  class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-text font-bold shadow-md overflow-hidden"
+                >
+                  <img
+                    v-if="avatarUrl"
+                    :src="avatarUrl"
+                    alt="avatar"
+                    class="w-full h-full object-cover"
+                  />
                   <span v-else>{{ userInitials }}</span>
                 </div>
               </button>
@@ -467,11 +517,20 @@ const onProfileUpdated = async () => {
               >
                 <button
                   class="w-full text-left px-4 py-3 hover:bg-card/80 text-sm"
-                  @click.stop="showProfileModal = true; closeProfileMenu()"
+                  @click.stop="
+                    showProfileModal = true
+                    closeProfileMenu()
+                  "
                 >
                   Редагувати профіль
                 </button>
-                <button class="w-full text-left px-4 py-3 hover:bg-card/80 text-sm text-rose-400" @click.stop="handleLogout(); closeProfileMenu()">
+                <button
+                  class="w-full text-left px-4 py-3 hover:bg-card/80 text-sm text-rose-400"
+                  @click.stop="
+                    handleLogout()
+                    closeProfileMenu()
+                  "
+                >
                   Вийти
                 </button>
               </div>

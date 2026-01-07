@@ -12,8 +12,7 @@ class RescheduleOptionsNotification extends Notification
         private string $doctorName,
         private string $oldDateTime,
         private array $suggestedSlots
-    ) {
-    }
+    ) {}
 
     public function via(mixed $notifiable): array
     {
@@ -32,7 +31,7 @@ class RescheduleOptionsNotification extends Notification
 
     public function toMail(mixed $notifiable): MailMessage
     {
-        $message = (new MailMessage())
+        $message = (new MailMessage)
             ->subject('Потрібне перенесення запису')
             ->greeting('Доброго дня!')
             ->line("Ваш запис до лікаря {$this->doctorName} потребує перенесення.")
@@ -54,7 +53,7 @@ class RescheduleOptionsNotification extends Notification
             fn ($slot) => "{$slot['date']} {$slot['start']}–{$slot['end']}",
             $this->suggestedSlots
         );
-        $slotsText = $slots ? ' Варіанти: ' . implode(', ', $slots) : '';
+        $slotsText = $slots ? ' Варіанти: '.implode(', ', $slots) : '';
 
         return [
             'phone' => $notifiable->phone ?? null,

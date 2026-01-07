@@ -79,4 +79,3 @@ export interface SearchParams {
 }
 
 export type QueryParams = PaginationParams & SortParams & SearchParams & Record<string, any>
-

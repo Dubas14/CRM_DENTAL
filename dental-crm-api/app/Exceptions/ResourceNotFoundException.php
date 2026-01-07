@@ -6,9 +6,9 @@ use Exception;
 
 class ResourceNotFoundException extends Exception
 {
-    public function __construct(string $resource = 'Resource', int $id = null)
+    public function __construct(string $resource = 'Resource', ?int $id = null)
     {
-        $message = $id 
+        $message = $id
             ? "{$resource} з ID {$id} не знайдено"
             : "{$resource} не знайдено";
 

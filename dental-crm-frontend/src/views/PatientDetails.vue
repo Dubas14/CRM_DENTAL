@@ -279,7 +279,9 @@ const validatePhone = (event) => {
           <form class="space-y-4" @submit.prevent="savePatient">
             <div class="grid md:grid-cols-2 gap-4">
               <div>
-                <label for="patient-details-full-name" class="text-xs uppercase text-text/60 block mb-1"
+                <label
+                  for="patient-details-full-name"
+                  class="text-xs uppercase text-text/60 block mb-1"
                   >ПІБ</label
                 >
                 <input

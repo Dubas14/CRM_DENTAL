@@ -49,4 +49,3 @@ const sizePx = computed(() => {
     <span v-else class="text-sm">{{ fallbackText }}</span>
   </div>
 </template>
-

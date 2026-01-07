@@ -11,7 +11,9 @@ class InventoryTransaction extends Model
     use HasFactory;
 
     public const TYPE_PURCHASE = 'purchase';
+
     public const TYPE_USAGE = 'usage';
+
     public const TYPE_ADJUSTMENT = 'adjustment';
 
     protected $fillable = [
@@ -46,5 +48,3 @@ class InventoryTransaction extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 }
-
-

@@ -30,4 +30,3 @@ const classes = computed(() => {
     <slot />
   </span>
 </template>
-

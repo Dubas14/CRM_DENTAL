@@ -2,20 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ScheduleChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Doctor;
-use App\Models\Schedule;
-use App\Models\ScheduleException;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use App\Services\Access\DoctorAccessService;
+use App\Models\Equipment;
 use App\Models\Procedure;
 use App\Models\Room;
-use App\Models\Equipment;
+use App\Models\Schedule;
+use App\Models\ScheduleException;
+use App\Services\Access\DoctorAccessService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\RescheduleService;
-use App\Events\ScheduleChanged;
+use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 
 class DoctorScheduleController extends Controller
 {
@@ -23,7 +23,7 @@ class DoctorScheduleController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageDoctor($user, $doctor)) {
+        if (! DoctorAccessService::canManageDoctor($user, $doctor)) {
             abort(403, 'У вас немає доступу до зміни розкладу цього лікаря');
         }
 
@@ -60,7 +60,7 @@ class DoctorScheduleController extends Controller
 
         if (isset($validated['exceptions'])) {
             ScheduleException::where('doctor_id', $doctor->id)->delete();
-            $rescheduleService = new RescheduleService();
+            $rescheduleService = new RescheduleService;
 
             foreach ($validated['exceptions'] as $exception) {
                 $createdException = ScheduleException::create([
@@ -108,7 +108,7 @@ class DoctorScheduleController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду розкладу цього лікаря');
         }
 
@@ -122,8 +122,8 @@ class DoctorScheduleController extends Controller
             ->get();
 
         return response()->json([
-            'doctor'     => $doctor,
-            'schedules'  => $schedules,
+            'doctor' => $doctor,
+            'schedules' => $schedules,
             'exceptions' => $exceptions,
         ]);
     }
@@ -141,7 +141,7 @@ class DoctorScheduleController extends Controller
 
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду слотів цього лікаря');
         }
 
@@ -152,14 +152,14 @@ class DoctorScheduleController extends Controller
         $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
         $assistantId = $validated['assistant_id'] ?? null;
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $clinicId = $validated['clinic_id'] ?? $doctor->clinic_id;
         $plan = $availability->getDailyPlan($doctor, $date, $clinicId);
 
         if (isset($plan['reason'])) {
             return response()->json([
-                'date'   => $date->toDateString(),
-                'slots'  => [],
+                'date' => $date->toDateString(),
+                'slots' => [],
                 'reason' => $plan['reason'],
                 'vacation_to' => $plan['vacation_to'] ?? ($doctor->vacation_to ?? null),
             ]);
@@ -185,7 +185,7 @@ class DoctorScheduleController extends Controller
         );
 
         return response()->json([
-            'date'  => $date->toDateString(),
+            'date' => $date->toDateString(),
             'slots' => $slots['slots'],
             'reason' => $slots['reason'] ?? null,
             'duration_minutes' => $duration,
@@ -209,7 +209,7 @@ class DoctorScheduleController extends Controller
 
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду слотів цього лікаря');
         }
 
@@ -220,7 +220,7 @@ class DoctorScheduleController extends Controller
         $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
         $assistantId = $validated['assistant_id'] ?? null;
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $clinicId = $validated['clinic_id'] ?? $doctor->clinic_id;
         $plan = $availability->getDailyPlan($doctor, $fromDate, $clinicId);
 

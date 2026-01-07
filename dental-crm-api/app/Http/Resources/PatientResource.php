@@ -23,10 +23,10 @@ class PatientResource extends JsonResource
             'email' => $this->email,
             'address' => $this->address,
             'note' => $this->note,
-            
+
             'clinic' => $this->whenLoaded('clinic', fn () => new ClinicResource($this->clinic)),
             'appointments' => $this->whenLoaded('appointments', fn () => AppointmentResource::collection($this->appointments)),
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

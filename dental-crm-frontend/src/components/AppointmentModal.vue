@@ -350,7 +350,9 @@ const updateAppointment = async () => {
     const startChanged = appointmentForm.value.start_at !== originalStart
     const endChanged = appointmentForm.value.end_at !== originalEnd
 
-    const startAtFormatted = startChanged ? parseLocalInputToApi(appointmentForm.value.start_at) : null
+    const startAtFormatted = startChanged
+      ? parseLocalInputToApi(appointmentForm.value.start_at)
+      : null
     const endAtFormatted = endChanged ? parseLocalInputToApi(appointmentForm.value.end_at) : null
 
     // Створюємо payload, виключаючи null/undefined значення
@@ -388,7 +390,8 @@ const updateAppointment = async () => {
     emit('close')
   } catch (e) {
     console.error('Error updating appointment:', e)
-    const errorMessage = e.response?.data?.message || e.response?.data?.error || e.message || 'Невідома помилка'
+    const errorMessage =
+      e.response?.data?.message || e.response?.data?.error || e.message || 'Невідома помилка'
     alert('Помилка: ' + errorMessage)
   } finally {
     appointmentSaving.value = false
@@ -475,14 +478,14 @@ const saveRecord = async () => {
         alert('Цей запис ще не почався. Неможливо завершити прийом раніше початку.')
       } else {
         const finishResponse = await calendarApi.finishAppointment(appointmentId.value)
-        
+
         // Обробка пропозиції рахунку
         if (finishResponse.data?.invoice_suggestion) {
           const suggestion = finishResponse.data.invoice_suggestion
           if (suggestion.action === 'pay_existing') {
             const confirmPay = confirm(
               `Є неоплачений рахунок ${suggestion.invoice_number}. ` +
-              `Борг: ${suggestion.debt_amount} грн. Відкрити для оплати?`
+                `Борг: ${suggestion.debt_amount} грн. Відкрити для оплати?`
             )
             if (confirmPay) {
               // Emit event to open payment modal
@@ -491,7 +494,7 @@ const saveRecord = async () => {
           } else if (suggestion.action === 'create') {
             const confirmCreate = confirm(
               `Процедура: ${suggestion.procedure_name}. ` +
-              `Ціна: ${suggestion.procedure_price} грн. Створити рахунок?`
+                `Ціна: ${suggestion.procedure_price} грн. Створити рахунок?`
             )
             if (confirmCreate) {
               // Emit event to open invoice form
@@ -597,7 +600,7 @@ watch(
               </select>
               <span v-else class="text-xs bg-card/80 px-2 py-1 rounded text-text/80">
                 {{ appointmentStatuses.find((s) => s.value === status)?.label || status || '—' }}
-            </span>
+              </span>
             </div>
           </div>
 
@@ -708,7 +711,9 @@ watch(
 
           <div class="mt-4 grid gap-4 text-sm text-text/80 sm:grid-cols-2">
             <div>
-              <label for="appointment-doctor" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+              <label
+                for="appointment-doctor"
+                class="block text-xs uppercase tracking-wide text-text/70 mb-1"
                 >Лікар</label
               >
               <select
@@ -726,7 +731,9 @@ watch(
             </div>
 
             <div>
-              <label for="appointment-procedure" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+              <label
+                for="appointment-procedure"
+                class="block text-xs uppercase tracking-wide text-text/70 mb-1"
                 >Процедура</label
               >
               <select
@@ -744,7 +751,9 @@ watch(
             </div>
 
             <div>
-              <label for="appointment-room" class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+              <label
+                for="appointment-room"
+                class="block text-xs uppercase tracking-wide text-text/70 mb-1"
                 >Кабінет</label
               >
               <select
@@ -909,7 +918,9 @@ watch(
         <div v-else class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="treatment-tooth-number" class="block text-sm font-medium text-text/70 mb-1"
+              <label
+                for="treatment-tooth-number"
+                class="block text-sm font-medium text-text/70 mb-1"
                 >Зуб №</label
               >
               <input
@@ -922,7 +933,9 @@ watch(
               />
             </div>
             <div>
-              <label for="treatment-tooth-status" class="block text-sm font-medium text-text/70 mb-1"
+              <label
+                for="treatment-tooth-status"
+                class="block text-sm font-medium text-text/70 mb-1"
                 >Статус</label
               >
               <select

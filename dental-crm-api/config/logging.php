@@ -27,7 +27,7 @@ return [
         // Common file-based defaults in many Laravel apps
         $fileBased = ['stack', 'single', 'daily', 'emergency'];
 
-        if ($isSail && (!$channel || in_array($channel, $fileBased, true))) {
+        if ($isSail && (! $channel || in_array($channel, $fileBased, true))) {
             return 'stderr';
         }
 

@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Doctor;
-use App\Models\Room;
 use App\Models\Procedure;
+use App\Models\Room;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -158,6 +158,7 @@ class AnalyticsController extends Controller
 
         $results = $query->get()->map(function ($item) {
             $procedure = Procedure::find($item->procedure_id);
+
             return [
                 'procedure_id' => $item->procedure_id,
                 'procedure_name' => $procedure?->name ?? 'Unknown',
@@ -265,4 +266,3 @@ class AnalyticsController extends Controller
         ]);
     }
 }
-

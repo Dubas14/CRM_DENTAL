@@ -70,4 +70,3 @@ class UpdateProcedureRequest extends FormRequest
         ];
     }
 }
-

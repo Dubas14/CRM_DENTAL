@@ -43,7 +43,9 @@
         :read-only="entry.item.isReadOnly"
         :interactive="interactive"
         @click="emit('appointment-click', entry.item)"
-        @contextmenu.prevent="(event: MouseEvent) => emit('contextmenu', { event, item: entry.item })"
+        @contextmenu.prevent="
+          (event: MouseEvent) => emit('contextmenu', { event, item: entry.item })
+        "
       />
     </div>
   </div>
@@ -92,11 +94,7 @@ const props = defineProps({
   interactive: { type: Boolean, default: true }
 })
 
-const emit = defineEmits([
-  'select-slot',
-  'appointment-click',
-  'contextmenu'
-])
+const emit = defineEmits(['select-slot', 'appointment-click', 'contextmenu'])
 
 /* ===================== STATE ===================== */
 

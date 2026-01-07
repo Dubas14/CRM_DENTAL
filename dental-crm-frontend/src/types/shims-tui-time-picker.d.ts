@@ -1,1 +1,1 @@
-declare module 'tui-time-picker';
+declare module 'tui-time-picker'

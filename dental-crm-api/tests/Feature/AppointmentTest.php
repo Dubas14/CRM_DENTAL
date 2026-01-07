@@ -6,20 +6,21 @@ use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\Patient;
-use App\Models\Procedure;
-use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class AppointmentTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $user;
+
     protected Clinic $clinic;
+
     protected Doctor $doctor;
+
     protected Patient $patient;
 
     protected function setUp(): void
@@ -132,7 +133,7 @@ class AppointmentTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user, 'sanctum')
-            ->getJson('/api/appointments?date=' . $date->format('Y-m-d'));
+            ->getJson('/api/appointments?date='.$date->format('Y-m-d'));
 
         $response->assertStatus(200);
 
@@ -207,4 +208,3 @@ class AppointmentTest extends TestCase
         $this->assertCount(2, $appointments);
     }
 }
-

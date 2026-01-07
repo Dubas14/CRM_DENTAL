@@ -23,4 +23,3 @@ class UserPasswordController extends Controller
         return response()->json(['status' => 'ok']);
     }
 }
-

@@ -51,5 +51,3 @@ class SpecializationSeeder extends Seeder
         });
     }
 }
-
-

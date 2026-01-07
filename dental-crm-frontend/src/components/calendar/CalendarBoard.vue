@@ -5,20 +5,32 @@
         <CalendarTimeGrid :start-hour="startHour" :end-hour="endHour" :hour-height="hourHeight" />
       </div>
 
-      <div
-        ref="columnsWrapper"
-        class="relative flex flex-1 min-w-0 bg-bg/40"
-      >
+      <div ref="columnsWrapper" class="relative flex flex-1 min-w-0 bg-bg/40">
         <div class="absolute inset-0 pointer-events-none">
           <div
             v-for="block in inactiveBlocks"
             :key="block.key"
             class="absolute left-0 right-0 bg-slate-100/40 dark:bg-slate-900/40"
-            :class="{ 'opacity-100': block.type === 'non-work', 'opacity-50': block.type !== 'non-work' }"
+            :class="{
+              'opacity-100': block.type === 'non-work',
+              'opacity-50': block.type !== 'non-work'
+            }"
             :style="{ top: `${block.top}px`, height: `${block.height}px` }"
           >
-             <!-- Stripe pattern for non-working hours -->
-             <div v-if="block.type === 'non-work'" class="w-full h-full opacity-30" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #00000008 10px, #00000008 20px);"></div>
+            <!-- Stripe pattern for non-working hours -->
+            <div
+              v-if="block.type === 'non-work'"
+              class="w-full h-full opacity-30"
+              style="
+                background-image: repeating-linear-gradient(
+                  45deg,
+                  transparent,
+                  transparent 10px,
+                  #00000008 10px,
+                  #00000008 20px
+                );
+              "
+            ></div>
           </div>
         </div>
 
@@ -30,12 +42,12 @@
             :class="{
               'border-t border-slate-200 dark:border-slate-700': line.type === 'hour',
               'border-t border-slate-100 dark:border-slate-800 border-dashed': line.type === 'half',
-              'border-t border-slate-50 dark:border-slate-800/50 border-dotted': line.type === 'quarter'
+              'border-t border-slate-50 dark:border-slate-800/50 border-dotted':
+                line.type === 'quarter'
             }"
             :style="{ top: `${line.top}px` }"
           />
         </div>
-
 
         <div class="relative z-10 flex min-w-0 flex-1">
           <CalendarDoctorColumn
@@ -62,7 +74,7 @@
         <CalendarNowLine v-if="showNowLine" :top="nowLineTop" :label="nowLabel" :show-head="true" />
       </div>
     </div>
-    
+
     <CalendarContextMenu
       v-if="contextMenu.visible"
       :visible="contextMenu.visible"
@@ -108,7 +120,6 @@ interface Column {
   date?: string | Date
   width?: number
 }
-
 
 const props = defineProps({
   date: {
@@ -177,10 +188,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits([
-  'select-slot',
-  'appointment-click'
-])
+const emit = defineEmits(['select-slot', 'appointment-click'])
 
 const columnsWrapper = ref<HTMLElement | null>(null)
 const columnRefs = ref(new Map())
@@ -196,26 +204,26 @@ const contextMenu = ref({
   actions: [] as any[]
 })
 
-const handleContextMenu = ({ event, item }: { event: MouseEvent, item: CalendarItem }) => {
+const handleContextMenu = ({ event, item }: { event: MouseEvent; item: CalendarItem }) => {
   event.preventDefault()
-  
+
   const actions = []
-  
+
   if (item.type === 'appointment') {
-     // Status actions
-     if (item.status !== 'done') {
-        actions.push({ key: 'set_arrived', label: 'Пацієнт прийшов', icon: CheckCircle })
-        actions.push({ key: 'set_done', label: 'Завершити прийом', icon: CheckCircle })
-     }
-     
-     actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
-     
-     if (item.status !== 'cancelled') {
-        actions.push({ key: 'cancel', label: 'Скасувати', icon: XCircle, danger: true })
-     }
+    // Status actions
+    if (item.status !== 'done') {
+      actions.push({ key: 'set_arrived', label: 'Пацієнт прийшов', icon: CheckCircle })
+      actions.push({ key: 'set_done', label: 'Завершити прийом', icon: CheckCircle })
+    }
+
+    actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
+
+    if (item.status !== 'cancelled') {
+      actions.push({ key: 'cancel', label: 'Скасувати', icon: XCircle, danger: true })
+    }
   } else if (item.type === 'block') {
-     actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
-     actions.push({ key: 'delete', label: 'Видалити', icon: Trash2, danger: true })
+    actions.push({ key: 'edit', label: 'Редагувати', icon: Edit })
+    actions.push({ key: 'delete', label: 'Видалити', icon: Trash2, danger: true })
   }
 
   contextMenu.value = {
@@ -235,7 +243,7 @@ const closeContextMenu = () => {
 const handleContextAction = (key: string) => {
   const item = contextMenu.value.item
   if (!item) return
-  
+
   if (key === 'edit') {
     emit('appointment-click', item)
   } else if (key === 'set_arrived') {
@@ -245,7 +253,7 @@ const handleContextAction = (key: string) => {
   } else if (key === 'cancel') {
     emit('appointment-update', { id: item.id, status: 'cancelled' })
   } else if (key === 'delete') {
-     emit('appointment-update', { id: item.id, _delete: true }) 
+    emit('appointment-update', { id: item.id, _delete: true })
   }
 }
 
@@ -257,8 +265,6 @@ const activeMinutesRange = computed(() => {
   const max = Math.min((props.endHour - props.startHour) * 60, (activeEnd - props.startHour) * 60)
   return { min, max }
 })
-
-
 
 const gridLines = computed(() => {
   const lines = []
@@ -278,30 +284,30 @@ const gridLines = computed(() => {
 
 const inactiveBlocks = computed(() => {
   const blocks = []
-  
+
   // Non-working hours (Morning)
   if (props.workDayStart > props.startHour) {
-     const height = (props.workDayStart - props.startHour) * props.hourHeight
-     blocks.push({
-       key: 'non-work-morning',
-       top: 0,
-       height,
-       type: 'non-work'
-     })
+    const height = (props.workDayStart - props.startHour) * props.hourHeight
+    blocks.push({
+      key: 'non-work-morning',
+      top: 0,
+      height,
+      type: 'non-work'
+    })
   }
 
   // Non-working hours (Evening)
   if (props.workDayEnd < props.endHour) {
-     const top = (props.workDayEnd - props.startHour) * props.hourHeight
-     const height = (props.endHour - props.workDayEnd) * props.hourHeight
-     blocks.push({
-       key: 'non-work-evening',
-       top,
-       height,
-       type: 'non-work'
-     })
+    const top = (props.workDayEnd - props.startHour) * props.hourHeight
+    const height = (props.endHour - props.workDayEnd) * props.hourHeight
+    blocks.push({
+      key: 'non-work-evening',
+      top,
+      height,
+      type: 'non-work'
+    })
   }
-  
+
   const activeStart = props.activeStartHour ?? props.startHour
   const activeEnd = props.activeEndHour ?? props.endHour
   if (activeStart > props.startHour) {
@@ -455,7 +461,7 @@ const itemsByColumn = computed(() => {
         return
       }
     }
-    
+
     if (groupKey && map[groupKey]) {
       const startMinutes = getMinutesFromStart(item.startAt)
       const endMinutes = getMinutesFromStart(item.endAt)
@@ -468,7 +474,7 @@ const itemsByColumn = computed(() => {
         top: startMinutes * pixelsPerMinute.value,
         height,
         leftPct: 0,
-        widthPct: 100,
+        widthPct: 100
       })
     }
   })
@@ -522,7 +528,15 @@ const getDateFromMinutesForBase = (baseDate: Date | string | undefined, minutes:
   return base
 }
 
-const handleSelectSlot = ({ doctorId, minutesFromStart, baseDate }: { doctorId: string | number, minutesFromStart: number, baseDate?: Date }) => {
+const handleSelectSlot = ({
+  doctorId,
+  minutesFromStart,
+  baseDate
+}: {
+  doctorId: string | number
+  minutesFromStart: number
+  baseDate?: Date
+}) => {
   if (!props.interactive) return
   const range = activeMinutesRange.value
   if (minutesFromStart < range.min || minutesFromStart + props.snapMinutes > range.max) return
@@ -534,7 +548,6 @@ const handleSelectSlot = ({ doctorId, minutesFromStart, baseDate }: { doctorId: 
   emit('select-slot', { doctorId, start, end })
 }
 
-
 onMounted(() => {
   nowInterval.value = setInterval(() => {
     nowTick.value = Date.now()
@@ -542,5 +555,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>

@@ -18,7 +18,7 @@ class RescheduleService
             ->orderBy('start_at')
             ->get();
 
-        $availabilityService = new AvailabilityService();
+        $availabilityService = new AvailabilityService;
         $queue = [];
 
         foreach ($appointments as $appointment) {

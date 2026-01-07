@@ -15,7 +15,7 @@ class SendWaitlistOffers
     {
         $appointment = $event->appointment->loadMissing(['doctor', 'procedure']);
 
-        $service = new WaitlistService();
+        $service = new WaitlistService;
         $candidates = $service->matchCandidates(
             $appointment->clinic_id,
             $appointment->doctor_id,
@@ -43,7 +43,7 @@ class SendWaitlistOffers
                 'expires_at' => now()->addHours(2),
             ]);
 
-            $claimUrl = rtrim(config('app.url'), '/') . '/booking/claim/' . $offer->token;
+            $claimUrl = rtrim(config('app.url'), '/').'/booking/claim/'.$offer->token;
 
             Notification::send(
                 $entry->patient,

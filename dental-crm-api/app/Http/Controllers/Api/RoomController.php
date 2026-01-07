@@ -24,10 +24,10 @@ class RoomController extends Controller
     {
         $data = $request->validate([
             'clinic_id' => ['required', 'exists:clinics,id'],
-            'name'      => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'is_active' => ['boolean'],
             'equipment' => ['nullable', 'string', 'max:255'],
-            'notes'     => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $room = Room::create($data);
@@ -43,10 +43,10 @@ class RoomController extends Controller
     public function update(Request $request, Room $room)
     {
         $data = $request->validate([
-            'name'      => ['sometimes', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'equipment' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'notes'     => ['sometimes', 'nullable', 'string'],
+            'notes' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $room->update($data);

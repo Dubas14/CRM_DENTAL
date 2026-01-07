@@ -21,18 +21,18 @@ class ClinicController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'legal_name'  => ['nullable', 'string', 'max:255'],
-            'address'     => ['nullable', 'string', 'max:255'],
-            'city'        => ['nullable', 'string', 'max:255'],
-            'country'     => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'legal_name' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:20'],
-            'lat'         => ['nullable', 'numeric'],
-            'lng'         => ['nullable', 'numeric'],
-            'phone'       => ['nullable', 'string', 'max:50'],
-            'email'       => ['nullable', 'email', 'max:255'],
-            'website'     => ['nullable', 'string', 'max:255'],
-            'is_active'   => ['boolean'],
+            'lat' => ['nullable', 'numeric'],
+            'lng' => ['nullable', 'numeric'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
         ]);
 
         $clinic = Clinic::create($data);
@@ -48,18 +48,18 @@ class ClinicController extends Controller
     public function update(Request $request, Clinic $clinic)
     {
         $data = $request->validate([
-            'name'        => ['sometimes', 'string', 'max:255'],
-            'legal_name'  => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address'     => ['sometimes', 'nullable', 'string', 'max:255'],
-            'city'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'country'     => ['sometimes', 'nullable', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'legal_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'country' => ['sometimes', 'nullable', 'string', 'max:255'],
             'postal_code' => ['sometimes', 'nullable', 'string', 'max:20'],
-            'lat'         => ['sometimes', 'nullable', 'numeric'],
-            'lng'         => ['sometimes', 'nullable', 'numeric'],
-            'phone'       => ['sometimes', 'nullable', 'string', 'max:50'],
-            'email'       => ['sometimes', 'nullable', 'email', 'max:255'],
-            'website'     => ['sometimes', 'nullable', 'string', 'max:255'],
-            'is_active'   => ['sometimes', 'boolean'],
+            'lat' => ['sometimes', 'nullable', 'numeric'],
+            'lng' => ['sometimes', 'nullable', 'numeric'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'website' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $clinic->update($data);

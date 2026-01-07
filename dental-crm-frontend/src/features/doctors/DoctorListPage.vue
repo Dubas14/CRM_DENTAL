@@ -26,8 +26,8 @@ const filteredDoctors = computed(() => {
   )
 })
 
-const activeDoctor = computed(() =>
-  filteredDoctors.value.find((d) => d.id === selectedDoctorId.value) || null
+const activeDoctor = computed(
+  () => filteredDoctors.value.find((d) => d.id === selectedDoctorId.value) || null
 )
 
 const quickActions = [
@@ -96,7 +96,9 @@ const handleAction = (actionId: string) => {
       <UIButton variant="secondary" size="sm" @click="fetchDoctors">Оновити</UIButton>
     </header>
 
-    <section class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4">
+    <section
+      class="rounded-xl bg-card/60 shadow-sm shadow-black/10 dark:shadow-black/40 p-4 space-y-4"
+    >
       <div class="flex flex-wrap items-center gap-3">
         <input
           v-model="search"
@@ -129,7 +131,11 @@ const handleAction = (actionId: string) => {
             >
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <UIAvatar :src="doctor.avatar_url || ''" :fallback-text="doctor.full_name?.[0] || '?'" size="sm" />
+                  <UIAvatar
+                    :src="doctor.avatar_url || ''"
+                    :fallback-text="doctor.full_name?.[0] || '?'"
+                    size="sm"
+                  />
                   <div>
                     <p class="font-semibold text-text">{{ doctor.full_name }}</p>
                   </div>
@@ -142,7 +148,7 @@ const handleAction = (actionId: string) => {
                 >
                   {{
                     doctor.clinics?.length
-                      ? `${doctor.clinics.length} клін.` 
+                      ? `${doctor.clinics.length} клін.`
                       : doctor.clinic?.name || '—'
                   }}
                 </span>
@@ -172,8 +178,15 @@ const handleAction = (actionId: string) => {
                       <UIButton variant="secondary" size="sm" @click.stop="toggle">Дії ▾</UIButton>
                     </template>
                   </UIDropdown>
-                  <UIButton variant="primary" size="sm" @click.stop="handleManageClick(doctor, $event)">Керувати</UIButton>
-                  <UIButton variant="ghost" size="sm" @click.stop="goToDetails(doctor.id)">Деталі</UIButton>
+                  <UIButton
+                    variant="primary"
+                    size="sm"
+                    @click.stop="handleManageClick(doctor, $event)"
+                    >Керувати</UIButton
+                  >
+                  <UIButton variant="ghost" size="sm" @click.stop="goToDetails(doctor.id)"
+                    >Деталі</UIButton
+                  >
                 </div>
               </td>
             </tr>
@@ -195,4 +208,3 @@ const handleAction = (actionId: string) => {
     </UIDrawer>
   </div>
 </template>
-

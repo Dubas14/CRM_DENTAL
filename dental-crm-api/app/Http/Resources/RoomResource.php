@@ -18,7 +18,7 @@ class RoomResource extends JsonResource
             'clinic_id' => $this->clinic_id,
             'name' => $this->name,
             'type' => $this->type,
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

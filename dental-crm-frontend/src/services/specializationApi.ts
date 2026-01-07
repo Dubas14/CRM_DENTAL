@@ -16,5 +16,3 @@ const specializationApi = {
 }
 
 export default specializationApi
-
-

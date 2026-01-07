@@ -73,9 +73,7 @@ onMounted(async () => {
               <td class="px-4 py-3 text-text/80">{{ formatStock(item) }}</td>
               <td class="px-4 py-3 text-text/80">{{ item.min_stock_level }} {{ item.unit }}</td>
               <td class="px-4 py-3">
-                <UIBadge v-if="isLowStock(item)" variant="danger" small>
-                  ⚠️ Закінчується
-                </UIBadge>
+                <UIBadge v-if="isLowStock(item)" variant="danger" small> ⚠️ Закінчується </UIBadge>
                 <UIBadge v-else variant="success" small>В наявності</UIBadge>
               </td>
             </tr>
@@ -91,4 +89,3 @@ onMounted(async () => {
     />
   </div>
 </template>
-

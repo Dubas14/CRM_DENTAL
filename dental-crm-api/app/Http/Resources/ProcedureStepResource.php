@@ -19,7 +19,7 @@ class ProcedureStepResource extends JsonResource
             'name' => $this->name,
             'duration_minutes' => $this->duration_minutes,
             'order' => $this->order,
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

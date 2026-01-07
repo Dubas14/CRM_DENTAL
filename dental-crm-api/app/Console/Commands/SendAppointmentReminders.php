@@ -48,22 +48,21 @@ class SendAppointmentReminders extends Command
             try {
                 // Тут можна додати відправку SMS/Email через Notification
                 // Наприклад: $appointment->patient->notify(new AppointmentReminderNotification($appointment));
-                
+
                 // Оновлюємо статус на 'reminded'
                 $appointment->update(['status' => 'reminded']);
-                
+
                 $sentCount++;
                 $this->info("Reminder sent for appointment #{$appointment->id} at {$appointment->start_at}");
             } catch (\Exception $e) {
                 $failedCount++;
-                Log::error("Failed to send reminder for appointment #{$appointment->id}: " . $e->getMessage());
-                $this->error("Failed to send reminder for appointment #{$appointment->id}: " . $e->getMessage());
+                Log::error("Failed to send reminder for appointment #{$appointment->id}: ".$e->getMessage());
+                $this->error("Failed to send reminder for appointment #{$appointment->id}: ".$e->getMessage());
             }
         }
 
         $this->info("Reminders sent: {$sentCount}, Failed: {$failedCount}");
-        
+
         return Command::SUCCESS;
     }
 }
-

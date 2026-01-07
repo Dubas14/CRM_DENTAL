@@ -15,7 +15,7 @@ const search = ref('')
 const selectedClinicFilter = ref('')
 
 // Filtered clinics to avoid null values
-const validClinics = computed(() => clinics.value.filter(clinic => clinic && clinic.id))
+const validClinics = computed(() => clinics.value.filter((clinic) => clinic && clinic.id))
 
 // форма
 const showForm = ref(false)
@@ -99,7 +99,7 @@ const loadPatients = async () => {
     }
 
     const { data } = await apiClient.get('/patients', { params })
-    
+
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
@@ -117,7 +117,7 @@ const loadPatients = async () => {
   } catch (e) {
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
-    
+
     console.error(e)
     error.value = e.response?.data?.message || e.message || 'Помилка завантаження пацієнтів'
   } finally {

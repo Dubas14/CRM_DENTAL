@@ -25,22 +25,28 @@ const invoiceApi = {
   }) {
     return apiClient.post('/invoices', payload)
   },
-  addItems(invoiceId: number | string, items: Array<{
-    procedure_id?: number | null
-    name: string
-    quantity: number
-    price: number
-    total: number
-  }>) {
+  addItems(
+    invoiceId: number | string,
+    items: Array<{
+      procedure_id?: number | null
+      name: string
+      quantity: number
+      price: number
+      total: number
+    }>
+  ) {
     return apiClient.post(`/invoices/${invoiceId}/items`, { items })
   },
-  replaceItems(invoiceId: number | string, items: Array<{
-    procedure_id?: number | null
-    name: string
-    quantity: number
-    price: number
-    total: number
-  }>) {
+  replaceItems(
+    invoiceId: number | string,
+    items: Array<{
+      procedure_id?: number | null
+      name: string
+      quantity: number
+      price: number
+      total: number
+    }>
+  ) {
     return apiClient.put(`/invoices/${invoiceId}/items`, { items })
   },
   update(id: number | string, payload: any) {
@@ -58,4 +64,3 @@ const invoiceApi = {
 }
 
 export default invoiceApi
-

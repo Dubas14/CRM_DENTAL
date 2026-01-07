@@ -14,7 +14,7 @@ class DoctorProcedureController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageDoctor($user, $doctor)) {
+        if (! DoctorAccessService::canManageDoctor($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду процедур цього лікаря');
         }
 
@@ -48,7 +48,7 @@ class DoctorProcedureController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageDoctor($user, $doctor)) {
+        if (! DoctorAccessService::canManageDoctor($user, $doctor)) {
             abort(403, 'У вас немає доступу до зміни процедур цього лікаря');
         }
 
@@ -71,7 +71,7 @@ class DoctorProcedureController extends Controller
         $syncData = [];
 
         foreach ($data['procedures'] as $item) {
-            if (!$item['is_assigned']) {
+            if (! $item['is_assigned']) {
                 continue;
             }
 

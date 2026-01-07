@@ -19,7 +19,7 @@ const load = async () => {
   error.value = null
   try {
     const { data } = await specializationApi.list()
-    items.value = Array.isArray(data) ? data : data?.data ?? []
+    items.value = Array.isArray(data) ? data : (data?.data ?? [])
   } catch (e: any) {
     console.error(e)
     error.value = e?.response?.data?.message || 'Не вдалося завантажити спеціалізації'
@@ -167,7 +167,9 @@ const removeSpec = async (spec: any) => {
                     type="text"
                     class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
                   />
-                  <UIButton variant="secondary" size="sm" :loading="savingEdit" @click="saveEdit">Зберегти</UIButton>
+                  <UIButton variant="secondary" size="sm" :loading="savingEdit" @click="saveEdit"
+                    >Зберегти</UIButton
+                  >
                   <UIButton variant="ghost" size="sm" @click="cancelEdit">Скасувати</UIButton>
                 </div>
                 <div v-else class="flex items-center gap-2">
@@ -177,7 +179,11 @@ const removeSpec = async (spec: any) => {
               <td class="px-4 py-3">
                 <span
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  :class="spec.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-border/40 text-text/60'"
+                  :class="
+                    spec.is_active
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-border/40 text-text/60'
+                  "
                 >
                   {{ spec.is_active ? 'Активна' : 'Неактивна' }}
                 </span>
@@ -201,11 +207,7 @@ const removeSpec = async (spec: any) => {
                   >
                     Видалити
                   </UIButton>
-                  <UIButton
-                    variant="ghost"
-                    size="sm"
-                    @click="toggleActive(spec)"
-                  >
+                  <UIButton variant="ghost" size="sm" @click="toggleActive(spec)">
                     {{ spec.is_active ? 'Деактивувати' : 'Активувати' }}
                   </UIButton>
                 </div>
@@ -217,5 +219,3 @@ const removeSpec = async (spec: any) => {
     </section>
   </div>
 </template>
-
-

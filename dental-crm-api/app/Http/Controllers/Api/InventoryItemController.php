@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class InventoryItemController extends Controller
 {
@@ -20,8 +19,8 @@ class InventoryItemController extends Controller
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', '%' . $search . '%')
-                    ->orWhere('code', 'ilike', '%' . $search . '%');
+                $q->where('name', 'ilike', '%'.$search.'%')
+                    ->orWhere('code', 'ilike', '%'.$search.'%');
             });
         }
 
@@ -79,5 +78,3 @@ class InventoryItemController extends Controller
         }
     }
 }
-
-

@@ -2,19 +2,19 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Gate; // 👈 Важливий імпорт
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Events\AppointmentCancelled;
-use App\Events\ScheduleChanged;
+use App\Events\ScheduleChanged; // 👈 Важливий імпорт
 use App\Listeners\ProcessReschedulingQueue;
 use App\Listeners\SendWaitlistOffers;
+use App\Models\User;
 use App\Services\Notifications\LogSmsGateway;
 use App\Services\Notifications\SmsGateway;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

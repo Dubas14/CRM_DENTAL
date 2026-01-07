@@ -5,16 +5,9 @@
 ```vue
 <template>
   <div>
-    <ErrorDisplay 
-      v-if="error" 
-      :error="error" 
-      @dismiss="clearError" 
-    />
+    <ErrorDisplay v-if="error" :error="error" @dismiss="clearError" />
 
-    <button 
-      @click="fetchPatients" 
-      :disabled="isLoading"
-    >
+    <button @click="fetchPatients" :disabled="isLoading">
       {{ isLoading ? 'Завантаження...' : 'Завантажити пацієнтів' }}
     </button>
   </div>
@@ -30,10 +23,8 @@ const patients = ref([])
 const { error, isLoading, executeWithErrorHandling } = useErrorHandler()
 
 async function fetchPatients() {
-  const result = await executeWithErrorHandling(
-    () => apiClient.get('/patients')
-  )
-  
+  const result = await executeWithErrorHandling(() => apiClient.get('/patients'))
+
   if (result) {
     patients.value = result.data
   }
@@ -46,8 +37,8 @@ async function fetchPatients() {
 ```vue
 <template>
   <form @submit.prevent="submitForm">
-    <ErrorDisplay 
-      v-if="error" 
+    <ErrorDisplay
+      v-if="error"
       :error="error"
       title="Помилка валідації"
       errorType="warning"
@@ -56,8 +47,8 @@ async function fetchPatients() {
 
     <div>
       <label>Ім'я пацієнта</label>
-      <input 
-        v-model="form.full_name" 
+      <input
+        v-model="form.full_name"
         type="text"
         :class="{ 'border-red-500': getFieldError('full_name') }"
       />
@@ -68,8 +59,8 @@ async function fetchPatients() {
 
     <div>
       <label>Email</label>
-      <input 
-        v-model="form.email" 
+      <input
+        v-model="form.email"
         type="email"
         :class="{ 'border-red-500': getFieldError('email') }"
       />
@@ -95,19 +86,11 @@ const form = ref({
   email: ''
 })
 
-const { 
-  error, 
-  isLoading, 
-  clearError, 
-  getFieldError,
-  executeWithErrorHandling 
-} = useErrorHandler()
+const { error, isLoading, clearError, getFieldError, executeWithErrorHandling } = useErrorHandler()
 
 async function submitForm() {
-  const result = await executeWithErrorHandling(
-    () => apiClient.post('/patients', form.value)
-  )
-  
+  const result = await executeWithErrorHandling(() => apiClient.post('/patients', form.value))
+
   if (result) {
     // Успішно створено
     console.log('Пацієнт створено:', result.data)
@@ -158,14 +141,11 @@ import apiClient from '@/services/apiClient'
 
 async function fetchCriticalData() {
   try {
-    const response = await retryRequest(
-      () => apiClient.get('/critical-endpoint'),
-      {
-        maxRetries: 5,
-        retryDelay: 2000,
-        retryableStatuses: [408, 500, 502, 503, 504]
-      }
-    )
+    const response = await retryRequest(() => apiClient.get('/critical-endpoint'), {
+      maxRetries: 5,
+      retryDelay: 2000,
+      retryableStatuses: [408, 500, 502, 503, 504]
+    })
     return response.data
   } catch (err) {
     console.error('Failed after 5 retries:', err)
@@ -211,17 +191,17 @@ interface Notification {
 const notifications = ref<Notification[]>([])
 let notificationId = 0
 
-function showNotification(notification: { 
+function showNotification(notification: {
   title: string
   message: string
   type: 'error' | 'warning' | 'info'
-  duration?: number 
+  duration?: number
 }) {
   const id = notificationId++
   notifications.value.push({ ...notification, id })
 
   setTimeout(() => {
-    notifications.value = notifications.value.filter(n => n.id !== id)
+    notifications.value = notifications.value.filter((n) => n.id !== id)
   }, notification.duration || 4000)
 }
 
@@ -286,10 +266,10 @@ export interface PaginatedResponse<T> {
 
 // Використання
 async function fetchPatient(id: number): Promise<Patient | null> {
-  const result = await executeWithErrorHandling<ApiResponse<Patient>>(
-    () => apiClient.get(`/patients/${id}`)
+  const result = await executeWithErrorHandling<ApiResponse<Patient>>(() =>
+    apiClient.get(`/patients/${id}`)
   )
-  
+
   return result ? result.data.data : null
 }
 ```
@@ -304,4 +284,3 @@ async function fetchPatient(id: number): Promise<Patient | null> {
 6. **User-friendly** - зрозумілі повідомлення українською мовою
 7. **Статус-коди** - обробка всіх HTTP статус-кодів
 8. **Loading states** - вбудована підтримка індикаторів завантаження
-

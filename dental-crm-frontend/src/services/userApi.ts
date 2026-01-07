@@ -1,7 +1,11 @@
 import apiClient from './apiClient'
 
 export const userApi = {
-  updatePassword(payload: { current_password: string; password: string; password_confirmation: string }) {
+  updatePassword(payload: {
+    current_password: string
+    password: string
+    password_confirmation: string
+  }) {
     return apiClient.post('/user/password', payload)
   },
   uploadAvatar(file: File | null, remove = false) {
@@ -19,4 +23,3 @@ export const userApi = {
 }
 
 export default userApi
-

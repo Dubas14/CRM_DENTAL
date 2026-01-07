@@ -12,6 +12,5 @@ class AppointmentCancelled
 
     public function __construct(
         public Appointment $appointment
-    ) {
-    }
+    ) {}
 }

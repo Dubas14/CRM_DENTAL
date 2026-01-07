@@ -56,7 +56,7 @@ export function useErrorHandler() {
         isLoading.value = true
       }
       clearError()
-      
+
       return await operation()
     } catch (err) {
       handleError(err as AxiosError<ApiError>, showNotification)

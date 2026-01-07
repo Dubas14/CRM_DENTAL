@@ -290,10 +290,17 @@ onUnmounted(() => {
 
       <div v-else-if="loading" class="text-sm text-text/70">Завантаження слотів...</div>
 
-      <div v-else class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3">
+      <div
+        v-else
+        class="text-sm text-text/70 bg-card/60 rounded-lg shadow-sm shadow-black/10 dark:shadow-black/40 p-3"
+      >
         <p class="font-semibold text-text mb-1">Вільних слотів немає</p>
         <p class="text-xs text-amber-400">
-          {{ isToday && slots.length ? 'Слоти на сьогодні вже минули. Оберіть іншу дату.' : reasonMessage }}
+          {{
+            isToday && slots.length
+              ? 'Слоти на сьогодні вже минули. Оберіть іншу дату.'
+              : reasonMessage
+          }}
         </p>
       </div>
 

@@ -21,6 +21,7 @@ class ProcessReschedulingQueue
 
             if (! $patient) {
                 $candidate->update(['status' => 'cancelled']);
+
                 continue;
             }
 

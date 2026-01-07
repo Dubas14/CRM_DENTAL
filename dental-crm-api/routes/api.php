@@ -1,39 +1,39 @@
 <?php
 
-use App\Http\Controllers\Api\DoctorScheduleController;
-use App\Http\Controllers\Api\MedicalRecordController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\ClinicController;
-use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AppointmentController;
-use App\Http\Controllers\Api\PatientController;
-use App\Http\Controllers\Api\ProcedureController;
-use App\Http\Controllers\Api\EquipmentController;
-use App\Http\Controllers\Api\RoomController;
-use App\Http\Controllers\Api\WaitlistController;
-use App\Http\Controllers\Api\SpecializationController;
-use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\AssistantController;
-use App\Http\Controllers\Api\CalendarBlockController;
-use App\Http\Controllers\Api\ClinicWorkingHoursController;
-use App\Http\Controllers\Api\DoctorProcedureController;
 use App\Http\Controllers\Api\BookingSuggestionController;
-use App\Http\Controllers\Api\UserPasswordController;
-use App\Http\Controllers\Api\UserAvatarController;
-use App\Http\Controllers\Api\InvoiceController;
-use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\CalendarBlockController;
+use App\Http\Controllers\Api\ClinicController;
+use App\Http\Controllers\Api\ClinicWorkingHoursController;
+use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\DoctorProcedureController;
+use App\Http\Controllers\Api\DoctorScheduleController;
+use App\Http\Controllers\Api\DoctorScheduleSettingsController;
+use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\InventoryTransactionController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\MedicalRecordController;
+use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PatientFileController;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use App\Models\User;
-use App\Http\Controllers\Api\DoctorScheduleSettingsController;
-use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ProcedureController;
 use App\Http\Controllers\Api\ReportsController;
-use App\Support\RoleHierarchy;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\SpecializationController;
+use App\Http\Controllers\Api\UserAvatarController;
+use App\Http\Controllers\Api\UserPasswordController;
+use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Resources\UserResource;
+use App\Models\User;
+use App\Support\RoleHierarchy;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 
 // ---- CORS PREFLIGHT (OPTIONS) ----
 // Деякі браузери/проксі можуть не пропускати OPTIONS коректно, особливо для PUT/PATCH з Authorization.
@@ -218,7 +218,7 @@ Route::middleware('auth:sanctum')->group(function () {
         if ($user->doctor && $user->doctor->clinics->isNotEmpty()) {
             $clinics = $user->doctor->clinics->map(function ($clinic) {
                 return [
-                    'clinic_id'   => $clinic->id,
+                    'clinic_id' => $clinic->id,
                     'clinic_name' => $clinic->name,
                     'clinic_role' => 'doctor',
                 ];
@@ -226,14 +226,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
             return response()->json([
                 'is_super_admin' => $user->isSuperAdmin(),
-                'clinics'        => $clinics,
+                'clinics' => $clinics,
             ]);
         }
 
         // Для не-лікарів (адміни, реєстратори) - беремо з clinic_user
         $clinics = $user->clinics->map(function ($clinic) {
             return [
-                'clinic_id'   => $clinic->id,
+                'clinic_id' => $clinic->id,
                 'clinic_name' => $clinic->name,
                 'clinic_role' => $clinic->pivot->clinic_role ?? 'member',
             ];
@@ -241,7 +241,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json([
             'is_super_admin' => $user->isSuperAdmin(),
-            'clinics'        => $clinics,
+            'clinics' => $clinics,
         ]);
     });
 

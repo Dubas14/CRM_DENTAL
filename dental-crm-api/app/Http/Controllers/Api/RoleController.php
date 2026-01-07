@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Doctor;
 use App\Models\Clinic;
+use App\Models\Doctor;
 use App\Models\User;
 use App\Support\RoleHierarchy;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
@@ -50,6 +50,7 @@ class RoleController extends Controller
         $permissions = Permission::all()->groupBy(function ($permission) {
             // Group by module prefix (e.g., 'appointment.view' -> 'appointment')
             $parts = explode('.', $permission->name);
+
             return $parts[0] ?? 'other';
         })->map(function ($group, $module) {
             return [
@@ -297,10 +298,10 @@ class RoleController extends Controller
             }
 
             $doctor = Doctor::create([
-                'user_id'   => $user->id,
+                'user_id' => $user->id,
                 'clinic_id' => $primaryClinicId,
                 'full_name' => $fullName,
-                'email'     => $user->email,
+                'email' => $user->email,
                 'is_active' => true,
             ]);
         } elseif ($primaryClinicId && $doctor->clinic_id === null) {

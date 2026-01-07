@@ -200,13 +200,7 @@ const save = async () => {
         </div>
 
         <div class="flex justify-end gap-3 pt-2">
-          <UIButton
-            v-if="isEditing"
-            variant="secondary"
-            size="sm"
-            :loading="saving"
-            @click="save"
-          >
+          <UIButton v-if="isEditing" variant="secondary" size="sm" :loading="saving" @click="save">
             Зберегти
           </UIButton>
         </div>
@@ -214,5 +208,3 @@ const save = async () => {
     </div>
   </div>
 </template>
-
-

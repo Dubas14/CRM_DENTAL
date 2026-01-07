@@ -31,7 +31,7 @@ class BookingSuggestionController extends Controller
         $doctor = Doctor::findOrFail($validated['doctor_id']);
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду слотів цього лікаря');
         }
 
@@ -42,7 +42,7 @@ class BookingSuggestionController extends Controller
         $equipment = isset($validated['equipment_id']) ? Equipment::find($validated['equipment_id']) : null;
         $assistantId = $validated['assistant_id'] ?? null;
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $plan = $availability->getDailyPlan($doctor, $fromDate);
 
         $duration = $validated['duration_minutes'] ?? $availability->resolveProcedureDuration(

@@ -71,5 +71,3 @@ class InventoryService
         return (float) number_format((float) $value, 3, '.', '');
     }
 }
-
-

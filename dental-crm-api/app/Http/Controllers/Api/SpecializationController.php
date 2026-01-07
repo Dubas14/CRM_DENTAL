@@ -49,7 +49,7 @@ class SpecializationController extends Controller
         $this->authorizeAccess($request->user());
 
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255', 'unique:specializations,name,' . $specialization->id],
+            'name' => ['sometimes', 'string', 'max:255', 'unique:specializations,name,'.$specialization->id],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -81,5 +81,3 @@ class SpecializationController extends Controller
         }
     }
 }
-
-

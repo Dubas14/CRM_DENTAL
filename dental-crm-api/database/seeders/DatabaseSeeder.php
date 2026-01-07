@@ -18,14 +18,10 @@ use App\Models\ScheduleException;
 use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Support\RoleHierarchy;
-use Illuminate\Support\Arr;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
-use Database\Seeders\FutureAppointmentsSeeder;
-use Database\Seeders\SpecializationSeeder;
-use Database\Seeders\PermissionsSeeder;
-use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -59,8 +55,8 @@ class DatabaseSeeder extends Seeder
         $clinics->each(function (Clinic $clinic, int $index) use ($procedureTemplates) {
             // Адмін конкретної клініки
             $clinicAdmin = User::factory()->create([
-                'name' => 'Clinic ' . ($index + 1) . ' Admin',
-                'email' => 'clinic' . ($index + 1) . '@admin.com',
+                'name' => 'Clinic '.($index + 1).' Admin',
+                'email' => 'clinic'.($index + 1).'@admin.com',
                 'password' => Hash::make('admin'),
             ]);
             $clinicAdmin->assignRole('clinic_admin');
@@ -105,7 +101,7 @@ class DatabaseSeeder extends Seeder
             $rooms = collect();
             foreach (range(1, fake()->numberBetween(3, 5)) as $roomIndex) {
                 $rooms->push(Room::factory()->for($clinic)->create([
-                    'name' => 'Кабінет ' . $roomIndex,
+                    'name' => 'Кабінет '.$roomIndex,
                 ]));
             }
 
@@ -131,7 +127,7 @@ class DatabaseSeeder extends Seeder
                     'default_room_id' => $requiresRoom ? $rooms->random()->id : null,
                     'equipment_id' => $equipments->random()->id,
                     'price' => fake()->randomFloat(2, 300, 6000),
-                    'code' => 'A-' . fake()->unique()->numberBetween(100, 999),
+                    'code' => 'A-'.fake()->unique()->numberBetween(100, 999),
                     'metadata' => [
                         'price_uah' => fake()->numberBetween(600, 4500),
                         'notes' => fake()->optional()->sentence(),

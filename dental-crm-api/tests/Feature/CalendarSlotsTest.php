@@ -7,15 +7,17 @@ use App\Models\Doctor;
 use App\Models\Schedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class CalendarSlotsTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $user;
+
     protected Clinic $clinic;
+
     protected Doctor $doctor;
 
     protected function setUp(): void
@@ -153,4 +155,3 @@ class CalendarSlotsTest extends TestCase
             ]);
     }
 }
-

@@ -231,7 +231,9 @@ onMounted(loadSchedule)
               />
             </td>
             <td class="px-3 py-2">
-              <label :for="`doctor-weekly-break-start-${day.weekday}`" class="sr-only">Обід з</label>
+              <label :for="`doctor-weekly-break-start-${day.weekday}`" class="sr-only"
+                >Обід з</label
+              >
               <input
                 v-model="day.break_start"
                 :id="`doctor-weekly-break-start-${day.weekday}`"

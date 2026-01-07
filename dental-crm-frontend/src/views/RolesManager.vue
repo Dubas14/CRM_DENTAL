@@ -121,11 +121,11 @@ const onRoleModalSaved = () => {
 const updateUserRoles = async (userId) => {
   const user = users.value.find((u) => u.id === userId)
   if (!user) return
-  
+
   // Check if any role needs clinic (doctor or assistant)
   const roles = editableRoles.value[userId] || []
   const needsClinic = roles.some((r: string) => r === 'doctor' || r === 'assistant')
-  
+
   if (needsClinic) {
     // Open modal for clinic selection
     openRoleModal(user)

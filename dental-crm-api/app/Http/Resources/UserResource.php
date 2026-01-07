@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Resources\Json\JsonResource;
 use App\Support\RoleHierarchy;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
@@ -37,10 +37,9 @@ class UserResource extends JsonResource
             ),
 
             'doctor' => $this->whenLoaded('doctor', fn () => new DoctorResource($this->doctor)),
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }
-

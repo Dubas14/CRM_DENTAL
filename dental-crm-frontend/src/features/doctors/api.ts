@@ -31,4 +31,3 @@ export const doctorsApi = {
     return apiClient.get(`/appointments`, { params: { doctor_id: id } })
   }
 }
-

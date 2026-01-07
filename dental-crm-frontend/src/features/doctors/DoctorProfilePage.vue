@@ -26,9 +26,7 @@ const contactMessage = ref<string | null>(null)
 const isEditingContacts = ref(false)
 const clinics = ref<{ id: number; name: string }[]>([])
 const selectedClinicIds = ref<number[]>([])
-const availableClinics = computed(() =>
-  Array.isArray(clinics.value) ? clinics.value : []
-)
+const availableClinics = computed(() => (Array.isArray(clinics.value) ? clinics.value : []))
 const allSpecializations = ref<{ id: number; name: string }[]>([])
 const selectedSpecializationIds = ref<number[]>([])
 
@@ -74,16 +72,26 @@ const loadDoctor = async () => {
   loading.value = true
   error.value = null
   try {
-    const [{ data: doctorData }, { data: proceduresData }, { data: clinicsData }, { data: specsData }] = await Promise.all([
+    const [
+      { data: doctorData },
+      { data: proceduresData },
+      { data: clinicsData },
+      { data: specsData }
+    ] = await Promise.all([
       doctorsApi.get(doctorId.value),
       doctorsApi.procedures(doctorId.value),
       clinicApi.list(),
       specializationApi.list()
     ])
-    clinics.value = Array.isArray(clinicsData) ? clinicsData : Array.isArray(clinicsData?.data) ? clinicsData.data : []
-    allSpecializations.value = Array.isArray(specsData) ? specsData : specsData?.data ?? []
+    clinics.value = Array.isArray(clinicsData)
+      ? clinicsData
+      : Array.isArray(clinicsData?.data)
+        ? clinicsData.data
+        : []
+    allSpecializations.value = Array.isArray(specsData) ? specsData : (specsData?.data ?? [])
     doctor.value = doctorData
-    status.value = (doctorData.status as any) || (doctorData.is_active === false ? 'inactive' : 'active')
+    status.value =
+      (doctorData.status as any) || (doctorData.is_active === false ? 'inactive' : 'active')
     selectedClinicIds.value = (doctorData.clinics || [])
       .map((c: any) => Number(c.id))
       .filter((v) => Number.isFinite(v))
@@ -169,7 +177,11 @@ const onUploadPhoto = () => {
 }
 
 const tabs = [
-  { id: 'procedures', label: 'Процедури', badge: () => procedures.value.filter((p) => p.is_assigned).length },
+  {
+    id: 'procedures',
+    label: 'Процедури',
+    badge: () => procedures.value.filter((p) => p.is_assigned).length
+  },
   { id: 'appointments', label: 'Прийоми', badge: () => mockHistory.value.length },
   { id: 'patients', label: 'Пацієнти', badge: () => patients.value.length },
   { id: 'notes', label: 'Нотатки' },
@@ -198,12 +210,10 @@ const saveContact = async () => {
   contactMessage.value = null
 
   const phoneOk =
-    !contactForm.value.phone ||
-    /^(\+?\d[\d\s\-()]{6,20})$/.test(contactForm.value.phone.trim())
+    !contactForm.value.phone || /^(\+?\d[\d\s\-()]{6,20})$/.test(contactForm.value.phone.trim())
 
   const emailOk =
-    !contactForm.value.email ||
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactForm.value.email.trim())
+    !contactForm.value.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactForm.value.email.trim())
 
   if (contactForm.value.vacation_from && contactForm.value.vacation_to) {
     if (contactForm.value.vacation_to < contactForm.value.vacation_from) {
@@ -213,7 +223,10 @@ const saveContact = async () => {
     }
   }
 
-  if ((contactForm.value.vacation_from && !contactForm.value.vacation_to) || (!contactForm.value.vacation_from && contactForm.value.vacation_to)) {
+  if (
+    (contactForm.value.vacation_from && !contactForm.value.vacation_to) ||
+    (!contactForm.value.vacation_from && contactForm.value.vacation_to)
+  ) {
     contactMessage.value = 'Вкажіть обидві дати відпустки (з / до)'
     contactSaving.value = false
     return
@@ -271,9 +284,15 @@ const saveContact = async () => {
     <div v-else-if="error" class="text-sm text-rose-400">❌ {{ error }}</div>
 
     <div v-else class="grid gap-6 lg:grid-cols-[380px,1fr]">
-      <section class="bg-card/70 border border-border rounded-xl shadow-sm shadow-black/10 dark:shadow-black/30 p-5 space-y-5">
+      <section
+        class="bg-card/70 border border-border rounded-xl shadow-sm shadow-black/10 dark:shadow-black/30 p-5 space-y-5"
+      >
         <div class="flex items-start gap-4">
-          <UIAvatar :src="doctor?.avatar_url || ''" :fallback-text="doctor?.full_name?.[0] || '?'" :size="96" />
+          <UIAvatar
+            :src="doctor?.avatar_url || ''"
+            :fallback-text="doctor?.full_name?.[0] || '?'"
+            :size="96"
+          />
           <div class="flex-1 space-y-1">
             <p class="text-lg font-semibold text-text">{{ doctor?.full_name }}</p>
             <UIBadge :variant="statusVariant" small>
@@ -295,11 +314,15 @@ const saveContact = async () => {
           </div>
         </div>
 
-          <div class="grid gap-3 text-sm text-text/80">
+        <div class="grid gap-3 text-sm text-text/80">
           <div class="rounded-lg border border-border/60 bg-bg/40 p-3 space-y-2">
             <div class="flex items-center justify-between gap-2">
               <div class="text-sm font-semibold text-text/90">Клініки</div>
-              <UIButton size="sm" variant="secondary" @click="isEditingContacts = !isEditingContacts">
+              <UIButton
+                size="sm"
+                variant="secondary"
+                @click="isEditingContacts = !isEditingContacts"
+              >
                 {{ isEditingContacts ? 'Сховати' : 'Редагувати' }}
               </UIButton>
             </div>
@@ -367,90 +390,119 @@ const saveContact = async () => {
             </div>
           </div>
 
-            <div v-if="!isEditingContacts" class="space-y-2 rounded-lg border border-border/60 bg-bg/40 p-3">
-              <div class="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <div class="text-xs text-text/60 uppercase">Телефон</div>
-                  <div class="text-text">{{ doctor?.phone || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-xs text-text/60 uppercase">Email</div>
-                  <div class="text-text break-all">{{ doctor?.email || '—' }}</div>
-                </div>
-              </div>
-              <div class="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <div class="text-xs text-text/60 uppercase">Кабінет</div>
-                  <div class="text-text">{{ doctor?.room || '—' }}</div>
-                </div>
-                <div>
-                  <div class="text-xs text-text/60 uppercase">Адміністратор</div>
-                  <div class="text-text">{{ doctor?.admin_contact || '—' }}</div>
-                </div>
+          <div
+            v-if="!isEditingContacts"
+            class="space-y-2 rounded-lg border border-border/60 bg-bg/40 p-3"
+          >
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-text/60 uppercase">Телефон</div>
+                <div class="text-text">{{ doctor?.phone || '—' }}</div>
               </div>
               <div>
-                <div class="text-xs text-text/60 uppercase">Адреса</div>
-                <div class="text-text">
-                  {{ doctor?.address || '—' }}
-                  <template v-if="doctor?.city">, {{ doctor?.city }}</template>
-                  <template v-if="doctor?.state">, {{ doctor?.state }}</template>
-                  <template v-if="doctor?.zip">, {{ doctor?.zip }}</template>
-                </div>
+                <div class="text-xs text-text/60 uppercase">Email</div>
+                <div class="text-text break-all">{{ doctor?.email || '—' }}</div>
               </div>
-              <UIButton size="sm" variant="secondary" @click="isEditingContacts = true">Редагувати профіль</UIButton>
             </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs text-text/60 uppercase">Кабінет</div>
+                <div class="text-text">{{ doctor?.room || '—' }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-text/60 uppercase">Адміністратор</div>
+                <div class="text-text">{{ doctor?.admin_contact || '—' }}</div>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-text/60 uppercase">Адреса</div>
+              <div class="text-text">
+                {{ doctor?.address || '—' }}
+                <template v-if="doctor?.city">, {{ doctor?.city }}</template>
+                <template v-if="doctor?.state">, {{ doctor?.state }}</template>
+                <template v-if="doctor?.zip">, {{ doctor?.zip }}</template>
+              </div>
+            </div>
+            <UIButton size="sm" variant="secondary" @click="isEditingContacts = true"
+              >Редагувати профіль</UIButton
+            >
+          </div>
 
-            <div v-else class="grid gap-3">
-              <div class="grid sm:grid-cols-2 gap-3">
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Телефон</span>
-                  <input
-                    v-model="contactForm.phone"
-                    type="text"
-                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
-                    placeholder="+380..."
-                  />
-                </label>
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Email</span>
-                  <input
-                    v-model="contactForm.email"
-                    type="email"
-                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
-                    placeholder="user@example.com"
-                  />
-                </label>
-              </div>
-              <div class="grid sm:grid-cols-2 gap-3">
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Кабінет</span>
-                  <input v-model="contactForm.room" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-                </label>
-              </div>
+          <div v-else class="grid gap-3">
+            <div class="grid sm:grid-cols-2 gap-3">
               <label class="space-y-1 text-sm text-text/80">
-                <span class="text-xs text-text/60 uppercase">Адреса</span>
-                <input v-model="contactForm.address" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
+                <span class="text-xs text-text/60 uppercase">Телефон</span>
+                <input
+                  v-model="contactForm.phone"
+                  type="text"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                  placeholder="+380..."
+                />
               </label>
-              <div class="grid sm:grid-cols-3 gap-3">
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Місто</span>
-                  <input v-model="contactForm.city" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-                </label>
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">Область</span>
-                  <input v-model="contactForm.state" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-                </label>
-                <label class="space-y-1 text-sm text-text/80">
-                  <span class="text-xs text-text/60 uppercase">ZIP</span>
-                  <input v-model="contactForm.zip" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-                </label>
-              </div>
-              <div class="flex items-center gap-2">
-                <UIButton size="sm" variant="ghost" @click="isEditingContacts = false">Скасувати</UIButton>
-                <span v-if="contactMessage" class="text-xs text-emerald-400">{{ contactMessage }}</span>
-              </div>
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">Email</span>
+                <input
+                  v-model="contactForm.email"
+                  type="email"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                  placeholder="user@example.com"
+                />
+              </label>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">Кабінет</span>
+                <input
+                  v-model="contactForm.room"
+                  type="text"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <label class="space-y-1 text-sm text-text/80">
+              <span class="text-xs text-text/60 uppercase">Адреса</span>
+              <input
+                v-model="contactForm.address"
+                type="text"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+              />
+            </label>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">Місто</span>
+                <input
+                  v-model="contactForm.city"
+                  type="text"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                />
+              </label>
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">Область</span>
+                <input
+                  v-model="contactForm.state"
+                  type="text"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                />
+              </label>
+              <label class="space-y-1 text-sm text-text/80">
+                <span class="text-xs text-text/60 uppercase">ZIP</span>
+                <input
+                  v-model="contactForm.zip"
+                  type="text"
+                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <UIButton size="sm" variant="ghost" @click="isEditingContacts = false"
+                >Скасувати</UIButton
+              >
+              <span v-if="contactMessage" class="text-xs text-emerald-400">{{
+                contactMessage
+              }}</span>
             </div>
           </div>
+        </div>
 
         <div class="flex flex-wrap items-center gap-3">
           <UIButton variant="primary" size="sm" :loading="avatarUploading" @click="onUploadPhoto">
@@ -469,26 +521,45 @@ const saveContact = async () => {
             </select>
           </div>
 
-            <div v-if="status === 'vacation'" class="grid sm:grid-cols-2 gap-3">
-              <label class="space-y-1 text-sm text-text/80">
-                <span class="text-xs text-text/60 uppercase">Відпустка з</span>
-                <input v-model="contactForm.vacation_from" type="date" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-              </label>
-              <label class="space-y-1 text-sm text-text/80">
-                <span class="text-xs text-text/60 uppercase">До</span>
-                <input v-model="contactForm.vacation_to" type="date" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" />
-              </label>
-            </div>
+          <div v-if="status === 'vacation'" class="grid sm:grid-cols-2 gap-3">
+            <label class="space-y-1 text-sm text-text/80">
+              <span class="text-xs text-text/60 uppercase">Відпустка з</span>
+              <input
+                v-model="contactForm.vacation_from"
+                type="date"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+              />
+            </label>
+            <label class="space-y-1 text-sm text-text/80">
+              <span class="text-xs text-text/60 uppercase">До</span>
+              <input
+                v-model="contactForm.vacation_to"
+                type="date"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
         </div>
 
         <div class="flex justify-end gap-2">
-          <UIButton size="sm" variant="secondary" :loading="contactSaving" @click="saveContact">Зберегти</UIButton>
-          <span v-if="contactMessage" class="text-xs text-emerald-400 self-center">{{ contactMessage }}</span>
+          <UIButton size="sm" variant="secondary" :loading="contactSaving" @click="saveContact"
+            >Зберегти</UIButton
+          >
+          <span v-if="contactMessage" class="text-xs text-emerald-400 self-center">{{
+            contactMessage
+          }}</span>
         </div>
       </section>
 
-      <section class="bg-card/70 border border-border rounded-xl shadow-sm shadow-black/10 dark:shadow-black/30 p-5 space-y-5">
-        <UITabs :tabs="tabs.map((t) => ({ ...t, badge: typeof t.badge === 'function' ? t.badge() : t.badge }))" v-model="activeTab" />
+      <section
+        class="bg-card/70 border border-border rounded-xl shadow-sm shadow-black/10 dark:shadow-black/30 p-5 space-y-5"
+      >
+        <UITabs
+          :tabs="
+            tabs.map((t) => ({ ...t, badge: typeof t.badge === 'function' ? t.badge() : t.badge }))
+          "
+          v-model="activeTab"
+        />
 
         <div v-if="activeTab === 'procedures'" class="space-y-4">
           <div class="flex items-center justify-between">
@@ -496,14 +567,22 @@ const saveContact = async () => {
               <p class="text-sm font-semibold text-text/90">Процедури</p>
               <p class="text-xs text-text/70">Додайте або приберіть процедури лікаря.</p>
             </div>
-            <UIButton size="sm" @click="saveProcedures" :loading="proceduresSaving">Зберегти</UIButton>
+            <UIButton size="sm" @click="saveProcedures" :loading="proceduresSaving"
+              >Зберегти</UIButton
+            >
           </div>
 
-          <div v-if="proceduresMessage" class="text-sm" :class="proceduresMessage.includes('Помилка') ? 'text-rose-400' : 'text-emerald-400'">
+          <div
+            v-if="proceduresMessage"
+            class="text-sm"
+            :class="proceduresMessage.includes('Помилка') ? 'text-rose-400' : 'text-emerald-400'"
+          >
             {{ proceduresMessage }}
           </div>
 
-          <div v-if="!procedures.length" class="text-sm text-text/70">Немає процедур для цієї клініки.</div>
+          <div v-if="!procedures.length" class="text-sm text-text/70">
+            Немає процедур для цієї клініки.
+          </div>
           <div v-else class="overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead class="text-xs uppercase text-text/60 border-b border-border">
@@ -518,7 +597,12 @@ const saveContact = async () => {
               <tbody>
                 <tr v-for="proc in procedures" :key="proc.id" class="border-b border-border/60">
                   <td class="px-3 py-2">
-                    <input type="checkbox" class="h-4 w-4 rounded border-border/70 bg-card" :checked="proc.is_assigned" @change="toggleAssignment(proc)" />
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-border/70 bg-card"
+                      :checked="proc.is_assigned"
+                      @change="toggleAssignment(proc)"
+                    />
                   </td>
                   <td class="px-3 py-2 text-text">{{ proc.name }}</td>
                   <td class="px-3 py-2 text-text/70">{{ proc.category || '—' }}</td>
@@ -543,11 +627,17 @@ const saveContact = async () => {
         <div v-else-if="activeTab === 'appointments'" class="space-y-3">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold text-text/90">Історія прийомів</p>
-            <UIButton size="sm" variant="ghost" @click="mockHistory = [...mockHistory]">Оновити</UIButton>
+            <UIButton size="sm" variant="ghost" @click="mockHistory = [...mockHistory]"
+              >Оновити</UIButton
+            >
           </div>
           <div v-if="!mockHistory.length" class="text-sm text-text/70">Ще немає прийомів.</div>
           <div v-else class="space-y-2">
-            <div v-for="appt in mockHistory" :key="appt.id" class="rounded-lg border border-border bg-bg/60 px-3 py-2">
+            <div
+              v-for="appt in mockHistory"
+              :key="appt.id"
+              class="rounded-lg border border-border bg-bg/60 px-3 py-2"
+            >
               <div class="flex items-center justify-between">
                 <p class="text-sm font-semibold text-text">{{ appt.patient }}</p>
                 <UIBadge :variant="appt.status === 'done' ? 'success' : 'info'" small>
@@ -563,7 +653,11 @@ const saveContact = async () => {
           <p class="text-sm font-semibold text-text/90">Пацієнти</p>
           <div v-if="!patients.length" class="text-sm text-text/70">Немає даних.</div>
           <ul v-else class="space-y-1">
-            <li v-for="patient in patients" :key="patient" class="flex items-center justify-between rounded-lg border border-border bg-bg/60 px-3 py-2">
+            <li
+              v-for="patient in patients"
+              :key="patient"
+              class="flex items-center justify-between rounded-lg border border-border bg-bg/60 px-3 py-2"
+            >
               <span class="text-sm text-text">{{ patient }}</span>
               <UIButton size="sm" variant="ghost">Відкрити</UIButton>
             </li>
@@ -598,4 +692,3 @@ const saveContact = async () => {
     </div>
   </div>
 </template>
-

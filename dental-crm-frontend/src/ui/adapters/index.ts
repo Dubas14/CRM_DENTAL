@@ -50,4 +50,3 @@ export interface UIBadgeProps {
   variant?: 'success' | 'info' | 'warning' | 'danger' | 'neutral'
   small?: boolean
 }
-

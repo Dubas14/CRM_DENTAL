@@ -42,7 +42,7 @@ const displayName = computed(() => {
 const email = computed(() => props.user?.email || '')
 
 const needsClinic = computed(() => {
-  return props.selectedRoles.some(r => r === 'doctor' || r === 'assistant')
+  return props.selectedRoles.some((r) => r === 'doctor' || r === 'assistant')
 })
 
 // Removed unused computed
@@ -60,7 +60,7 @@ const loadClinics = async () => {
         name: c.clinic_name
       }))
     }
-    
+
     if (clinics.value.length > 0 && !selectedClinicId.value) {
       selectedClinicId.value = clinics.value[0].id
     }
@@ -103,7 +103,7 @@ const save = async () => {
       props.selectedRoles,
       needsClinic.value ? selectedClinicId.value : null
     )
-    
+
     showToast('Ролі оновлено', 'success')
     emit('saved')
     open.value = false
@@ -128,7 +128,9 @@ const cancel = () => {
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="cancel"
       >
-        <div class="w-full max-w-2xl rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6">
+        <div
+          class="w-full max-w-2xl rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6"
+        >
           <div>
             <h2 class="text-xl font-semibold mb-2">Призначення ролі</h2>
             <p class="text-sm text-text/70">Налаштуйте роль та клініку для користувача</p>
@@ -145,21 +147,19 @@ const cancel = () => {
             </div>
 
             <div>
-              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-                Email
-              </label>
+              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
               <div class="rounded-lg bg-bg/50 border border-border/80 px-3 py-2 text-sm opacity-70">
                 {{ email }}
               </div>
             </div>
 
             <div>
-              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-                Ролі
-              </label>
+              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Ролі </label>
               <div class="rounded-lg bg-bg/50 border border-border/80 px-3 py-2 text-sm space-y-1">
                 <div v-for="role in selectedRoles" :key="role" class="flex items-center gap-2">
-                  <span class="inline-flex items-center px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs">
+                  <span
+                    class="inline-flex items-center px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs"
+                  >
                     {{ role }}
                   </span>
                 </div>
@@ -187,9 +187,7 @@ const cancel = () => {
             </div>
 
             <div v-if="props.selectedRoles.includes('doctor')">
-              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-                ПІБ
-              </label>
+              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> ПІБ </label>
               <input
                 v-model="fullName"
                 type="text"
@@ -198,7 +196,11 @@ const cancel = () => {
               />
             </div>
 
-            <div v-if="props.selectedRoles.includes('doctor') || props.selectedRoles.includes('assistant')">
+            <div
+              v-if="
+                props.selectedRoles.includes('doctor') || props.selectedRoles.includes('assistant')
+              "
+            >
               <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
                 Телефон
               </label>
@@ -234,4 +236,3 @@ const cancel = () => {
   opacity: 0;
 }
 </style>
-

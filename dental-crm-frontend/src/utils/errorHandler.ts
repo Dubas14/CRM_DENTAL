@@ -44,8 +44,8 @@ export class ErrorHandler {
    */
   private static handleNetworkError(): ErrorNotification {
     return {
-      title: 'Помилка з\'єднання',
-      message: 'Не вдалося з\'єднатися з сервером. Перевірте інтернет з\'єднання.',
+      title: "Помилка з'єднання",
+      message: "Не вдалося з'єднатися з сервером. Перевірте інтернет з'єднання.",
       type: 'error',
       duration: 5000
     }

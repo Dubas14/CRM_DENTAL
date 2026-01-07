@@ -14,7 +14,7 @@ const emit = defineEmits<{
   (e: 'paid', payment: any): void
 }>()
 
-const { showToast } = useToast()
+const { showToast: _showToast } = useToast() // Reserved for notifications
 const financeStore = useFinanceStore()
 
 const open = computed({
@@ -44,7 +44,8 @@ const debtAmount = computed(() => {
 const statusBadge = computed(() => {
   const status = invoice.value?.status
   if (status === 'paid') return { variant: 'success' as const, label: 'Оплачено' }
-  if (status === 'partially_paid') return { variant: 'warning' as const, label: 'Частково оплачено' }
+  if (status === 'partially_paid')
+    return { variant: 'warning' as const, label: 'Частково оплачено' }
   return { variant: 'danger' as const, label: 'Не оплачено' }
 })
 
@@ -130,9 +131,7 @@ watch(debtAmount, (newDebt) => {
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="open = false"
       >
-        <div
-          class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border"
-        >
+        <div class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border">
           <div class="p-6 border-b border-border flex items-center justify-between">
             <h2 class="text-xl font-semibold">Прийняти оплату</h2>
             <button
@@ -153,11 +152,15 @@ watch(debtAmount, (newDebt) => {
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-text/70">Сума рахунку:</span>
-                <span class="font-medium text-text">{{ formatMoney(invoice.total_amount || 0) }} грн</span>
+                <span class="font-medium text-text"
+                  >{{ formatMoney(invoice.total_amount || 0) }} грн</span
+                >
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-text/70">Сплачено:</span>
-                <span class="font-medium text-text">{{ formatMoney(invoice.paid_amount || 0) }} грн</span>
+                <span class="font-medium text-text"
+                  >{{ formatMoney(invoice.paid_amount || 0) }} грн</span
+                >
               </div>
               <div class="flex items-center justify-between border-t border-border pt-3">
                 <span class="text-sm font-semibold text-text/90">Залишок боргу:</span>
@@ -266,4 +269,3 @@ watch(debtAmount, (newDebt) => {
   opacity: 0;
 }
 </style>
-

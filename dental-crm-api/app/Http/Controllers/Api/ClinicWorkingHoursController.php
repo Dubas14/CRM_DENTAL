@@ -31,12 +31,12 @@ class ClinicWorkingHoursController extends Controller
         $items = collect(range(1, 7))->map(function ($day) use ($clinic, $existing, $defaultWorkingDays) {
             $base = [
                 'clinic_id' => $clinic->id,
-                'weekday'   => $day,
+                'weekday' => $day,
                 'is_working' => $defaultWorkingDays && in_array($day, [1, 2, 3, 4, 5], true),
                 'start_time' => '09:00:00',
-                'end_time'   => '18:00:00',
+                'end_time' => '18:00:00',
                 'break_start' => '13:00:00',
-                'break_end'   => '14:00:00',
+                'break_end' => '14:00:00',
             ];
 
             $schedule = $existing->get($day);
@@ -47,12 +47,12 @@ class ClinicWorkingHoursController extends Controller
 
             return [
                 'clinic_id' => $schedule->clinic_id,
-                'weekday'   => $schedule->weekday,
+                'weekday' => $schedule->weekday,
                 'is_working' => $schedule->is_working,
                 'start_time' => $schedule->start_time,
-                'end_time'   => $schedule->end_time,
+                'end_time' => $schedule->end_time,
                 'break_start' => $schedule->break_start,
-                'break_end'   => $schedule->break_end,
+                'break_end' => $schedule->break_end,
             ];
         });
 
@@ -75,7 +75,7 @@ class ClinicWorkingHoursController extends Controller
             'days.*.weekday' => ['required', 'integer', 'between:1,7'],
             'days.*.is_working' => ['required', 'boolean'],
             'days.*.start_time' => ['nullable', 'date_format:H:i'],
-            'days.*.end_time'   => ['nullable', 'date_format:H:i'],
+            'days.*.end_time' => ['nullable', 'date_format:H:i'],
             'days.*.break_start' => ['nullable', 'date_format:H:i'],
             'days.*.break_end' => ['nullable', 'date_format:H:i'],
         ]);

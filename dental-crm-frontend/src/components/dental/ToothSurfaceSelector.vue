@@ -104,9 +104,7 @@ watch(
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="open = false"
       >
-        <div
-          class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border"
-        >
+        <div class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border">
           <div class="p-6 border-b border-border flex items-center justify-between">
             <h2 class="text-xl font-semibold">Поверхні зуба {{ toothNumber }}</h2>
             <button
@@ -121,7 +119,12 @@ watch(
           <div class="p-6 space-y-6">
             <!-- Tooth Diagram -->
             <div class="flex justify-center">
-              <svg width="200" height="240" viewBox="0 0 200 240" class="border border-border rounded">
+              <svg
+                width="200"
+                height="240"
+                viewBox="0 0 200 240"
+                class="border border-border rounded"
+              >
                 <!-- Tooth shape -->
                 <path
                   d="M50,40 Q50,20 100,20 Q150,20 150,40 L150,180 Q150,200 100,200 Q50,200 50,180 Z"
@@ -227,9 +230,7 @@ watch(
               <p v-if="selectedSurfaces.length === 0" class="text-sm text-text/60">
                 Оберіть поверхні для лікування
               </p>
-              <p v-else class="text-sm text-text/80">
-                Обрані: {{ selectedSurfaces.join(', ') }}
-              </p>
+              <p v-else class="text-sm text-text/80">Обрані: {{ selectedSurfaces.join(', ') }}</p>
             </div>
           </div>
 
@@ -253,4 +254,3 @@ watch(
   opacity: 0;
 }
 </style>
-

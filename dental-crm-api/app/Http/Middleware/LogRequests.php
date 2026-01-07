@@ -11,7 +11,7 @@ class LogRequests
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
-        
+
         if (config('app.log_requests', false) && in_array($request->method(), ['PUT', 'PATCH', 'DELETE'])) {
             try {
                 Log::info('Incoming request', [
@@ -26,4 +26,3 @@ class LogRequests
         return $response;
     }
 }
-

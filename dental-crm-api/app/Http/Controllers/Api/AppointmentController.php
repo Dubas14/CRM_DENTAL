@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\AppointmentCancelled;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
@@ -11,13 +12,11 @@ use App\Models\Invoice;
 use App\Models\Procedure;
 use App\Models\ProcedureStep;
 use App\Models\Room;
-use App\Models\User;
 use App\Models\WaitlistEntry;
 use App\Services\Access\DoctorAccessService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\ConflictChecker;
 use App\Services\Calendar\WaitlistService;
-use App\Events\AppointmentCancelled;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -53,18 +52,18 @@ class AppointmentController extends Controller
 
         $doctor = Doctor::findOrFail($data['doctor_id']);
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до створення запису для цього лікаря');
         }
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
 
         $procedure = isset($data['procedure_id']) ? Procedure::find($data['procedure_id']) : null;
         $procedureStep = isset($data['procedure_step_id']) ? ProcedureStep::find($data['procedure_step_id']) : null;
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
         $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
         $assistantId = $data['assistant_id'] ?? null;
-        $equipmentWasSelected = array_key_exists('equipment_id', $data) && !empty($data['equipment_id']);
+        $equipmentWasSelected = array_key_exists('equipment_id', $data) && ! empty($data['equipment_id']);
 
         if ($procedureStep) {
             if ($procedure && $procedureStep->procedure_id !== $procedure->id) {
@@ -76,7 +75,7 @@ class AppointmentController extends Controller
         }
 
         $date = Carbon::parse($data['date'])->startOfDay();
-        $startAt = Carbon::parse($data['date'] . ' ' . $data['time']);
+        $startAt = Carbon::parse($data['date'].' '.$data['time']);
 
         $plan = $availability->getDailyPlan($doctor, $date);
         if (isset($plan['reason'])) {
@@ -137,7 +136,7 @@ class AppointmentController extends Controller
         }
 
         // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
-        if ($room && $procedure?->equipment_id && !$equipment) {
+        if ($room && $procedure?->equipment_id && ! $equipment) {
             $equipment = $availability->resolveEquipment(
                 $procedure->equipment,
                 $procedure,
@@ -149,7 +148,7 @@ class AppointmentController extends Controller
             );
         }
 
-        $conflicts = (new ConflictChecker())->evaluate(
+        $conflicts = (new ConflictChecker)->evaluate(
             $doctor,
             $date,
             $startAt,
@@ -162,7 +161,7 @@ class AppointmentController extends Controller
             $assistantId
         );
 
-        if (!empty($conflicts['hard'])) {
+        if (! empty($conflicts['hard'])) {
             return response()->json([
                 'message' => 'Неможливо створити запис через конфлікти',
                 'hard_conflicts' => $conflicts['hard'],
@@ -174,10 +173,10 @@ class AppointmentController extends Controller
         $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
         $blockingSoft = array_values(array_filter(
             $conflicts['soft'] ?? [],
-            fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+            fn ($c) => ! in_array(($c['code'] ?? null), $informationalSoftCodes, true)
         ));
 
-        if (!empty($blockingSoft) && !($data['allow_soft_conflicts'] ?? false)) {
+        if (! empty($blockingSoft) && ! ($data['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
                 'soft_conflicts' => $blockingSoft,
@@ -200,7 +199,7 @@ class AppointmentController extends Controller
             'patient_id' => $data['patient_id'] ?? null,
             'confirmation_token' => $confirmationToken,
 
-            'is_follow_up' => (bool)($data['is_follow_up'] ?? false),
+            'is_follow_up' => (bool) ($data['is_follow_up'] ?? false),
 
             'start_at' => $startAt,
             'end_at' => $endAt,
@@ -208,11 +207,11 @@ class AppointmentController extends Controller
             'status' => 'planned',
             'source' => $data['source'] ?? 'crm',
             'comment' => $procedureStep
-                ? trim(($data['comment'] ?? '') . ' [Етап: ' . $procedureStep->name . ']') ?: null
+                ? trim(($data['comment'] ?? '').' [Етап: '.$procedureStep->name.']') ?: null
                 : ($data['comment'] ?? null),
         ]);
 
-        if (!empty($data['waitlist_entry_id'])) {
+        if (! empty($data['waitlist_entry_id'])) {
             WaitlistEntry::where('id', $data['waitlist_entry_id'])->update(['status' => 'booked']);
         }
 
@@ -261,7 +260,7 @@ class AppointmentController extends Controller
 
         $doctor = Doctor::findOrFail($data['doctor_id']);
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до створення запису для цього лікаря');
         }
 
@@ -285,7 +284,7 @@ class AppointmentController extends Controller
             ], 422);
         }
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
 
         $room = isset($data['room_id']) ? Room::find($data['room_id']) : null;
         $equipment = isset($data['equipment_id']) ? Equipment::find($data['equipment_id']) : null;
@@ -300,7 +299,7 @@ class AppointmentController extends Controller
         foreach ($data['steps'] as $stepItem) {
             $step = $steps->get($stepItem['procedure_step_id']);
             $date = Carbon::parse($stepItem['date'])->startOfDay();
-            $startAt = Carbon::parse($stepItem['date'] . ' ' . $stepItem['time']);
+            $startAt = Carbon::parse($stepItem['date'].' '.$stepItem['time']);
 
             $plan = $availability->getDailyPlan($doctor, $date);
             if (isset($plan['reason'])) {
@@ -343,7 +342,7 @@ class AppointmentController extends Controller
             }
 
             // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
-            if ($resolvedRoom && $procedure->equipment_id && !$resolvedEquipment) {
+            if ($resolvedRoom && $procedure->equipment_id && ! $resolvedEquipment) {
                 $resolvedEquipment = $availability->resolveEquipment(
                     $procedure->equipment,
                     $procedure,
@@ -355,7 +354,7 @@ class AppointmentController extends Controller
                 );
             }
 
-            $conflicts = (new ConflictChecker())->evaluate(
+            $conflicts = (new ConflictChecker)->evaluate(
                 $doctor,
                 $date,
                 $startAt,
@@ -368,14 +367,14 @@ class AppointmentController extends Controller
                 $assistantId
             );
 
-            if (!empty($conflicts['hard'])) {
+            if (! empty($conflicts['hard'])) {
                 $conflictsSummary['hard'][] = [
                     'procedure_step_id' => $step->id,
                     'conflicts' => $conflicts['hard'],
                 ];
             }
 
-            if (!empty($conflicts['soft'])) {
+            if (! empty($conflicts['soft'])) {
                 $conflictsSummary['soft'][] = [
                     'procedure_step_id' => $step->id,
                     'conflicts' => $conflicts['soft'],
@@ -383,7 +382,7 @@ class AppointmentController extends Controller
             }
 
             $comment = $data['comment'] ?? '';
-            $comment = trim($comment . ' [Етап: ' . $step->name . ']') ?: null;
+            $comment = trim($comment.' [Етап: '.$step->name.']') ?: null;
 
             $appointmentsPayload[] = [
                 'clinic_id' => $doctor->clinic_id,
@@ -394,7 +393,7 @@ class AppointmentController extends Controller
                 'equipment_id' => $resolvedEquipment?->id,
                 'assistant_id' => $assistantId,
                 'patient_id' => $data['patient_id'] ?? null,
-                'is_follow_up' => (bool)($data['is_follow_up'] ?? false),
+                'is_follow_up' => (bool) ($data['is_follow_up'] ?? false),
                 'start_at' => $startAt,
                 'end_at' => $endAt,
                 'status' => 'planned',
@@ -403,7 +402,7 @@ class AppointmentController extends Controller
             ];
         }
 
-        if (!empty($conflictsSummary['hard'])) {
+        if (! empty($conflictsSummary['hard'])) {
             return response()->json([
                 'message' => 'Неможливо створити серію через конфлікти',
                 'hard_conflicts' => $conflictsSummary['hard'],
@@ -416,12 +415,13 @@ class AppointmentController extends Controller
             $conflicts = $entry['conflicts'] ?? [];
             $blocking = array_values(array_filter(
                 $conflicts,
-                fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+                fn ($c) => ! in_array(($c['code'] ?? null), $informationalSoftCodes, true)
             ));
-            return !empty($blocking);
+
+            return ! empty($blocking);
         }));
 
-        if (!empty($blockingSoftSummary) && !($data['allow_soft_conflicts'] ?? false)) {
+        if (! empty($blockingSoftSummary) && ! ($data['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
                 'soft_conflicts' => $blockingSoftSummary,
@@ -458,7 +458,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до перегляду записів цього лікаря');
         }
 
@@ -507,7 +507,7 @@ class AppointmentController extends Controller
             'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
             'is_follow_up' => ['sometimes', 'boolean'],
 
-            'status' => ['sometimes', 'nullable', 'string', 'in:' . implode(',', Appointment::ALLOWED_STATUSES)],
+            'status' => ['sometimes', 'nullable', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
             'comment' => ['sometimes', 'nullable', 'string'],
             'allow_soft_conflicts' => ['sometimes', 'boolean'],
         ]);
@@ -518,7 +518,7 @@ class AppointmentController extends Controller
 
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $doctor)) {
             abort(403, 'У вас немає доступу до зміни цього запису');
         }
 
@@ -546,7 +546,7 @@ class AppointmentController extends Controller
         $equipment = array_key_exists('equipment_id', $validated)
             ? Equipment::find($validated['equipment_id'])
             : $appointment->equipment;
-        $equipmentWasSelected = array_key_exists('equipment_id', $validated) && !empty($validated['equipment_id']);
+        $equipmentWasSelected = array_key_exists('equipment_id', $validated) && ! empty($validated['equipment_id']);
 
         $assistantId = array_key_exists('assistant_id', $validated)
             ? $validated['assistant_id']
@@ -562,10 +562,10 @@ class AppointmentController extends Controller
             $dateValue = $validated['date'] ?? $appointment->start_at->toDateString();
             $timeValue = $validated['time'] ?? $appointment->start_at->format('H:i');
             $date = Carbon::parse($dateValue)->startOfDay();
-            $startAt = Carbon::parse($dateValue . ' ' . $timeValue);
+            $startAt = Carbon::parse($dateValue.' '.$timeValue);
         }
 
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $plan = $availability->getDailyPlan($doctor, $date);
 
         if (isset($plan['reason'])) {
@@ -637,7 +637,7 @@ class AppointmentController extends Controller
         }
 
         // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
-        if ($room && $procedure?->equipment_id && !$equipment) {
+        if ($room && $procedure?->equipment_id && ! $equipment) {
             $equipment = $availability->resolveEquipment(
                 $procedure->equipment,
                 $procedure,
@@ -649,7 +649,7 @@ class AppointmentController extends Controller
             );
         }
 
-        $conflicts = (new ConflictChecker())->evaluate(
+        $conflicts = (new ConflictChecker)->evaluate(
             $doctor,
             $date,
             $startAt,
@@ -662,7 +662,7 @@ class AppointmentController extends Controller
             $assistantId
         );
 
-        if (!empty($conflicts['hard'])) {
+        if (! empty($conflicts['hard'])) {
             return response()->json([
                 'message' => 'Неможливо змінити запис через конфлікти',
                 'hard_conflicts' => $conflicts['hard'],
@@ -673,10 +673,10 @@ class AppointmentController extends Controller
         $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
         $blockingSoft = array_values(array_filter(
             $conflicts['soft'] ?? [],
-            fn ($c) => !in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+            fn ($c) => ! in_array(($c['code'] ?? null), $informationalSoftCodes, true)
         ));
 
-        if (!empty($blockingSoft) && !($validated['allow_soft_conflicts'] ?? false)) {
+        if (! empty($blockingSoft) && ! ($validated['allow_soft_conflicts'] ?? false)) {
             return response()->json([
                 'message' => 'Виявлено можливі конфлікти',
                 'soft_conflicts' => $blockingSoft,
@@ -702,7 +702,7 @@ class AppointmentController extends Controller
 
             'status' => $validated['status'] ?? $appointment->status,
             'comment' => $procedureStep
-                ? trim(($validated['comment'] ?? $appointment->comment ?? '') . ' [Етап: ' . $procedureStep->name . ']') ?: null
+                ? trim(($validated['comment'] ?? $appointment->comment ?? '').' [Етап: '.$procedureStep->name.']') ?: null
                 : ($validated['comment'] ?? $appointment->comment),
         ]);
 
@@ -743,21 +743,21 @@ class AppointmentController extends Controller
             ->orderBy('start_at');
 
         // date OR range
-        if (!empty($validated['date'])) {
+        if (! empty($validated['date'])) {
             $query->whereDate('start_at', $validated['date']);
         } else {
-            if (!empty($validated['from_date'])) {
+            if (! empty($validated['from_date'])) {
                 $query->whereDate('start_at', '>=', $validated['from_date']);
             }
-            if (!empty($validated['to_date'])) {
+            if (! empty($validated['to_date'])) {
                 $query->whereDate('start_at', '<=', $validated['to_date']);
             }
         }
 
         // doctor filters
-        if (!empty($validated['doctor_id'])) {
+        if (! empty($validated['doctor_id'])) {
             $query->where('doctor_id', $validated['doctor_id']);
-        } elseif (!empty($validated['doctor_ids'])) {
+        } elseif (! empty($validated['doctor_ids'])) {
             $query->whereIn('doctor_id', $validated['doctor_ids']);
         }
 
@@ -769,7 +769,7 @@ class AppointmentController extends Controller
             ->wherePivot('clinic_role', 'clinic_admin')
             ->pluck('clinics.id');
 
-        if (!$user->hasRole('super_admin')) {
+        if (! $user->hasRole('super_admin')) {
             if ($clinicAdminClinicIds->isNotEmpty()) {
                 $query->whereIn('clinic_id', $clinicAdminClinicIds);
             } elseif ($user->hasRole('doctor') && $user->doctor?->id) {
@@ -777,11 +777,11 @@ class AppointmentController extends Controller
             }
         }
 
-        if (!empty($validated['clinic_id'])) {
+        if (! empty($validated['clinic_id'])) {
             $query->where('clinic_id', $validated['clinic_id']);
         }
 
-        if (!empty($validated['procedure_id'])) {
+        if (! empty($validated['procedure_id'])) {
             $query->where('procedure_id', $validated['procedure_id']);
         }
 
@@ -796,7 +796,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
             abort(403, 'У вас немає доступу до скасування цього запису');
         }
 
@@ -815,7 +815,7 @@ class AppointmentController extends Controller
             ? $appointment->start_at->copy()->startOfDay()
             : Carbon::parse($appointment->start_at)->startOfDay();
 
-        $waitlistSuggestions = (new WaitlistService())->matchCandidates(
+        $waitlistSuggestions = (new WaitlistService)->matchCandidates(
             $appointment->clinic_id,
             $appointment->doctor_id,
             $appointment->procedure_id,
@@ -841,7 +841,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
             abort(403, 'У вас немає доступу до завершення цього запису');
         }
 
@@ -851,7 +851,7 @@ class AppointmentController extends Controller
         ]);
 
         // If record hasn't started yet, do not allow finishing early
-        $endedAt = !empty($data['ended_at'])
+        $endedAt = ! empty($data['ended_at'])
             ? Carbon::parse($data['ended_at'])
             : now();
 
@@ -912,6 +912,7 @@ class AppointmentController extends Controller
                         'paid_amount' => (float) $invoice->paid_amount,
                     ];
                 }
+
                 // Якщо рахунок повністю оплачено - немає пропозиції
                 return null;
             }
@@ -968,7 +969,7 @@ class AppointmentController extends Controller
             ->with(['procedure', 'patient'])
             ->first();
 
-        if (!$appointment) {
+        if (! $appointment) {
             return response()->json([
                 'message' => 'Токен недійсний або запис вже підтверджено/скасовано',
             ], 404);
@@ -993,7 +994,7 @@ class AppointmentController extends Controller
                 ->whereRaw('paid_amount >= amount')
                 ->exists();
 
-            if (!$hasPrepayment) {
+            if (! $hasPrepayment) {
                 return response()->json([
                     'message' => 'Для підтвердження запису потрібна передоплата. Будь ласка, зверніться до клініки.',
                     'requires_prepayment' => true,
@@ -1023,7 +1024,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
-        if (!DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
+        if (! DoctorAccessService::canManageAppointments($user, $appointment->doctor)) {
             abort(403, 'У вас немає доступу до цього запису');
         }
 
@@ -1044,7 +1045,7 @@ class AppointmentController extends Controller
             $hasPrepayment = $invoice !== null;
 
             // Якщо знайдено інвойс, зв'язуємо його з записом
-            if ($hasPrepayment && $invoice && !$appointment->invoice_id) {
+            if ($hasPrepayment && $invoice && ! $appointment->invoice_id) {
                 $appointment->update(['invoice_id' => $invoice->id]);
             }
         }

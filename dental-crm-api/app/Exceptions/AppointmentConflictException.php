@@ -7,6 +7,7 @@ use Exception;
 class AppointmentConflictException extends Exception
 {
     protected $conflicts;
+
     protected $severity;
 
     public function __construct(array $conflicts, string $severity = 'hard')
@@ -14,7 +15,7 @@ class AppointmentConflictException extends Exception
         $this->conflicts = $conflicts;
         $this->severity = $severity;
 
-        $message = $severity === 'hard' 
+        $message = $severity === 'hard'
             ? 'Неможливо створити запис через конфлікти'
             : 'Запис створено, але є попередження';
 
@@ -40,4 +41,3 @@ class AppointmentConflictException extends Exception
         return $this->severity;
     }
 }
-

@@ -38,7 +38,7 @@ class UpdateAppointmentRequest extends FormRequest
             'patient_id' => ['sometimes', 'nullable', 'exists:patients,id'],
             'is_follow_up' => ['sometimes', 'boolean'],
 
-            'status' => ['sometimes', 'string', 'in:' . implode(',', Appointment::ALLOWED_STATUSES)],
+            'status' => ['sometimes', 'string', 'in:'.implode(',', Appointment::ALLOWED_STATUSES)],
             'comment' => ['sometimes', 'nullable', 'string'],
             'allow_soft_conflicts' => ['sometimes', 'boolean'],
         ];

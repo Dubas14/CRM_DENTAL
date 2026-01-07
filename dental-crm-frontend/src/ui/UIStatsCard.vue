@@ -15,14 +15,14 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  variant: 'default',
+  variant: 'default'
 })
 
 const formattedValue = computed(() => {
   if (typeof props.value === 'number') {
     return new Intl.NumberFormat('uk-UA', {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(props.value)
   }
   return props.value
@@ -33,7 +33,7 @@ const variantClasses = computed(() => {
     default: 'bg-card border-border text-text',
     success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
     warning: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300',
-    danger: 'bg-red-500/10 border-red-500/30 text-red-300',
+    danger: 'bg-red-500/10 border-red-500/30 text-red-300'
   }
   return variants[props.variant]
 })
@@ -68,4 +68,3 @@ const trendColor = computed(() => {
     </div>
   </div>
 </template>
-

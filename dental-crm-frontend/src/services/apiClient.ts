@@ -36,13 +36,9 @@ function addRetryInterceptor(
         originalRequest._retryCount = 0
       }
 
-      if (
-        originalRequest._retryCount < config.maxRetries &&
-        shouldRetry(error, config)
-      ) {
+      if (originalRequest._retryCount < config.maxRetries && shouldRetry(error, config)) {
         originalRequest._retryCount++
-        const delayMs =
-          config.retryDelay * Math.pow(2, originalRequest._retryCount - 1)
+        const delayMs = config.retryDelay * Math.pow(2, originalRequest._retryCount - 1)
         await delay(delayMs)
         return axiosInstance(originalRequest)
       }
@@ -136,19 +132,21 @@ apiClient.interceptors.response.use(
         name: error.name,
         stack: error.stack
       }
-      
+
       if (error.config) {
         errorDetails.config = {
           url: error.config.url,
           method: error.config.method,
           baseURL: error.config.baseURL,
-          fullURL: error.config.baseURL ? `${error.config.baseURL}${error.config.url}` : error.config.url,
+          fullURL: error.config.baseURL
+            ? `${error.config.baseURL}${error.config.url}`
+            : error.config.url,
           timeout: error.config.timeout,
           headers: error.config.headers,
           data: error.config.data
         }
       }
-      
+
       if (error.request) {
         errorDetails.request = {
           readyState: error.request.readyState,
@@ -157,7 +155,7 @@ apiClient.interceptors.response.use(
           responseURL: error.request.responseURL
         }
       }
-      
+
       console.error('Network error - no internet or server down', errorDetails)
       return Promise.reject(error)
     }
@@ -166,7 +164,11 @@ apiClient.interceptors.response.use(
 
     // Enrich conflict responses with human-readable details so UI can show "which conflicts and why"
     try {
-      if ((status === 409 || status === 422) && data && (data.hard_conflicts || data.soft_conflicts)) {
+      if (
+        (status === 409 || status === 422) &&
+        data &&
+        (data.hard_conflicts || data.soft_conflicts)
+      ) {
         const formatConflictList = (conflicts: any): string => {
           if (!conflicts) return ''
           if (!Array.isArray(conflicts)) return ''
@@ -215,8 +217,7 @@ apiClient.interceptors.response.use(
     // Handle 429 Too Many Requests - set cooldown based on Retry-After header
     if (status === 429) {
       const retryAfterHeader = response.headers?.['retry-after']
-      const retryAfterSeconds =
-        Number(retryAfterHeader) || Number(data?.retry_after) || 3
+      const retryAfterSeconds = Number(retryAfterHeader) || Number(data?.retry_after) || 3
       // Ensure a small minimum to stop bursts
       const cooldownMs = Math.max(1500, retryAfterSeconds * 1000)
       rateLimitUntilMs = Date.now() + cooldownMs
@@ -226,7 +227,7 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       console.warn('Unauthorized - clearing token')
       clearAuthTokenLocal()
-      
+
       // Автоматичний редирект на логін (тільки якщо не на сторінці логіна)
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login'

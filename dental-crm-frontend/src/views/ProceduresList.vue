@@ -170,7 +170,7 @@ const fetchProcedures = async () => {
     if (search.value.trim()) params.search = search.value.trim()
 
     const { data } = await procedureApi.list(params)
-    
+
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
@@ -204,7 +204,7 @@ const fetchProcedures = async () => {
   } finally {
     // Only update loading if this is still the latest request
     if (currentSeq === requestSeq) {
-    loading.value = false
+      loading.value = false
     }
   }
 }
@@ -420,10 +420,7 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label
-            for="procedure-create-duration"
-            class="block text-xs uppercase text-text/70 mb-1"
-          >
+          <label for="procedure-create-duration" class="block text-xs uppercase text-text/70 mb-1">
             Тривалість (хв)
           </label>
           <input
@@ -437,10 +434,7 @@ const goToPage = async (page) => {
         </div>
 
         <div>
-          <label
-            for="procedure-create-equipment"
-            class="block text-xs uppercase text-text/70 mb-1"
-          >
+          <label for="procedure-create-equipment" class="block text-xs uppercase text-text/70 mb-1">
             Обладнання
           </label>
           <select

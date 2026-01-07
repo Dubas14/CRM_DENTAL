@@ -8,11 +8,11 @@ use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\WaitlistEntry;
 use App\Models\WaitlistOffer;
-use Illuminate\Http\Request;
-use App\Services\Calendar\WaitlistService;
 use App\Services\Calendar\AvailabilityService;
 use App\Services\Calendar\ConflictChecker;
+use App\Services\Calendar\WaitlistService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class WaitlistController extends Controller
@@ -81,7 +81,7 @@ class WaitlistController extends Controller
             'limit' => ['nullable', 'integer', 'between:1,20'],
         ]);
 
-        $service = new WaitlistService();
+        $service = new WaitlistService;
 
         $preferredDate = isset($data['preferred_date']) ? Carbon::parse($data['preferred_date'])->startOfDay() : null;
 
@@ -107,6 +107,7 @@ class WaitlistController extends Controller
 
             if ($offer->expires_at && $offer->expires_at->isPast()) {
                 $offer->update(['status' => 'expired']);
+
                 return response()->json(['message' => 'Пропозиція прострочена'], 410);
             }
 
@@ -118,6 +119,7 @@ class WaitlistController extends Controller
 
             if (! $appointment || $appointment->status !== 'cancelled') {
                 $offer->update(['status' => 'failed']);
+
                 return response()->json(['message' => 'Слот більше недоступний'], 409);
             }
 
@@ -126,6 +128,7 @@ class WaitlistController extends Controller
 
             if (! $patient) {
                 $offer->update(['status' => 'failed']);
+
                 return response()->json(['message' => 'Пацієнт недоступний'], 422);
             }
 
@@ -139,8 +142,8 @@ class WaitlistController extends Controller
             $endAt = Carbon::parse($appointment->end_at);
             $date = $startAt->copy()->startOfDay();
 
-            $availability = new AvailabilityService();
-            
+            $availability = new AvailabilityService;
+
             // Спочатку визначаємо обладнання, якщо потрібне
             if ($procedure?->equipment_id) {
                 $equipment = $availability->resolveEquipment(
@@ -161,11 +164,12 @@ class WaitlistController extends Controller
 
             if ($procedure && $procedure->requires_room && ! $room) {
                 $offer->update(['status' => 'failed']);
+
                 return response()->json(['message' => 'Немає сумісного кабінету'], 422);
             }
 
             // Якщо кабінет визначений, але обладнання ще ні - перевіряємо сумісність
-            if ($room && $procedure?->equipment_id && !$equipment) {
+            if ($room && $procedure?->equipment_id && ! $equipment) {
                 $equipment = $availability->resolveEquipment(
                     $procedure->equipment,
                     $procedure,
@@ -177,7 +181,7 @@ class WaitlistController extends Controller
                 );
             }
 
-            $conflicts = (new ConflictChecker())->evaluate(
+            $conflicts = (new ConflictChecker)->evaluate(
                 $doctor,
                 $date,
                 $startAt,
@@ -192,6 +196,7 @@ class WaitlistController extends Controller
 
             if (! empty($conflicts['hard'])) {
                 $offer->update(['status' => 'failed']);
+
                 return response()->json([
                     'message' => 'Слот більше недоступний',
                     'hard_conflicts' => $conflicts['hard'],

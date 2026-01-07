@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Doctor;
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\Clinic;
+use App\Models\Doctor;
+use App\Models\User;
+use App\Support\QuerySearch;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
-use App\Support\QuerySearch;
 
 class DoctorController extends Controller
 {
@@ -35,7 +35,7 @@ class DoctorController extends Controller
             ->wherePivot('clinic_role', 'clinic_admin')
             ->pluck('clinics.id');
 
-        if (!$authUser->hasRole('super_admin')) {
+        if (! $authUser->hasRole('super_admin')) {
             if ($clinicAdminClinicIds->isNotEmpty()) {
                 $query->whereIn('clinic_id', $clinicAdminClinicIds);
             } elseif ($authUser->hasRole('doctor')) {
@@ -48,7 +48,7 @@ class DoctorController extends Controller
             $clinicId = $request->integer('clinic_id');
             $query->where(function ($q) use ($clinicId) {
                 $q->where('clinic_id', $clinicId)
-                  ->orWhereHas('clinics', fn($qq) => $qq->where('clinics.id', $clinicId));
+                    ->orWhereHas('clinics', fn ($qq) => $qq->where('clinics.id', $clinicId));
             });
         }
 
@@ -71,26 +71,26 @@ class DoctorController extends Controller
         $authUser = $request->user();
 
         $data = $request->validate([
-            'clinic_id'      => ['required', 'exists:clinics,id'],
-            'full_name'      => ['required', 'string', 'max:255'],
+            'clinic_id' => ['required', 'exists:clinics,id'],
+            'full_name' => ['required', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
-            'bio'            => ['nullable', 'string'],
-            'color'          => ['nullable', 'string', 'max:20'],
-            'phone'          => ['nullable', 'string', 'max:50'],
-            'email'          => ['required', 'email', 'max:255', 'unique:users,email'],
-            'room'           => ['nullable', 'string', 'max:255'],
-            'admin_contact'  => ['nullable', 'string', 'max:255'],
-            'vacation_from'  => ['nullable', 'date'],
-            'vacation_to'    => ['nullable', 'date', 'after_or_equal:vacation_from'],
-            'address'        => ['nullable', 'string', 'max:255'],
-            'city'           => ['nullable', 'string', 'max:255'],
-            'state'          => ['nullable', 'string', 'max:255'],
-            'zip'            => ['nullable', 'string', 'max:50'],
+            'bio' => ['nullable', 'string'],
+            'color' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'room' => ['nullable', 'string', 'max:255'],
+            'admin_contact' => ['nullable', 'string', 'max:255'],
+            'vacation_from' => ['nullable', 'date'],
+            'vacation_to' => ['nullable', 'date', 'after_or_equal:vacation_from'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'zip' => ['nullable', 'string', 'max:50'],
 
             // дані акаунта користувача
-            'password'       => ['required', 'string', 'min:6'],
-            'clinic_ids'     => ['nullable', 'array'],
-            'clinic_ids.*'   => ['integer', 'exists:clinics,id'],
+            'password' => ['required', 'string', 'min:6'],
+            'clinic_ids' => ['nullable', 'array'],
+            'clinic_ids.*' => ['integer', 'exists:clinics,id'],
         ]);
 
         // перевірка прав: супер адмін або адмін цієї клініки
@@ -101,9 +101,9 @@ class DoctorController extends Controller
         $doctor = DB::transaction(function () use ($data) {
             // 1) створюємо юзера
             $user = User::create([
-                'name'        => $data['full_name'],
-                'email'       => $data['email'],
-                'password'    => Hash::make($data['password']),
+                'name' => $data['full_name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
             ]);
 
             $guard = config('auth.defaults.guard', 'web');
@@ -118,23 +118,23 @@ class DoctorController extends Controller
 
             // 3) створюємо профіль лікаря
             $doctor = Doctor::create([
-                'user_id'       => $user->id,
-                'clinic_id'     => $data['clinic_id'],
-                'full_name'     => $data['full_name'],
-                'specialization'=> $data['specialization'] ?? null,
-                'phone'         => $data['phone'] ?? null,
-                'email'         => $data['email'],
-                'room'          => $data['room'] ?? null,
+                'user_id' => $user->id,
+                'clinic_id' => $data['clinic_id'],
+                'full_name' => $data['full_name'],
+                'specialization' => $data['specialization'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'],
+                'room' => $data['room'] ?? null,
                 'admin_contact' => $data['admin_contact'] ?? null,
                 'vacation_from' => $data['vacation_from'] ?? null,
-                'vacation_to'   => $data['vacation_to'] ?? null,
-                'address'       => $data['address'] ?? null,
-                'city'          => $data['city'] ?? null,
-                'state'         => $data['state'] ?? null,
-                'zip'           => $data['zip'] ?? null,
-                'bio'           => $data['bio'] ?? null,
-                'color'         => $data['color'] ?? '#22c55e',
-                'is_active'     => true,
+                'vacation_to' => $data['vacation_to'] ?? null,
+                'address' => $data['address'] ?? null,
+                'city' => $data['city'] ?? null,
+                'state' => $data['state'] ?? null,
+                'zip' => $data['zip'] ?? null,
+                'bio' => $data['bio'] ?? null,
+                'color' => $data['color'] ?? '#22c55e',
+                'is_active' => true,
             ]);
 
             $clinicIds = collect($data['clinic_ids'] ?? [])->filter()->all();
@@ -181,24 +181,24 @@ class DoctorController extends Controller
         }
 
         $data = $request->validate([
-            'full_name'      => ['sometimes', 'string', 'max:255'],
+            'full_name' => ['sometimes', 'string', 'max:255'],
             'specialization' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'bio'            => ['sometimes', 'nullable', 'string'],
-            'color'          => ['sometimes', 'nullable', 'string', 'max:20'],
-            'phone'          => ['sometimes', 'nullable', 'string', 'max:50'],
-            'email'          => ['sometimes', 'nullable', 'email', 'max:255', 'unique:users,email,' . $doctor->user_id],
-            'room'           => ['sometimes', 'nullable', 'string', 'max:255'],
-            'admin_contact'  => ['sometimes', 'nullable', 'string', 'max:255'],
-            'vacation_from'  => ['sometimes', 'nullable', 'date'],
-            'vacation_to'    => ['sometimes', 'nullable', 'date', 'after_or_equal:vacation_from'],
-            'address'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'city'           => ['sometimes', 'nullable', 'string', 'max:255'],
-            'state'          => ['sometimes', 'nullable', 'string', 'max:255'],
-            'zip'            => ['sometimes', 'nullable', 'string', 'max:50'],
-            'is_active'      => ['sometimes', 'boolean'],
-            'status'         => ['sometimes', 'string', 'in:active,vacation,inactive'],
-            'clinic_ids'     => ['sometimes', 'array'],
-            'clinic_ids.*'   => ['integer', 'exists:clinics,id'],
+            'bio' => ['sometimes', 'nullable', 'string'],
+            'color' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255', 'unique:users,email,'.$doctor->user_id],
+            'room' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'admin_contact' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'vacation_from' => ['sometimes', 'nullable', 'date'],
+            'vacation_to' => ['sometimes', 'nullable', 'date', 'after_or_equal:vacation_from'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'state' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'zip' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'is_active' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'string', 'in:active,vacation,inactive'],
+            'clinic_ids' => ['sometimes', 'array'],
+            'clinic_ids.*' => ['integer', 'exists:clinics,id'],
             'specialization_ids' => ['sometimes', 'array'],
             'specialization_ids.*' => ['integer', 'exists:specializations,id'],
         ]);

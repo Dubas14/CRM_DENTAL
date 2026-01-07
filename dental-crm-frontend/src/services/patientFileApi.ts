@@ -4,7 +4,11 @@ const patientFileApi = {
   list(patientId: number | string) {
     return apiClient.get(`/patients/${patientId}/files`)
   },
-  upload(patientId: number | string, file: File, fileType: 'xray' | 'photo' | 'contract' | 'anamnesis') {
+  upload(
+    patientId: number | string,
+    file: File,
+    fileType: 'xray' | 'photo' | 'contract' | 'anamnesis'
+  ) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('file_type', fileType)
@@ -18,4 +22,3 @@ const patientFileApi = {
 }
 
 export default patientFileApi
-

@@ -13,4 +13,3 @@ export { default as UIConfirmDialog } from './UIConfirmDialog.vue'
 
 export * from './tokens'
 export * from './adapters'
-

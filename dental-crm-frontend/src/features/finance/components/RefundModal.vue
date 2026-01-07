@@ -18,7 +18,7 @@ const { showToast } = useToast()
 
 const open = computed({
   get: () => props.modelValue,
-  set: (v) => emit('update:modelValue', v),
+  set: (v) => emit('update:modelValue', v)
 })
 
 const reason = ref('')
@@ -28,7 +28,7 @@ const error = ref<string | null>(null)
 const formatMoney = (amount: number) => {
   return new Intl.NumberFormat('uk-UA', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(amount)
 }
 
@@ -74,7 +74,9 @@ watch(
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="open = false"
       >
-        <div class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-red-500/30">
+        <div
+          class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-red-500/30"
+        >
           <div class="p-6 border-b border-border flex items-center justify-between">
             <h2 class="text-xl font-semibold text-red-400">Повернення коштів</h2>
             <button
@@ -87,7 +89,10 @@ watch(
           </div>
 
           <div class="p-6 space-y-6">
-            <div v-if="payment" class="space-y-3 p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+            <div
+              v-if="payment"
+              class="space-y-3 p-4 bg-red-500/10 rounded-lg border border-red-500/20"
+            >
               <div class="flex items-center justify-between">
                 <span class="text-sm text-text/70">Сума платежу:</span>
                 <span class="font-bold text-text">{{ formatMoney(payment.amount) }} грн</span>
@@ -98,7 +103,9 @@ watch(
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-text/70">Дата:</span>
-                <span class="text-text">{{ new Date(payment.created_at).toLocaleDateString('uk-UA') }}</span>
+                <span class="text-text">{{
+                  new Date(payment.created_at).toLocaleDateString('uk-UA')
+                }}</span>
               </div>
             </div>
 
@@ -153,4 +160,3 @@ watch(
   opacity: 0;
 }
 </style>
-

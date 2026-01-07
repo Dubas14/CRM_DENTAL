@@ -15,13 +15,14 @@ class AvailabilityServiceTest extends TestCase
     use RefreshDatabase;
 
     protected AvailabilityService $service;
+
     protected Doctor $doctor;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->service = new AvailabilityService();
+        $this->service = new AvailabilityService;
         $this->doctor = Doctor::factory()->create();
     }
 

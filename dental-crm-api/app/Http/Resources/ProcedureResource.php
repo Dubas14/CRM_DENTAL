@@ -24,10 +24,10 @@ class ProcedureResource extends JsonResource
             'default_room_id' => $this->default_room_id,
             'equipment_id' => $this->equipment_id,
             'metadata' => $this->metadata,
-            
+
             'steps' => $this->whenLoaded('steps', fn () => ProcedureStepResource::collection($this->steps)),
             'rooms' => $this->whenLoaded('rooms', fn () => RoomResource::collection($this->rooms)),
-            
+
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

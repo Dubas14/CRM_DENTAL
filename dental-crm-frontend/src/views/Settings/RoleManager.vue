@@ -100,7 +100,7 @@ const permissionLabels: Record<string, string> = {
   'specialization.manage': 'Керування спеціалізаціями',
 
   // Fallbacks if present
-  'inventory.transaction': 'Рухи складу',
+  'inventory.transaction': 'Рухи складу'
 }
 
 const formatPermission = (name: string) => {
@@ -186,9 +186,7 @@ onMounted(loadRoles)
         <h1 class="text-2xl font-semibold">Налаштування Ролей</h1>
         <p class="text-sm text-text/70">Створюйте та редагуйте ролі з правами доступу</p>
       </div>
-      <UIButton variant="secondary" size="sm" @click="openCreateForm">
-        + Створити роль
-      </UIButton>
+      <UIButton variant="secondary" size="sm" @click="openCreateForm"> + Створити роль </UIButton>
     </header>
 
     <section
@@ -325,4 +323,3 @@ onMounted(loadRoles)
   opacity: 0;
 }
 </style>
-

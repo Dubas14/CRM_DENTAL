@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
-  'search': [value: string]
+  search: [value: string]
 }>()
 
 const localValue = ref(props.modelValue)
@@ -26,9 +26,12 @@ const debouncedEmit = debounce((value: string) => {
   emit('search', value)
 }, props.debounceMs)
 
-watch(() => props.modelValue, (newVal) => {
-  localValue.value = newVal
-})
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    localValue.value = newVal
+  }
+)
 
 watch(localValue, (newVal) => {
   emit('update:modelValue', newVal)
@@ -50,4 +53,3 @@ watch(localValue, (newVal) => {
     />
   </div>
 </template>
-

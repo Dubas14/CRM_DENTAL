@@ -52,4 +52,3 @@ export const themeTokens = {
 
 export type ButtonVariant = keyof typeof colorTokens | 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ButtonSize = keyof typeof sizeTokens
-

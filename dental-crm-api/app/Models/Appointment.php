@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\Auditable;
 
 class Appointment extends Model
 {
-    use HasFactory, Auditable;
+    use Auditable, HasFactory;
 
     public const ALLOWED_STATUSES = [
         'planned',
@@ -39,14 +39,15 @@ class Appointment extends Model
         'confirmation_token',
         'confirmed_at',
     ];
+
     protected $appends = [
         'patient_name',
     ];
 
     protected $casts = [
         'is_follow_up' => 'boolean',
-        'start_at'     => 'datetime',
-        'end_at'       => 'datetime',
+        'start_at' => 'datetime',
+        'end_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'confirmed_at' => 'datetime',
     ];
@@ -65,11 +66,11 @@ class Appointment extends Model
     {
         return $this->belongsTo(ProcedureStep::class);
     }
+
     public function assistant()
     {
         return $this->belongsTo(User::class, 'assistant_id');
     }
-
 
     public function room()
     {
@@ -85,6 +86,7 @@ class Appointment extends Model
     {
         return $this->belongsTo(Equipment::class);
     }
+
     public function getPatientNameAttribute(): ?string
     {
         return $this->patient?->full_name;

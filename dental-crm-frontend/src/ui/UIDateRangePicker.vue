@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 interface Props {
   modelValue: {
@@ -15,8 +15,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   placeholder: () => ({
     from: 'Від',
-    to: 'До',
-  }),
+    to: 'До'
+  })
 })
 
 const emit = defineEmits<{
@@ -56,4 +56,3 @@ const updateTo = (value: string) => {
     />
   </div>
 </template>
-

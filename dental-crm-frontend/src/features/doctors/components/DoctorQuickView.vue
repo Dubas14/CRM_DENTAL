@@ -31,12 +31,22 @@ const statusVariant = computed(() => {
 <template>
   <div v-if="doctor" class="space-y-5">
     <div class="flex items-start gap-4">
-      <UIAvatar :src="doctor.avatar_url || ''" :fallback-text="doctor.full_name?.[0] || '?'" :size="88" />
+      <UIAvatar
+        :src="doctor.avatar_url || ''"
+        :fallback-text="doctor.full_name?.[0] || '?'"
+        :size="88"
+      />
       <div class="flex-1">
         <div class="flex items-center gap-3">
           <p class="text-xl font-semibold text-text leading-tight">{{ doctor.full_name }}</p>
           <UIBadge :variant="statusVariant" small>
-            {{ doctor.status === 'vacation' ? 'Відпустка' : doctor.is_active === false ? 'Неактивний' : 'Активний' }}
+            {{
+              doctor.status === 'vacation'
+                ? 'Відпустка'
+                : doctor.is_active === false
+                  ? 'Неактивний'
+                  : 'Активний'
+            }}
           </UIBadge>
         </div>
         <p class="text-sm text-text/70 mt-1">
@@ -47,7 +57,9 @@ const statusVariant = computed(() => {
           }}
         </p>
       </div>
-      <button class="text-text/60 hover:text-text" aria-label="Закрити" @click="emit('close')">✕</button>
+      <button class="text-text/60 hover:text-text" aria-label="Закрити" @click="emit('close')">
+        ✕
+      </button>
     </div>
 
     <div class="space-y-3 text-sm text-text/80">
@@ -87,7 +99,10 @@ const statusVariant = computed(() => {
     </div>
 
     <div class="flex items-center gap-3">
-      <UIDropdown :items="quickActions" @select="(id) => emit('action', { id, doctorId: doctor?.id })">
+      <UIDropdown
+        :items="quickActions"
+        @select="(id) => emit('action', { id, doctorId: doctor?.id })"
+      >
         <template #trigger="{ toggle }">
           <UIButton variant="secondary" size="sm" @click.stop="toggle">Дії ▾</UIButton>
         </template>
@@ -96,4 +111,3 @@ const statusVariant = computed(() => {
     </div>
   </div>
 </template>
-

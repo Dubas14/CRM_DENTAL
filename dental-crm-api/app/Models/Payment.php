@@ -57,5 +57,3 @@ class Payment extends Model
         return $this->belongsTo(Payment::class, 'original_payment_id');
     }
 }
-
-

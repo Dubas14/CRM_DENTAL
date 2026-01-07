@@ -125,8 +125,7 @@ const save = async () => {
     emit('updated')
     open.value = false
   } catch (e: any) {
-    const firstError =
-      e?.response?.data?.errors && Object.values(e.response.data.errors)[0]?.[0]
+    const firstError = e?.response?.data?.errors && Object.values(e.response.data.errors)[0]?.[0]
     const msg =
       firstError ||
       e?.response?.data?.message ||
@@ -147,14 +146,28 @@ const save = async () => {
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="open = false"
       >
-        <div class="w-full max-w-2xl rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6">
+        <div
+          class="w-full max-w-2xl rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6"
+        >
           <div class="flex items-start gap-4">
-            <UIAvatar :src="avatarPreview || avatarUrl || ''" :fallback-text="(user?.first_name || user?.name || 'U')[0]" :size="80" />
+            <UIAvatar
+              :src="avatarPreview || avatarUrl || ''"
+              :fallback-text="(user?.first_name || user?.name || 'U')[0]"
+              :size="80"
+            />
             <div class="space-y-2">
               <p class="text-lg font-semibold">Фото профілю</p>
               <div class="flex gap-2 flex-wrap">
-                <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
-                <UIButton variant="secondary" size="sm" @click="avatarInputRef?.click()">Завантажити</UIButton>
+                <input
+                  ref="avatarInputRef"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="onAvatarChange"
+                />
+                <UIButton variant="secondary" size="sm" @click="avatarInputRef?.click()"
+                  >Завантажити</UIButton
+                >
                 <UIButton variant="ghost" size="sm" @click="onRemoveAvatar">Видалити</UIButton>
               </div>
               <p class="text-xs text-text/60">Миттєвий превʼю зʼявиться після вибору файлу.</p>
@@ -165,19 +178,36 @@ const save = async () => {
             <p class="text-lg font-semibold">Контакти</p>
             <label class="space-y-1 text-sm text-text/80">
               <span class="text-xs text-text/60 uppercase">Email</span>
-              <input :value="email" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm opacity-70" disabled />
+              <input
+                :value="email"
+                type="text"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm opacity-70"
+                disabled
+              />
             </label>
             <label v-if="doctorId" class="space-y-1 text-sm text-text/80">
               <span class="text-xs text-text/60 uppercase">Телефон</span>
-              <input v-model="phone" type="text" class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm" placeholder="+380..." />
+              <input
+                v-model="phone"
+                type="text"
+                class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm"
+                placeholder="+380..."
+              />
             </label>
-            <p class="text-xs text-text/60">ПІБ, спеціалізація, клініка редагуються лише адміністратором.</p>
+            <p class="text-xs text-text/60">
+              ПІБ, спеціалізація, клініка редагуються лише адміністратором.
+            </p>
           </div>
 
           <div class="space-y-3">
             <p class="text-lg font-semibold">Зміна пароля</p>
             <div class="flex items-center gap-2 text-sm text-text/80">
-              <input id="toggle-password" v-model="changePassword" type="checkbox" class="h-4 w-4 rounded border-border/80 bg-bg" />
+              <input
+                id="toggle-password"
+                v-model="changePassword"
+                type="checkbox"
+                class="h-4 w-4 rounded border-border/80 bg-bg"
+              />
               <label for="toggle-password" class="cursor-pointer select-none">Змінити пароль</label>
             </div>
             <div class="grid sm:grid-cols-3 gap-3">
@@ -231,11 +261,12 @@ const save = async () => {
 
           <div class="flex justify-end gap-3">
             <UIButton variant="ghost" size="sm" @click="open = false">Скасувати</UIButton>
-            <UIButton variant="secondary" size="sm" :loading="saving" @click="save">Зберегти</UIButton>
+            <UIButton variant="secondary" size="sm" :loading="saving" @click="save"
+              >Зберегти</UIButton
+            >
           </div>
         </div>
       </div>
     </transition>
   </Teleport>
 </template>
-

@@ -10,9 +10,7 @@ use Illuminate\Validation\Rule;
 
 class InventoryTransactionController extends Controller
 {
-    public function __construct(private InventoryService $inventoryService)
-    {
-    }
+    public function __construct(private InventoryService $inventoryService) {}
 
     public function index(Request $request)
     {
@@ -62,5 +60,3 @@ class InventoryTransactionController extends Controller
         }
     }
 }
-
-

@@ -64,10 +64,9 @@ class StoreCalendarBlockRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (!$this->doctor_id && !$this->room_id && !$this->equipment_id && !$this->assistant_id) {
+            if (! $this->doctor_id && ! $this->room_id && ! $this->equipment_id && ! $this->assistant_id) {
                 $validator->errors()->add('doctor_id', 'Потрібно вказати лікаря, кабінет, обладнання або асистента.');
             }
         });
     }
 }
-

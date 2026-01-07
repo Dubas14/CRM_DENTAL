@@ -65,7 +65,7 @@ const loadClinics = async () => {
         name: c.clinic_name
       }))
     }
-    
+
     // Set default clinic for non-super-admin
     if (!isSuperAdmin.value && clinics.value.length > 0 && !selectedClinicId.value) {
       selectedClinicId.value = clinics.value[0].id
@@ -83,7 +83,7 @@ const loadRoles = async () => {
   try {
     const { data } = await roleApi.listAllRoles()
     roles.value = data.roles || []
-    
+
     // Set current role if user has one
     if (currentRole.value) {
       selectedRoleName.value = currentRole.value
@@ -125,9 +125,9 @@ const save = async () => {
     await roleApi.assignRole(
       props.user.id,
       selectedRoleName.value,
-      needsClinic.value ? selectedClinicId.value as number : null
+      needsClinic.value ? (selectedClinicId.value as number) : null
     )
-    
+
     showToast('Роль оновлено', 'success')
     emit('saved')
     open.value = false
@@ -152,7 +152,9 @@ const cancel = () => {
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="cancel"
       >
-        <div class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6">
+        <div
+          class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border p-6 space-y-6"
+        >
           <div>
             <h2 class="text-xl font-semibold mb-2">Редагувати співробітника</h2>
             <p class="text-sm text-text/70">Призначте роль та клініку</p>
@@ -169,9 +171,7 @@ const cancel = () => {
             </div>
 
             <div>
-              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1">
-                Email
-              </label>
+              <label class="block text-xs uppercase tracking-wide text-text/70 mb-1"> Email </label>
               <div class="rounded-lg bg-bg/50 border border-border/80 px-3 py-2 text-sm opacity-70">
                 {{ email }}
               </div>
@@ -236,4 +236,3 @@ const cancel = () => {
   opacity: 0;
 }
 </style>
-

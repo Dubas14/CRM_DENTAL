@@ -25,7 +25,7 @@ class ConflictChecker
         ?int $ignoreAppointmentId = null,
         ?int $assistantId = null
     ): array {
-        $availability = new AvailabilityService();
+        $availability = new AvailabilityService;
         $plan = $availability->getDailyPlan($doctor, $date);
 
         $result = [
@@ -35,6 +35,7 @@ class ConflictChecker
 
         if (isset($plan['reason'])) {
             $result['hard'][] = ['code' => $plan['reason'], 'message' => 'Лікар не працює у цю дату'];
+
             return $result;
         }
 
@@ -99,7 +100,7 @@ class ConflictChecker
         // М'які конфлікти: перевірка поспіль >2 процедур
         $timeBetween = config('calendar.time_between_appointments', 5);
         $threshold = config('calendar.consecutive_threshold', 2);
-        
+
         // Отримуємо всі записи лікаря на цей день
         $dayAppointments = Appointment::where('doctor_id', $doctor->id)
             ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
@@ -126,7 +127,7 @@ class ConflictChecker
         for ($i = 1; $i < $allAppointments->count(); $i++) {
             $prev = $allAppointments[$i - 1];
             $curr = $allAppointments[$i];
-            
+
             // Якщо попередня процедура закінчується незадовго до початку поточної
             if ($curr['start']->diffInMinutes($prev['end']) <= $timeBetween) {
                 $currentConsecutive++;
@@ -139,7 +140,7 @@ class ConflictChecker
         if ($maxConsecutive > $threshold) {
             $result['soft'][] = [
                 'code' => 'consecutive_appointments',
-                'message' => "Лікар має {$maxConsecutive} процедури поспіль - можливі затримки"
+                'message' => "Лікар має {$maxConsecutive} процедури поспіль - можливі затримки",
             ];
         }
 
@@ -152,7 +153,7 @@ class ConflictChecker
                         $subQ->where('procedure_id', $procedure->id)
                             ->orWhereNull('procedure_id');
                     });
-                    
+
                     // Якщо це оновлення запису, перевіряємо передоплату для старого запису
                     if ($ignoreAppointmentId) {
                         $q->orWhere('appointment_id', $ignoreAppointmentId);
@@ -163,10 +164,10 @@ class ConflictChecker
                 ->whereRaw('paid_amount >= amount') // Перевіряємо, що сплачено повну суму
                 ->exists();
 
-            if (!$hasPrepayment) {
+            if (! $hasPrepayment) {
                 $result['soft'][] = [
                     'code' => 'missing_prepayment',
-                    'message' => 'Відсутня передоплата за процедуру. Рекомендується отримати передоплату перед підтвердженням запису.'
+                    'message' => 'Відсутня передоплата за процедуру. Рекомендується отримати передоплату перед підтвердженням запису.',
                 ];
             }
         }

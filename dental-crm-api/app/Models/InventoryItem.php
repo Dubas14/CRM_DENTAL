@@ -37,5 +37,3 @@ class InventoryItem extends Model
         return $this->hasMany(InventoryTransaction::class);
     }
 }
-
-

@@ -17,9 +17,13 @@ class CalendarSlotsApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Clinic $clinic;
+
     private Doctor $doctor;
+
     private Procedure $procedure;
+
     private Room $room;
 
     protected function setUp(): void
@@ -27,7 +31,7 @@ class CalendarSlotsApiTest extends TestCase
         parent::setUp();
 
         $this->clinic = Clinic::factory()->create();
-        
+
         $this->user = User::factory()->create();
         $this->user->assignRole('super_admin');
 
@@ -53,7 +57,7 @@ class CalendarSlotsApiTest extends TestCase
     {
         // Create schedule for tomorrow
         $tomorrow = now()->addDay();
-        
+
         Schedule::factory()->create([
             'doctor_id' => $this->doctor->id,
             'weekday' => $tomorrow->isoWeekday(),
@@ -98,7 +102,7 @@ class CalendarSlotsApiTest extends TestCase
     public function it_can_get_recommended_slots(): void
     {
         $tomorrow = now()->addDay();
-        
+
         Schedule::factory()->create([
             'doctor_id' => $this->doctor->id,
             'weekday' => $tomorrow->isoWeekday(),
@@ -120,7 +124,7 @@ class CalendarSlotsApiTest extends TestCase
     public function it_can_get_booking_suggestions(): void
     {
         $tomorrow = now()->addDay();
-        
+
         Schedule::factory()->create([
             'doctor_id' => $this->doctor->id,
             'weekday' => $tomorrow->isoWeekday(),
@@ -214,9 +218,8 @@ class CalendarSlotsApiTest extends TestCase
     {
         auth()->logout();
 
-        $response = $this->getJson("/api/doctors/{$this->doctor->id}/slots?date=" . now()->addDay()->toDateString());
+        $response = $this->getJson("/api/doctors/{$this->doctor->id}/slots?date=".now()->addDay()->toDateString());
 
         $response->assertStatus(401);
     }
 }
-

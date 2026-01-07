@@ -42,4 +42,3 @@ const inventoryApi = {
 }
 
 export default inventoryApi
-

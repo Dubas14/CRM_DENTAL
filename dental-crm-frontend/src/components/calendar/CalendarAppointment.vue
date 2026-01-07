@@ -1,33 +1,32 @@
 <template>
   <div
     class="absolute rounded-md border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.01] overflow-hidden group"
-    :class="[
-      statusClass,
-      cursorClass
-    ]"
+    :class="[statusClass, cursorClass]"
     :style="styleObject"
     data-calendar-item="appointment"
     @click.stop="handleClick"
   >
-
     <div class="flex flex-col h-full overflow-hidden">
       <!-- Header: Time & Status -->
       <div class="flex items-center gap-1.5 min-w-0 mb-0.5">
-        <span class="text-[10px] font-bold whitespace-nowrap tabular-nums tracking-tight" style="opacity: 0.9;">
+        <span
+          class="text-[10px] font-bold whitespace-nowrap tabular-nums tracking-tight"
+          style="opacity: 0.9"
+        >
           {{ timeLabel }}
         </span>
-        <span v-if="item.status === 'done'" class="text-[10px] opacity-100" title="Виконано">✅</span>
+        <span v-if="item.status === 'done'" class="text-[10px] opacity-100" title="Виконано"
+          >✅</span
+        >
       </div>
 
       <!-- Title / Patient Name -->
-      <div class="font-semibold text-sm leading-tight truncate" style="font-weight: 600;">
+      <div class="font-semibold text-sm leading-tight truncate" style="font-weight: 600">
         {{ item.title }}
       </div>
 
       <!-- Optional: Icons or extra info -->
-      <div v-if="item.type === 'block'" class="mt-auto text-[10px] opacity-70 italic">
-        Блок
-      </div>
+      <div v-if="item.type === 'block'" class="mt-auto text-[10px] opacity-70 italic">Блок</div>
     </div>
   </div>
 </template>
@@ -97,14 +96,14 @@ const statusClass = computed(() => {
   if (props.item.type === 'draft') {
     return 'appointment-draft'
   }
-  
+
   if (props.item.type === 'block') {
     return 'appointment-block'
   }
-  
+
   const status = props.item.status || 'planned'
   const statusKey = status === 'completed' ? 'done' : status
-  
+
   // Map frontend statuses to CSS classes
   const statusMap: Record<string, string> = {
     planned: 'appointment-status-planned',
@@ -118,14 +117,14 @@ const statusClass = computed(() => {
     no_show: 'appointment-status-no-show',
     arrived: 'appointment-status-arrived'
   }
-  
+
   const baseClass = statusMap[statusKey] || 'appointment-status-planned'
-  
+
   // Add past modifier for planned/scheduled appointments
   if ((statusKey === 'planned' || statusKey === 'scheduled') && isPast.value) {
     return `${baseClass} appointment-status-past`
   }
-  
+
   return baseClass
 })
 
@@ -245,7 +244,6 @@ const handleClick = () => {
   border-top: 1px solid rgba(168, 85, 247, 0.3);
   border-bottom: 1px solid rgba(168, 85, 247, 0.3);
 }
-
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {

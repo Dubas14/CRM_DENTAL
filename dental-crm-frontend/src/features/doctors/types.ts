@@ -33,4 +33,3 @@ export interface DoctorProcedure {
   is_assigned?: boolean
   custom_duration_minutes?: number | null
 }
-

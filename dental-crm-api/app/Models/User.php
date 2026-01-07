@@ -12,7 +12,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * Spatie guard name must match Sanctum auth guard to resolve roles/permissions.
@@ -59,12 +59,14 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
     public function clinics()
     {
         return $this->belongsToMany(Clinic::class, 'clinic_user')
             ->withPivot('clinic_role')
             ->withTimestamps();
     }
+
     public function doctor()
     {
         return $this->hasOne(Doctor::class);
@@ -76,9 +78,8 @@ class User extends Authenticatable
             return null;
         }
 
-        return asset('storage/' . ltrim($this->avatar_path, '/'));
+        return asset('storage/'.ltrim($this->avatar_path, '/'));
     }
-
 
     public function isSuperAdmin(): bool
     {
@@ -88,6 +89,7 @@ class User extends Authenticatable
     public function clinicRole(int $clinicId): ?string
     {
         $clinic = $this->clinics->firstWhere('id', $clinicId);
+
         return $clinic?->pivot?->clinic_role;
     }
 

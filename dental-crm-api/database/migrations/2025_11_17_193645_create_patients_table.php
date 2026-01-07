@@ -39,6 +39,7 @@ return new class extends Migration
             $table->index('email');
         });
     }
+
     /**
      * Reverse the migrations.
      */

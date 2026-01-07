@@ -102,11 +102,11 @@ const getUserRole = (user: any) => {
 
 const getRoleBadgeVariant = (roleName: string) => {
   const variants: Record<string, 'primary' | 'success' | 'warning' | 'info' | 'danger'> = {
-    'super_admin': 'danger',
-    'clinic_admin': 'warning',
-    'doctor': 'success',
-    'assistant': 'info',
-    'registrar': 'primary'
+    super_admin: 'danger',
+    clinic_admin: 'warning',
+    doctor: 'success',
+    assistant: 'info',
+    registrar: 'primary'
   }
   return variants[roleName] || 'info'
 }
@@ -155,7 +155,10 @@ const goToPage = (page: number) => {
     >
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-[220px]">
-          <label for="employees-search" class="block text-xs uppercase tracking-wide text-text/70 mb-1">
+          <label
+            for="employees-search"
+            class="block text-xs uppercase tracking-wide text-text/70 mb-1"
+          >
             Пошук співробітника
           </label>
           <input
@@ -245,11 +248,6 @@ const goToPage = (page: number) => {
       </div>
     </section>
 
-    <EmployeeEditModal
-      v-model="showEditModal"
-      :user="modalUser"
-      @saved="onModalSaved"
-    />
+    <EmployeeEditModal v-model="showEditModal" :user="modalUser" @saved="onModalSaved" />
   </div>
 </template>
-

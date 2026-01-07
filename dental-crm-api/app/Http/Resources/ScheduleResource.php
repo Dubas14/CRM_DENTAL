@@ -25,4 +25,3 @@ class ScheduleResource extends JsonResource
         ];
     }
 }
-

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { radiusTokens, colorTokens } from './tokens'
+import { radiusTokens } from './tokens'
 
 type Item = { id: string; label: string; icon?: string }
 
-const props = defineProps<{
+defineProps<{
   items: Item[]
   placement?: 'bottom-start' | 'bottom-end'
 }>()
@@ -85,4 +85,3 @@ const onSelect = (id: string) => {
   opacity: 0;
 }
 </style>
-

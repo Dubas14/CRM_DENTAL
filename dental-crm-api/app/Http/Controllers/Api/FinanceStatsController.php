@@ -15,10 +15,10 @@ class FinanceStatsController extends Controller
     {
         $user = $request->user();
         $clinicId = $request->integer('clinic_id');
-        
+
         // Перевірка доступу до клініки
-        if (!$user->isSuperAdmin()) {
-            if (!$user->hasClinicRole($clinicId, ['clinic_admin', 'receptionist'])) {
+        if (! $user->isSuperAdmin()) {
+            if (! $user->hasClinicRole($clinicId, ['clinic_admin', 'receptionist'])) {
                 abort(403, 'Немає доступу до статистики цієї клініки');
             }
         }
@@ -81,7 +81,7 @@ class FinanceStatsController extends Controller
                 ->whereYear('created_at', now()->subMonth()->year)
                 ->sum('amount') ?? 0;
 
-            $monthTrend = $paidLastMonth > 0 
+            $monthTrend = $paidLastMonth > 0
                 ? round((($paidThisMonth - $paidLastMonth) / $paidLastMonth) * 100, 1)
                 : 0;
 
@@ -102,14 +102,13 @@ class FinanceStatsController extends Controller
     {
         $user = $request->user();
         $clinicId = $request->integer('clinic_id');
-        
-        if (!$user->isSuperAdmin() && !$user->hasClinicRole($clinicId, ['clinic_admin'])) {
+
+        if (! $user->isSuperAdmin() && ! $user->hasClinicRole($clinicId, ['clinic_admin'])) {
             abort(403, 'Немає доступу');
         }
 
         Cache::forget("finance_stats:{$clinicId}");
-        
+
         return response()->json(['message' => 'Кеш статистики очищено']);
     }
 }
-

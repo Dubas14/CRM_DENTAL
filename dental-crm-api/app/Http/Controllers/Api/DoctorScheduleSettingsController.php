@@ -42,7 +42,7 @@ class DoctorScheduleSettingsController extends Controller
         $targetClinicId = $clinicId ?: ($allowedClinicIds[0] ?? null);
 
         $existing = Schedule::where('doctor_id', $doctor->id)
-            ->when($targetClinicId, fn($q) => $q->where('clinic_id', $targetClinicId))
+            ->when($targetClinicId, fn ($q) => $q->where('clinic_id', $targetClinicId))
             ->orderBy('weekday')
             ->get()
             ->keyBy('weekday');
@@ -53,12 +53,12 @@ class DoctorScheduleSettingsController extends Controller
             $base = [
                 'doctor_id' => $doctor->id,
                 'clinic_id' => $targetClinicId,
-                'weekday'   => $day, // 1=Пн ... 7=Нд
-                'is_working' => $defaultWorkingDays && in_array($day, [1,2,3,4,5]),
+                'weekday' => $day, // 1=Пн ... 7=Нд
+                'is_working' => $defaultWorkingDays && in_array($day, [1, 2, 3, 4, 5]),
                 'start_time' => '09:00:00',
-                'end_time'   => '17:00:00',
+                'end_time' => '17:00:00',
                 'break_start' => '13:00:00',
-                'break_end'   => '14:00:00',
+                'break_end' => '14:00:00',
                 'slot_duration_minutes' => 30,
             ];
 
@@ -71,15 +71,16 @@ class DoctorScheduleSettingsController extends Controller
             return [
                 'doctor_id' => $schedule->doctor_id,
                 'clinic_id' => $schedule->clinic_id,
-                'weekday'   => $schedule->weekday,
-                'is_working'=> true,
+                'weekday' => $schedule->weekday,
+                'is_working' => true,
                 'start_time' => $schedule->start_time,
-                'end_time'   => $schedule->end_time,
-                'break_start'=> $schedule->break_start,
-                'break_end'  => $schedule->break_end,
+                'end_time' => $schedule->end_time,
+                'break_start' => $schedule->break_start,
+                'break_end' => $schedule->break_end,
                 'slot_duration_minutes' => $schedule->slot_duration_minutes,
             ];
         });
+
         return response()->json($items);
     }
 
@@ -110,9 +111,9 @@ class DoctorScheduleSettingsController extends Controller
             'days.*.weekday' => ['required', 'integer', 'between:1,7'],
             'days.*.is_working' => ['required', 'boolean'],
             'days.*.start_time' => ['nullable', 'date_format:H:i'],
-            'days.*.end_time'   => ['nullable', 'date_format:H:i'],
-            'days.*.break_start'=> ['nullable', 'date_format:H:i'],
-            'days.*.break_end'  => ['nullable', 'date_format:H:i'],
+            'days.*.end_time' => ['nullable', 'date_format:H:i'],
+            'days.*.break_start' => ['nullable', 'date_format:H:i'],
+            'days.*.break_end' => ['nullable', 'date_format:H:i'],
             'days.*.slot_duration_minutes' => ['required', 'integer', 'min:5', 'max:240'],
         ]);
 
@@ -127,9 +128,10 @@ class DoctorScheduleSettingsController extends Controller
                 if (! $day['is_working']) {
                     // якщо в цей день не працює — просто видаляємо запис
                     Schedule::where('doctor_id', $doctor->id)
-                        ->when($targetClinicId, fn($q) => $q->where('clinic_id', $targetClinicId))
+                        ->when($targetClinicId, fn ($q) => $q->where('clinic_id', $targetClinicId))
                         ->where('weekday', $day['weekday'])
                         ->delete();
+
                     continue;
                 }
 
@@ -137,13 +139,13 @@ class DoctorScheduleSettingsController extends Controller
                     [
                         'doctor_id' => $doctor->id,
                         'clinic_id' => $targetClinicId,
-                        'weekday'   => $day['weekday'],
+                        'weekday' => $day['weekday'],
                     ],
                     [
                         'start_time' => $day['start_time'],
-                        'end_time'   => $day['end_time'],
-                        'break_start'=> $day['break_start'],
-                        'break_end'  => $day['break_end'],
+                        'end_time' => $day['end_time'],
+                        'break_start' => $day['break_start'],
+                        'break_end' => $day['break_end'],
                         'slot_duration_minutes' => $day['slot_duration_minutes'],
                     ]
                 );

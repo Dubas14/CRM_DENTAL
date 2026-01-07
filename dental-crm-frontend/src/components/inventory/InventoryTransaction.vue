@@ -118,9 +118,7 @@ watch(activeTab, () => {
         class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
         @click.self="open = false"
       >
-        <div
-          class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border"
-        >
+        <div class="w-full max-w-md rounded-2xl bg-card text-text shadow-2xl border border-border">
           <div class="p-6 border-b border-border flex items-center justify-between">
             <h2 class="text-xl font-semibold">Транзакція складу</h2>
             <button
@@ -259,4 +257,3 @@ watch(activeTab, () => {
   opacity: 0;
 }
 </style>
-

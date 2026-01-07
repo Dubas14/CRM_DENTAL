@@ -19,4 +19,3 @@ class InvalidStateException extends Exception
         ], 422);
     }
 }
-

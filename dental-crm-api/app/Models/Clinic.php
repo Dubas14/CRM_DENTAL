@@ -23,6 +23,7 @@ class Clinic extends Model
         'website',
         'is_active',
     ];
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'clinic_user')

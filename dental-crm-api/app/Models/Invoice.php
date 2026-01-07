@@ -12,9 +12,13 @@ class Invoice extends Model
     use HasFactory;
 
     public const STATUS_UNPAID = 'unpaid';
+
     public const STATUS_PARTIALLY_PAID = 'partially_paid';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_REFUNDED = 'refunded';
 
     protected $fillable = [
@@ -99,6 +103,7 @@ class Invoice extends Model
         if ($debt < 0) {
             $debt = 0;
         }
+
         return $this->formatMoney($debt);
     }
 
@@ -109,6 +114,7 @@ class Invoice extends Model
 
         if ($amount <= 0) {
             $this->status = self::STATUS_UNPAID;
+
             return;
         }
 
@@ -126,4 +132,3 @@ class Invoice extends Model
         return number_format((float) $value, 2, '.', '');
     }
 }
-

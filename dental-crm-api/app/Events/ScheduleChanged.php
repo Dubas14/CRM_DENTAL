@@ -12,6 +12,5 @@ class ScheduleChanged
     public function __construct(
         public int $doctorId,
         public array $candidateIds
-    ) {
-    }
+    ) {}
 }

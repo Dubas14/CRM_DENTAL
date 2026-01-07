@@ -132,24 +132,13 @@ const handleDetails = () => {
             <UIButton variant="secondary" size="sm" @click="toggle">Дії ▾</UIButton>
           </template>
         </UIDropdown>
-        <UIButton
-          v-if="showManage"
-          variant="primary"
-          size="sm"
-          @click="handleManage"
-        >
+        <UIButton v-if="showManage" variant="primary" size="sm" @click="handleManage">
           Керувати
         </UIButton>
-        <UIButton
-          v-if="showDetails"
-          variant="ghost"
-          size="sm"
-          @click="handleDetails"
-        >
+        <UIButton v-if="showDetails" variant="ghost" size="sm" @click="handleDetails">
           Деталі
         </UIButton>
       </div>
     </td>
   </tr>
 </template>
-

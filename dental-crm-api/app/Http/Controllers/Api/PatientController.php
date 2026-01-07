@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Patient;
-use Illuminate\Http\Request;
 use App\Models\User;
 use App\Support\QuerySearch;
+use Illuminate\Http\Request;
 
 class PatientController extends Controller
 {
@@ -22,7 +22,7 @@ class PatientController extends Controller
         // clinic_admin / registrar -> patients of own clinics
         // doctor -> patients from doctor's clinic where:
         //          has appointment with this doctor OR patient.user_id == authUser.id
-        if (!$authUser->isSuperAdmin()) {
+        if (! $authUser->isSuperAdmin()) {
             $clinicAdminClinicIds = $authUser->clinics()
                 ->wherePivotIn('clinic_role', ['clinic_admin', 'registrar'])
                 ->pluck('clinics.id');
@@ -68,13 +68,13 @@ class PatientController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'clinic_id'  => ['required', 'exists:clinics,id'],
-            'full_name'  => ['required', 'string', 'max:255'],
+            'clinic_id' => ['required', 'exists:clinics,id'],
+            'full_name' => ['required', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date'],
-            'phone'      => ['nullable', 'string', 'max:50'],
-            'email'      => ['nullable', 'email', 'max:255'],
-            'address'    => ['nullable', 'string', 'max:255'],
-            'note'       => ['nullable', 'string'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'note' => ['nullable', 'string'],
         ]);
 
         $data['user_id'] = $request->user()->id;
@@ -106,13 +106,13 @@ class PatientController extends Controller
         $this->authorizePatient($request->user(), $patient);
 
         $data = $request->validate([
-            'clinic_id'  => ['sometimes', 'exists:clinics,id'],
-            'full_name'  => ['sometimes', 'string', 'max:255'],
+            'clinic_id' => ['sometimes', 'exists:clinics,id'],
+            'full_name' => ['sometimes', 'string', 'max:255'],
             'birth_date' => ['sometimes', 'nullable', 'date'],
-            'phone'      => ['sometimes', 'nullable', 'string', 'max:50'],
-            'email'      => ['sometimes', 'nullable', 'email', 'max:255'],
-            'address'    => ['sometimes', 'nullable', 'string', 'max:255'],
-            'note'       => ['sometimes', 'nullable', 'string'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'note' => ['sometimes', 'nullable', 'string'],
         ]);
 
         if (isset($data['clinic_id'])
@@ -155,7 +155,7 @@ class PatientController extends Controller
 
         $note = $patient->notes()->create([
             'user_id' => $request->user()->id,
-            'content' => $validated['content']
+            'content' => $validated['content'],
         ]);
 
         return $note->load('user');

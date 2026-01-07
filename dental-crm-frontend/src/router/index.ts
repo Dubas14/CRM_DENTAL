@@ -75,7 +75,12 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       allowedRoles: ['super_admin', 'clinic_admin', 'doctor'],
-      allowedPermissions: ['procedure.view', 'procedure.manage', 'specialization.view', 'specialization.manage']
+      allowedPermissions: [
+        'procedure.view',
+        'procedure.manage',
+        'specialization.view',
+        'specialization.manage'
+      ]
     }
   },
   {
@@ -228,7 +233,7 @@ router.beforeEach(async (to, from, next) => {
   const { permissions } = usePermissions()
 
   if (!user.value) {
-    await fetchUser().catch(() => { })
+    await fetchUser().catch(() => {})
   }
 
   if (!user.value) {

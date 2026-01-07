@@ -153,7 +153,7 @@ export const useFinanceStore = defineStore('finance', () => {
     error.value = null
     try {
       const { data } = await paymentApi.create(invoiceId, payload)
-      
+
       // Refresh invoice to get updated totals
       if (currentInvoice.value?.id === Number(invoiceId)) {
         await fetchInvoice(invoiceId)
@@ -216,4 +216,3 @@ export const useFinanceStore = defineStore('finance', () => {
     resetCurrentInvoice
   }
 })
-

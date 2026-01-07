@@ -7,8 +7,7 @@ const financeApi = {
   },
   invalidateStatsCache(clinicId: number) {
     return apiClient.post('/finance/stats/invalidate', { clinic_id: clinicId })
-  },
+  }
 }
 
 export default financeApi
-

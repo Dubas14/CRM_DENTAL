@@ -4,9 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class Doctor extends Model
 {
     use HasFactory;
@@ -109,7 +110,7 @@ class Doctor extends Model
     {
         // 1) Прямо з доктора
         if ($this->avatar_path) {
-            return asset('storage/' . ltrim($this->avatar_path, '/'));
+            return asset('storage/'.ltrim($this->avatar_path, '/'));
         }
 
         // 2) Fallback: аватар користувача (щоб працювало для всіх ролей)
@@ -118,7 +119,7 @@ class Doctor extends Model
             : $this->user()->value('avatar_path');
 
         if ($userAvatarPath) {
-            return asset('storage/' . ltrim($userAvatarPath, '/'));
+            return asset('storage/'.ltrim($userAvatarPath, '/'));
         }
 
         return null;
@@ -140,6 +141,7 @@ class Doctor extends Model
         }
 
         $target = $date ?: now()->toDateString();
+
         return $target >= $this->vacation_from && $target <= $this->vacation_to;
     }
 }

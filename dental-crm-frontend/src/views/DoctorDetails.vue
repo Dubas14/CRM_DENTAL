@@ -281,7 +281,9 @@ onMounted(loadDoctorProcedures)
                 type="checkbox"
                 class="h-4 w-4 rounded border-border/70 bg-card"
               />
-              <label for="doctor-details-active" class="text-sm text-text/90"> Активний лікар </label>
+              <label for="doctor-details-active" class="text-sm text-text/90">
+                Активний лікар
+              </label>
             </div>
           </div>
         </div>

@@ -125,4 +125,3 @@ const dismissButtonClass = computed(() => {
   margin-bottom: 1rem;
 }
 </style>
-

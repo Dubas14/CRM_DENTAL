@@ -21,5 +21,3 @@ class Specialization extends Model
         return $this->belongsToMany(Doctor::class, 'doctor_specialization');
     }
 }
-
-

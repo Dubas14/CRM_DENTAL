@@ -31,7 +31,7 @@ class StoreDoctorRequest extends FormRequest
             'color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'is_active' => ['sometimes', 'boolean'],
             'default_slot_duration' => ['nullable', 'integer', 'min:5', 'max:120'],
-            
+
             // User credentials (if creating user account)
             'create_user' => ['sometimes', 'boolean'],
             'password' => ['required_if:create_user,true', 'string', 'min:8'],
@@ -59,4 +59,3 @@ class StoreDoctorRequest extends FormRequest
         ];
     }
 }
-

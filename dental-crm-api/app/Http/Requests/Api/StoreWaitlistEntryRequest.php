@@ -53,4 +53,3 @@ class StoreWaitlistEntryRequest extends FormRequest
         ];
     }
 }
-

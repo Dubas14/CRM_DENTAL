@@ -7,10 +7,12 @@ use Exception;
 class ConflictException extends Exception
 {
     protected $message = 'Time conflict detected';
+
     protected $code = 409;
+
     protected array $conflicts = [];
 
-    public function __construct(array $conflicts = [], string $message = null, int $code = 409)
+    public function __construct(array $conflicts = [], ?string $message = null, int $code = 409)
     {
         $this->conflicts = $conflicts;
         parent::__construct($message ?? $this->message, $code);
@@ -30,4 +32,3 @@ class ConflictException extends Exception
         ], $this->code);
     }
 }
-

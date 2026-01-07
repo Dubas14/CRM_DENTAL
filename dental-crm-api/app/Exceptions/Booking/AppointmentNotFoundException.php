@@ -7,14 +7,15 @@ use Exception;
 class AppointmentNotFoundException extends Exception
 {
     protected $message = 'Appointment not found';
+
     protected $code = 404;
 
-    public function __construct(int $appointmentId = null, string $message = null)
+    public function __construct(?int $appointmentId = null, ?string $message = null)
     {
-        $finalMessage = $message ?? ($appointmentId 
+        $finalMessage = $message ?? ($appointmentId
             ? "Appointment with ID {$appointmentId} not found"
             : $this->message);
-        
+
         parent::__construct($finalMessage, $this->code);
     }
 
@@ -26,4 +27,3 @@ class AppointmentNotFoundException extends Exception
         ], $this->code);
     }
 }
-

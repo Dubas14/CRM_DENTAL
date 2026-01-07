@@ -63,7 +63,7 @@ const fetchEquipments = async () => {
     if (search.value.trim()) params.search = search.value.trim()
 
     const { data } = await equipmentApi.list(params)
-    
+
     // Ignore stale responses
     if (currentSeq !== requestSeq) return
 
@@ -77,7 +77,7 @@ const fetchEquipments = async () => {
   } finally {
     // Only update loading if this is still the latest request
     if (currentSeq === requestSeq) {
-    loading.value = false
+      loading.value = false
     }
   }
 }
@@ -200,11 +200,7 @@ onMounted(async () => {
     </header>
 
     <div class="flex flex-wrap items-center gap-3">
-      <SearchField
-        v-model="search"
-        id="equipments-search"
-        placeholder="Пошук (назва / опис)"
-      />
+      <SearchField v-model="search" id="equipments-search" placeholder="Пошук (назва / опис)" />
       <label for="equipments-clinic-filter" class="text-xs uppercase text-text/70">Клініка</label>
       <select
         v-model="selectedClinicId"
@@ -256,10 +252,7 @@ onMounted(async () => {
       </div>
 
       <div>
-        <label
-          for="equipment-create-description"
-          class="block text-xs uppercase text-text/70 mb-1"
-        >
+        <label for="equipment-create-description" class="block text-xs uppercase text-text/70 mb-1">
           Опис
         </label>
         <textarea
