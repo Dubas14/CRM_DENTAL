@@ -60,6 +60,11 @@ const invoiceApi = {
   },
   cancel(id: number | string) {
     return apiClient.post(`/invoices/${id}/cancel`)
+  },
+  downloadPDF(id: number | string) {
+    return apiClient.get(`/invoices/${id}/pdf`, {
+      responseType: 'blob'
+    })
   }
 }
 

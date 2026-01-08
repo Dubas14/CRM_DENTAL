@@ -72,6 +72,17 @@ const clinicApi = {
     return pendingListMineRequest
   },
 
+  get(clinicId: number | string) {
+    return apiClient.get(`/clinics/${clinicId}`)
+  },
+
+  update(clinicId: number | string, data: any) {
+    // Clear cache when updating
+    clinicsCache = null
+    clinicsMineCache = null
+    return apiClient.put(`/clinics/${clinicId}`, data)
+  },
+
   // Clear cache (useful after creating/updating/deleting clinics)
   clearCache() {
     clinicsCache = null

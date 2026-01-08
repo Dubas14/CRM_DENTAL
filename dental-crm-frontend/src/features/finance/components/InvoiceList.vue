@@ -16,6 +16,7 @@ import { useToast } from '../../../composables/useToast'
 import invoiceApi from '../../../services/invoiceApi'
 import PaymentModal from '../../../components/finance/PaymentModal.vue'
 import InvoiceForm from '../../../components/finance/InvoiceForm.vue'
+import InvoicePdfPreview from '../../../components/finance/InvoicePdfPreview.vue'
 
 const _router = useRouter() // Reserved for navigation
 const { user: _user } = useAuth() // Reserved for permissions
@@ -38,6 +39,9 @@ const showCancelDialog = ref(false)
 const selectedInvoice = ref<any>(null)
 const showEditDrawer = ref(false)
 const editingInvoice = ref<any>(null)
+const showPdfPreview = ref(false)
+const previewInvoiceId = ref<number | null>(null)
+const previewInvoiceNumber = ref<string | null>(null)
 
 const statusOptions = [
   { value: '', label: 'Всі статуси' },
@@ -76,6 +80,9 @@ const isOverdue = (invoice: any) => {
 const getInvoiceActions = (invoice: any) => {
   const actions: { id: string; label: string; icon?: string }[] = []
 
+  actions.push({ id: 'preview-pdf', label: 'Переглянути PDF', icon: '👁️' })
+  actions.push({ id: 'download-pdf', label: 'Завантажити PDF', icon: '📄' })
+
   if (Number(invoice.paid_amount) === 0 && invoice.status !== 'cancelled') {
     actions.push({ id: 'edit', label: 'Редагувати', icon: '✏️' })
   }
@@ -89,8 +96,39 @@ const getInvoiceActions = (invoice: any) => {
   return actions
 }
 
+const downloadPDF = async (invoice: any) => {
+  try {
+    const response = await invoiceApi.downloadPDF(invoice.id)
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `invoice_${invoice.invoice_number}_${new Date().toISOString().split('T')[0]}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    showToast('PDF завантажено', 'success')
+  } catch (error: any) {
+    console.error('Failed to download PDF:', error)
+    showToast(error.response?.data?.message || 'Не вдалося завантажити PDF', 'error')
+  }
+}
+
+const openPdfPreview = (invoice: any) => {
+  previewInvoiceId.value = invoice.id
+  previewInvoiceNumber.value = invoice.invoice_number
+  showPdfPreview.value = true
+}
+
 const handleAction = (action: string, invoice: any) => {
   switch (action) {
+    case 'preview-pdf':
+      openPdfPreview(invoice)
+      break
+    case 'download-pdf':
+      downloadPDF(invoice)
+      break
     case 'edit':
       openEditDrawer(invoice)
       break
@@ -342,5 +380,12 @@ onMounted(() => {
         @cancel="showEditDrawer = false"
       />
     </UIDrawer>
+
+    <!-- PDF Preview Modal -->
+    <InvoicePdfPreview
+      :invoice-id="previewInvoiceId"
+      :invoice-number="previewInvoiceNumber || undefined"
+      @close="showPdfPreview = false; previewInvoiceId = null; previewInvoiceNumber = null"
+    />
   </div>
 </template>

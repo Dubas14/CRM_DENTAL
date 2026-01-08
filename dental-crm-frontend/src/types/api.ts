@@ -63,10 +63,27 @@ export interface LoginResponse {
 export interface Clinic {
   id: number
   name: string
+  legal_name?: string
   address?: string
   city?: string
   phone?: string
   email?: string
+  website?: string
+  logo_url?: string
+  phone_main?: string
+  email_public?: string
+  address_street?: string
+  address_building?: string
+  postal_code?: string
+  slogan?: string
+  currency_code?: string
+  requisites?: {
+    legal_name?: string
+    tax_id?: string
+    iban?: string
+    bank_name?: string
+    mfo?: string
+  }
   created_at: string
   updated_at: string
 }

@@ -186,6 +186,52 @@ class InvoiceController extends Controller
         return response()->json($invoice);
     }
 
+    public function downloadPDF(Request $request, Invoice $invoice)
+    {
+        // Перевіряємо, чи встановлена бібліотека dompdf
+        if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            abort(500, 'PDF бібліотека не встановлена. Виконайте: composer require barryvdh/laravel-dompdf');
+        }
+
+        $user = $request->user();
+
+        // Doctor Scope: перевірка доступу
+        if ($user->hasRole('doctor') && ! $user->isSuperAdmin()) {
+            $doctorId = $user->doctor?->id;
+            if ($doctorId && $invoice->appointment && $invoice->appointment->doctor_id !== $doctorId) {
+                abort(403, 'Немає доступу до цього рахунку');
+            }
+        } else {
+            $this->assertClinicAccess($user, $invoice->clinic_id);
+        }
+
+        // Завантажуємо всі необхідні зв'язки
+        $invoice->load(['items', 'patient', 'clinic']);
+
+        // Переконуємося, що requisites - це масив
+        if ($invoice->clinic && $invoice->clinic->requisites) {
+            if (is_string($invoice->clinic->requisites)) {
+                $invoice->clinic->requisites = json_decode($invoice->clinic->requisites, true) ?: [];
+            }
+        } else {
+            $invoice->clinic->requisites = [];
+        }
+
+        // Використовуємо facade динамічно
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoice-pdf', [
+            'invoice' => $invoice,
+            'clinic' => $invoice->clinic,
+            'patient' => $invoice->patient,
+        ])->setPaper('a4', 'portrait')
+          ->setOption('enable-local-file-access', true)
+          ->setOption('isHtml5ParserEnabled', true)
+          ->setOption('defaultFont', 'DejaVu Sans');
+
+        $filename = 'invoice_' . $invoice->invoice_number . '_' . date('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
     private function assertClinicAccess($user, int $clinicId): void
     {
         if (! $user->isSuperAdmin() && ! $user->hasClinicRole($clinicId, ['clinic_admin'])) {

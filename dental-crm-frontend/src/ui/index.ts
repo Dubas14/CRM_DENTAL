@@ -10,6 +10,7 @@ export { default as UIStatsCard } from './UIStatsCard.vue'
 export { default as UISelect } from './UISelect.vue'
 export { default as UIDateRangePicker } from './UIDateRangePicker.vue'
 export { default as UIConfirmDialog } from './UIConfirmDialog.vue'
+export { default as UIAccordion } from './UIAccordion.vue'
 
 export * from './tokens'
 export * from './adapters'

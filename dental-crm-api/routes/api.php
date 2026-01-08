@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\BookingSuggestionController;
 use App\Http\Controllers\Api\CalendarBlockController;
 use App\Http\Controllers\Api\ClinicController;
+use App\Http\Controllers\Api\ClinicLogoController;
 use App\Http\Controllers\Api\ClinicWorkingHoursController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\DoctorProcedureController;
@@ -146,6 +147,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('users/{user}/assign-role', [RoleController::class, 'assignRole']); // Assign single role
 
     Route::apiResource('clinics', ClinicController::class);
+    Route::post('clinics/{clinic}/logo', [ClinicLogoController::class, 'upload']);
+    Route::delete('clinics/{clinic}/logo', [ClinicLogoController::class, 'destroy']);
     Route::get('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'show']);
     Route::put('clinics/{clinic}/working-hours', [ClinicWorkingHoursController::class, 'update']);
     Route::apiResource('doctors', DoctorController::class);
@@ -161,6 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('invoices/{invoice}/items', [InvoiceController::class, 'replaceItems']);
     Route::post('invoices/{invoice}/discount', [InvoiceController::class, 'applyDiscount']);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
+    Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPDF']);
     Route::get('payments', [PaymentController::class, 'index']);
     Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store']);
     Route::post('payments/{payment}/refund', [PaymentController::class, 'refund']);

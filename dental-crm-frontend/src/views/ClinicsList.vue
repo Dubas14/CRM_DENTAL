@@ -7,6 +7,28 @@ import { useAuth } from '../composables/useAuth'
 const { user } = useAuth()
 const canManageClinics = computed(() => user.value?.global_role === 'super_admin')
 
+const backendOrigin = (() => {
+  const apiUrl = import.meta.env.VITE_API_URL || ''
+  try {
+    if (apiUrl) {
+      return new URL(apiUrl, window.location.origin).origin
+    }
+  } catch (_) {
+    // ignore parse errors
+  }
+  return window.location.origin
+})()
+
+const getLogoUrl = (url: string | null) => {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/storage')) {
+    return `${backendOrigin}${url}`
+  }
+  const sanitized = url.replace(/^\/+/, '')
+  return `${backendOrigin}/storage/${sanitized}`
+}
+
 const clinics = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -324,11 +346,12 @@ watch(
           <table class="min-w-full divide-y divide-border/60 text-sm">
             <thead class="bg-card/60 text-left text-xs uppercase tracking-wide text-text/60">
               <tr>
-                <th class="px-4 py-3">ID</th>
+                <th class="px-4 py-3">Логотип</th>
                 <th class="px-4 py-3">Назва</th>
-                <th class="px-4 py-3">Місто</th>
+                <th class="px-4 py-3">Слоган</th>
                 <th class="px-4 py-3">Адреса</th>
-                <th class="px-4 py-3">Телефон</th>
+                <th class="px-4 py-3">Контакти</th>
+                <th class="px-4 py-3">Реквізити</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border/40">
@@ -337,20 +360,70 @@ watch(
                 :key="clinic.id"
                 class="transition hover:bg-card/70"
               >
-                <td class="px-4 py-3 text-text/80">
-                  {{ clinic.id }}
+                <td class="px-4 py-3">
+                  <div v-if="clinic.logo_url" class="w-16 h-16 bg-bg border border-border rounded overflow-hidden flex items-center justify-center">
+                    <img
+                      :src="getLogoUrl(clinic.logo_url)"
+                      :alt="clinic.name"
+                      class="w-full h-full object-contain"
+                      @error="$event.target.style.display = 'none'"
+                    />
+                  </div>
+                  <span v-else class="text-text/40 text-xs">—</span>
                 </td>
-                <td class="px-4 py-3 font-medium text-text">
-                  {{ clinic.name }}
+                <td class="px-4 py-3">
+                  <div class="font-medium text-text">{{ clinic.name }}</div>
+                  <div v-if="clinic.legal_name" class="text-xs text-text/60 mt-1">
+                    {{ clinic.legal_name }}
+                  </div>
                 </td>
                 <td class="px-4 py-3 text-text/80">
-                  {{ clinic.city || '—' }}
+                  {{ clinic.slogan || '—' }}
                 </td>
                 <td class="px-4 py-3 text-text/80">
-                  {{ clinic.address || '—' }}
+                  <div v-if="clinic.city || clinic.address_street || clinic.address_building" class="space-y-1 text-xs">
+                    <div v-if="clinic.city">{{ clinic.city }}</div>
+                    <div v-if="clinic.address_street || clinic.address_building">
+                      {{ [clinic.address_street, clinic.address_building].filter(Boolean).join(', ') }}
+                    </div>
+                    <div v-if="clinic.postal_code" class="text-text/60">
+                      {{ clinic.postal_code }}
+                    </div>
+                  </div>
+                  <span v-else>—</span>
                 </td>
                 <td class="px-4 py-3 text-text/80">
-                  {{ clinic.phone || '—' }}
+                  <div class="space-y-1 text-xs">
+                    <div v-if="clinic.phone_main">
+                      <span class="text-text/60">Тел:</span> {{ clinic.phone_main }}
+                    </div>
+                    <div v-if="clinic.email_public">
+                      <span class="text-text/60">Email:</span> {{ clinic.email_public }}
+                    </div>
+                    <div v-if="clinic.website">
+                      <a :href="clinic.website" target="_blank" class="text-emerald-300 hover:text-emerald-200">
+                        {{ clinic.website }}
+                      </a>
+                    </div>
+                  </div>
+                  <span v-if="!clinic.phone_main && !clinic.email_public && !clinic.website">—</span>
+                </td>
+                <td class="px-4 py-3 text-text/80">
+                  <div v-if="clinic.requisites" class="space-y-1 text-xs">
+                    <div v-if="clinic.requisites.legal_name">
+                      <span class="text-text/60">Юр. особа:</span> {{ clinic.requisites.legal_name }}
+                    </div>
+                    <div v-if="clinic.requisites.tax_id">
+                      <span class="text-text/60">ЄДРПОУ:</span> {{ clinic.requisites.tax_id }}
+                    </div>
+                    <div v-if="clinic.requisites.iban">
+                      <span class="text-text/60">IBAN:</span> {{ clinic.requisites.iban }}
+                    </div>
+                    <div v-if="clinic.requisites.bank_name">
+                      <span class="text-text/60">Банк:</span> {{ clinic.requisites.bank_name }}
+                    </div>
+                  </div>
+                  <span v-else>—</span>
                 </td>
               </tr>
             </tbody>

@@ -22,6 +22,18 @@ class Clinic extends Model
         'email',
         'website',
         'is_active',
+        'logo_url',
+        'phone_main',
+        'email_public',
+        'address_street',
+        'address_building',
+        'slogan',
+        'currency_code',
+        'requisites',
+    ];
+
+    protected $casts = [
+        'requisites' => 'array',
     ];
 
     public function users()
