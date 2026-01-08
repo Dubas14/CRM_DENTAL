@@ -69,6 +69,16 @@ const routes: import('vue-router').RouteRecordRaw[] = [
     }
   },
   {
+    path: '/services',
+    name: 'services',
+    component: ProceduresList,
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ['super_admin', 'clinic_admin'],
+      allowedPermissions: ['procedure.view', 'procedure.manage', 'inventory.manage']
+    }
+  },
+  {
     path: '/specializations',
     name: 'specializations',
     component: SpecializationsList,

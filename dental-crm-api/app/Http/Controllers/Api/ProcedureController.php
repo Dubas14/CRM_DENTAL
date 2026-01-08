@@ -43,6 +43,8 @@ class ProcedureController extends Controller
             'clinic_id' => ['required', 'exists:clinics,id'],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+            'price' => ['nullable', 'numeric', 'min:0'],
             'duration_minutes' => ['required', 'integer', 'min:5', 'max:480'],
             'requires_room' => ['boolean'],
             'requires_assistant' => ['boolean'],
@@ -88,6 +90,8 @@ class ProcedureController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'category' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'code' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'duration_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'requires_room' => ['sometimes', 'boolean'],
             'requires_assistant' => ['sometimes', 'boolean'],

@@ -31,20 +31,28 @@ class InventoryTransactionController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'clinic_id' => ['required', 'exists:clinics,id'],
-            'inventory_item_id' => ['required', 'exists:inventory_items,id'],
+        $rules = [
+            'clinic_id' => ['required', 'integer', 'exists:clinics,id'],
+            'inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
             'type' => ['required', Rule::in([
                 InventoryTransaction::TYPE_PURCHASE,
                 InventoryTransaction::TYPE_USAGE,
                 InventoryTransaction::TYPE_ADJUSTMENT,
             ])],
             'quantity' => ['required', 'numeric', 'min:0.001'],
-            'cost_per_unit' => ['nullable', 'numeric', 'min:0'],
             'related_entity_type' => ['nullable', 'string', 'max:50'],
             'related_entity_id' => ['nullable', 'integer'],
-            'note' => ['nullable', 'string'],
-        ]);
+            'note' => ['nullable', 'string', 'max:1000'],
+        ];
+
+        // Cost per unit is required for purchase transactions
+        if ($request->input('type') === InventoryTransaction::TYPE_PURCHASE) {
+            $rules['cost_per_unit'] = ['required', 'numeric', 'min:0.01'];
+        } else {
+            $rules['cost_per_unit'] = ['nullable', 'numeric', 'min:0'];
+        }
+
+        $data = $request->validate($rules);
 
         $this->assertClinicAccess($request->user(), $data['clinic_id']);
 

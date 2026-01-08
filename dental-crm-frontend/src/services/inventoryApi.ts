@@ -15,6 +15,8 @@ const inventoryApi = {
     code?: string | null
     unit: string
     min_stock_level?: number
+    current_stock?: number
+    initial_stock?: number
   }) {
     return apiClient.post('/inventory-items', payload)
   },

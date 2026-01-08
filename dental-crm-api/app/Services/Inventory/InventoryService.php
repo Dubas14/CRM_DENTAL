@@ -52,7 +52,7 @@ class InventoryService
             $item->current_stock = $this->formatQty(max(0, $newStock));
             $item->save();
 
-            return $transaction->fresh('item');
+            return $transaction->fresh(['item', 'creator']);
         });
     }
 

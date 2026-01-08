@@ -77,11 +77,28 @@ export const useInventoryStore = defineStore('inventory', () => {
     code?: string | null
     unit: string
     min_stock_level?: number
+    current_stock?: number
+    initial_stock?: number
   }) => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await inventoryApi.createItem(payload)
+      const apiPayload: any = {
+        clinic_id: payload.clinic_id,
+        name: payload.name,
+        code: payload.code || null,
+        unit: payload.unit,
+        min_stock_level: payload.min_stock_level || 0
+      }
+      
+      // If initial_stock is provided, use it; otherwise use current_stock
+      if (payload.initial_stock !== undefined && payload.initial_stock > 0) {
+        apiPayload.initial_stock = payload.initial_stock
+      } else if (payload.current_stock !== undefined) {
+        apiPayload.current_stock = payload.current_stock
+      }
+      
+      const { data } = await inventoryApi.createItem(apiPayload)
       items.value.push(data)
       showToast('Матеріал створено успішно', 'success')
       return data
@@ -103,11 +120,10 @@ export const useInventoryStore = defineStore('inventory', () => {
       if (index !== -1) {
         items.value[index] = data
       }
-      showToast('Матеріал оновлено', 'success')
+      // Toast показується в компоненті
       return data
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Не вдалося оновити матеріал'
-      showToast(error.value, 'error')
       throw err
     } finally {
       loading.value = false
@@ -156,13 +172,11 @@ export const useInventoryStore = defineStore('inventory', () => {
 
       const { data } = await inventoryApi.createTransaction(payload)
 
-      // Update item stock in local state
-      const itemIndex = items.value.findIndex((i) => i.id === payload.inventory_item_id)
-      if (itemIndex !== -1) {
-        if (payload.type === 'purchase' || payload.type === 'adjustment') {
-          items.value[itemIndex].current_stock += payload.quantity
-        } else if (payload.type === 'usage') {
-          items.value[itemIndex].current_stock -= payload.quantity
+      // Update item stock in local state from backend response
+      if (data.item) {
+        const itemIndex = items.value.findIndex((i) => i.id === data.item.id)
+        if (itemIndex !== -1) {
+          items.value[itemIndex].current_stock = data.item.current_stock
         }
       }
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useInventoryStore } from '../../stores/useInventoryStore'
-import { UIButton } from '../../ui'
+import { UIButton, UISelect } from '../../ui'
 import { useToast } from '../../composables/useToast'
+import { useAuth } from '../../composables/useAuth'
+import clinicApi from '../../services/clinicApi'
 
 const props = defineProps<{
   modelValue: boolean
@@ -15,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const { showToast } = useToast()
+const { user } = useAuth()
 const inventoryStore = useInventoryStore()
 
 const open = computed({
@@ -29,9 +32,59 @@ const costPerUnit = ref<number | null>(null)
 const note = ref<string>('')
 const error = ref<string | null>(null)
 
+// Клініка
+const selectedClinicId = ref<number | null>(null)
+const clinics = ref<any[]>([])
+const loadingClinics = ref(false)
+
+// Перевірка чи супер-адмін
+const isSuperAdmin = computed(() => user.value?.global_role === 'super_admin')
+
+// Автоматичне визначення клініки для не-супер-адмінів
+const resolvedClinicId = computed(() => {
+  if (isSuperAdmin.value) {
+    return selectedClinicId.value
+  }
+  return props.clinicId || user.value?.doctor?.clinic_id || user.value?.clinics?.[0]?.id || null
+})
+
+// Опції для вибору клініки
+const clinicOptions = computed(() => {
+  return clinics.value.map((c) => ({
+    value: c.id,
+    label: c.name
+  }))
+})
+
+// Завантажити клініки для супер-адміна
+const loadClinics = async () => {
+  if (!isSuperAdmin.value) return
+
+  loadingClinics.value = true
+  try {
+    const { data } = await clinicApi.list()
+    clinics.value = Array.isArray(data) ? data : data?.data || []
+    // Автовибір першої клініки
+    if (clinics.value.length > 0 && !selectedClinicId.value) {
+      selectedClinicId.value = clinics.value[0].id
+    }
+  } catch (err) {
+    console.error('Failed to load clinics:', err)
+  } finally {
+    loadingClinics.value = false
+  }
+}
+
 const selectedItem = computed(() => {
   if (!selectedItemId.value) return null
   return inventoryStore.items.find((i) => i.id === selectedItemId.value)
+})
+
+const itemOptions = computed(() => {
+  return inventoryStore.items.map((item) => ({
+    value: item.id,
+    label: `${item.name} (${item.current_stock} ${item.unit})${item.code ? ` [${item.code}]` : ''}`
+  }))
 })
 
 const canUse = computed(() => {
@@ -41,6 +94,12 @@ const canUse = computed(() => {
 
 const save = async () => {
   error.value = null
+
+  const clinicId = resolvedClinicId.value
+  if (!clinicId) {
+    error.value = 'Не обрано клініку'
+    return
+  }
 
   if (!selectedItemId.value) {
     error.value = 'Оберіть матеріал'
@@ -64,25 +123,45 @@ const save = async () => {
 
   try {
     await inventoryStore.addTransaction({
-      clinic_id: props.clinicId!,
+      clinic_id: clinicId,
       inventory_item_id: selectedItemId.value,
       type: activeTab.value,
       quantity: quantity.value,
       cost_per_unit: activeTab.value === 'purchase' ? costPerUnit.value : null,
-      note: note.value || null
+      note: note.value.trim() || null
     })
 
     emit('saved')
     open.value = false
     resetForm()
   } catch (err: any) {
-    // Check for 422 error (insufficient stock)
+    // Check for 422 error (validation error)
     if (err.response?.status === 422) {
-      const errorMessage = err.response?.data?.message || 'Неможливо списати: недостатньо товару'
-      error.value = errorMessage
-      showToast(errorMessage, 'error')
+      const errors = err.response?.data?.errors
+      if (errors) {
+        // Format validation errors
+        const errorMessages = Object.entries(errors)
+          .map(([field, messages]) => {
+            const fieldNames: Record<string, string> = {
+              clinic_id: 'Клініка',
+              inventory_item_id: 'Матеріал',
+              quantity: 'Кількість',
+              cost_per_unit: 'Ціна закупівлі',
+              type: 'Тип транзакції'
+            }
+            const fieldName = fieldNames[field] || field
+            const msgs = Array.isArray(messages) ? messages : [messages]
+            return `${fieldName}: ${msgs.join(', ')}`
+          })
+          .join('; ')
+        error.value = errorMessages
+      } else {
+        error.value = err.response?.data?.message || 'Неможливо списати: недостатньо товару'
+      }
+      showToast(error.value, 'error')
     } else {
       error.value = err.response?.data?.message || 'Не вдалося створити транзакцію'
+      showToast(error.value, 'error')
     }
   }
 }
@@ -98,8 +177,14 @@ const resetForm = () => {
 watch(
   () => props.modelValue,
   async (isOpen) => {
-    if (isOpen && props.clinicId) {
-      await inventoryStore.fetchItems({ clinic_id: props.clinicId })
+    if (isOpen) {
+      if (isSuperAdmin.value) {
+        await loadClinics()
+      }
+      const clinicId = resolvedClinicId.value
+      if (clinicId) {
+        await inventoryStore.fetchItems({ clinic_id: clinicId })
+      }
       resetForm()
     }
   }
@@ -107,6 +192,18 @@ watch(
 
 watch(activeTab, () => {
   resetForm()
+})
+
+watch(resolvedClinicId, async (clinicId) => {
+  if (clinicId && props.modelValue) {
+    await inventoryStore.fetchItems({ clinic_id: clinicId })
+  }
+})
+
+onMounted(async () => {
+  if (props.modelValue && isSuperAdmin.value) {
+    await loadClinics()
+  }
 })
 </script>
 
@@ -166,6 +263,19 @@ watch(activeTab, () => {
 
             <!-- Form -->
             <div class="space-y-4">
+              <!-- Вибір клініки для супер-адміна -->
+              <div v-if="isSuperAdmin" class="space-y-2">
+                <label class="block text-xs uppercase text-text/70"
+                  >Клініка <span class="text-red-400">*</span></label
+                >
+                <UISelect
+                  v-model="selectedClinicId"
+                  :options="clinicOptions"
+                  placeholder="Оберіть клініку"
+                  :disabled="loadingClinics"
+                />
+              </div>
+
               <div>
                 <label class="block text-xs uppercase text-text/70 mb-1">
                   Матеріал <span class="text-red-400">*</span>
@@ -176,9 +286,12 @@ watch(activeTab, () => {
                 >
                   <option :value="null">Оберіть матеріал</option>
                   <option v-for="item in inventoryStore.items" :key="item.id" :value="item.id">
-                    {{ item.name }} ({{ item.current_stock }} {{ item.unit }})
+                    {{ item.name }} ({{ item.current_stock }} {{ item.unit }}){{ item.code ? ` [${item.code}]` : '' }}
                   </option>
                 </select>
+                <p v-if="selectedItem" class="mt-1 text-xs text-text/60">
+                  Доступно на складі: <span class="font-medium text-text">{{ selectedItem.current_stock }} {{ selectedItem.unit }}</span>
+                </p>
               </div>
 
               <div>
@@ -188,18 +301,22 @@ watch(activeTab, () => {
                 <input
                   v-model.number="quantity"
                   type="number"
-                  min="0.001"
+                  :min="activeTab === 'usage' ? 0.001 : 0.001"
+                  :max="activeTab === 'usage' && selectedItem ? selectedItem.current_stock : undefined"
                   step="0.001"
                   class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
                 />
                 <p v-if="selectedItem" class="mt-1 text-xs text-text/60">
                   Одиниця: {{ selectedItem.unit }}
+                  <span v-if="activeTab === 'usage'">
+                    • Макс. можна списати: <span class="font-medium text-text">{{ selectedItem.current_stock }} {{ selectedItem.unit }}</span>
+                  </span>
                 </p>
                 <p
                   v-if="activeTab === 'usage' && selectedItem && !canUse"
                   class="mt-1 text-xs text-red-400"
                 >
-                  На складі: {{ selectedItem.current_stock }} {{ selectedItem.unit }}
+                  ⚠️ Неможливо списати більше, ніж є на складі
                 </p>
               </div>
 
@@ -207,14 +324,20 @@ watch(activeTab, () => {
                 <label class="block text-xs uppercase text-text/70 mb-1">
                   Ціна закупівлі (за одиницю) <span class="text-red-400">*</span>
                 </label>
-                <input
-                  v-model.number="costPerUnit"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
-                  placeholder="0.00"
-                />
+                <div class="relative">
+                  <input
+                    v-model.number="costPerUnit"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 pr-16 text-sm text-text"
+                    placeholder="0.00"
+                  />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text/60">грн</span>
+                </div>
+                <p class="mt-1 text-xs text-text/60">
+                  Введіть ціну з копійками (наприклад: 20.50)
+                </p>
               </div>
 
               <div>

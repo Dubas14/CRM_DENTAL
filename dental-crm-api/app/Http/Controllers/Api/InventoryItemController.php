@@ -35,15 +35,78 @@ class InventoryItemController extends Controller
             'code' => ['nullable', 'string', 'max:50'],
             'unit' => ['required', 'string', 'max:20'],
             'current_stock' => ['nullable', 'numeric', 'min:0'],
+            'initial_stock' => ['nullable', 'numeric', 'min:0'],
             'min_stock_level' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 
         $this->assertClinicAccess($request->user(), $data['clinic_id']);
 
-        $item = InventoryItem::create($data);
+        // Handle initial_stock: create item and transaction in one DB transaction
+        $item = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $request) {
+            // Set current_stock from initial_stock if provided, otherwise use current_stock or 0
+            $currentStock = isset($data['initial_stock']) && $data['initial_stock'] > 0
+                ? $data['initial_stock']
+                : ($data['current_stock'] ?? 0);
 
-        return response()->json($item, 201);
+            // Generate code automatically if not provided
+            $code = $data['code'] ?? null;
+            if (empty($code)) {
+                // Get the last item for this clinic to generate next code
+                $lastItem = \App\Models\InventoryItem::where('clinic_id', $data['clinic_id'])
+                    ->whereNotNull('code')
+                    ->where('code', 'like', 'MAT%')
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($lastItem && preg_match('/MAT(\d+)/', $lastItem->code, $matches)) {
+                    $nextNumber = (int) $matches[1] + 1;
+                    $code = 'MAT' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+                } else {
+                    $code = 'MAT0001';
+                }
+
+                // Ensure uniqueness
+                $counter = 1;
+                while (\App\Models\InventoryItem::where('clinic_id', $data['clinic_id'])
+                    ->where('code', $code)
+                    ->exists()) {
+                    $code = 'MAT' . str_pad((string) ((int) substr($code, 3) + $counter), 4, '0', STR_PAD_LEFT);
+                    $counter++;
+                }
+            }
+
+            $itemData = [
+                'clinic_id' => $data['clinic_id'],
+                'name' => $data['name'],
+                'code' => $code,
+                'unit' => $data['unit'],
+                'current_stock' => $currentStock,
+                'min_stock_level' => $data['min_stock_level'] ?? 0,
+                'is_active' => $data['is_active'] ?? true,
+            ];
+
+            $item = \App\Models\InventoryItem::create($itemData);
+
+            // If initial_stock > 0, create an adjustment transaction
+            if (isset($data['initial_stock']) && $data['initial_stock'] > 0) {
+                \App\Models\InventoryTransaction::create([
+                    'clinic_id' => $data['clinic_id'],
+                    'inventory_item_id' => $item->id,
+                    'type' => \App\Models\InventoryTransaction::TYPE_ADJUSTMENT,
+                    'quantity' => $data['initial_stock'],
+                    'cost_per_unit' => null,
+                    'related_entity_type' => null,
+                    'related_entity_id' => null,
+                    'note' => 'Початковий залишок',
+                    'created_by' => $request->user()->id,
+                ]);
+            }
+
+            return $item;
+        });
+
+        return response()->json($item->load('transactions'), 201);
     }
 
     public function update(Request $request, InventoryItem $inventory_item)

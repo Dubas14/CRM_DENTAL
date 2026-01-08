@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { debounce } from 'lodash-es'
 import procedureApi from '../services/procedureApi'
 import equipmentApi from '../services/equipmentApi'
 import clinicApi from '../services/clinicApi'
 import { useAuth } from '../composables/useAuth'
 import SearchField from '../components/SearchField.vue'
+
+const route = useRoute()
+const isServicesPage = computed(() => route.name === 'services')
 
 const { user } = useAuth()
 
@@ -24,6 +28,8 @@ const editingProcedureId = ref(null)
 const editForm = ref({
   name: '',
   category: '',
+  code: '',
+  price: null,
   duration_minutes: 30,
   requires_room: false,
   requires_assistant: false,
@@ -89,6 +95,8 @@ const form = ref({
   clinic_id: '',
   name: '',
   category: '',
+  code: '',
+  price: null,
   duration_minutes: 30,
   requires_room: false,
   requires_assistant: false,
@@ -217,6 +225,8 @@ const resetForm = () => {
     clinic_id: selectedClinicId.value || clinics.value[0]?.id || '',
     name: '',
     category: '',
+    code: '',
+    price: null,
     duration_minutes: 30,
     requires_room: false,
     requires_assistant: false,
@@ -236,12 +246,26 @@ const createProcedure = async () => {
   creating.value = true
   createError.value = null
   try {
-    await procedureApi.create({
-      ...form.value,
+    const payload: any = {
       clinic_id: form.value.clinic_id || selectedClinicId.value,
+      name: form.value.name,
+      category: form.value.category || null,
+      code: form.value.code || null,
+      duration_minutes: form.value.duration_minutes,
+      requires_room: form.value.requires_room,
+      requires_assistant: form.value.requires_assistant,
       equipment_id: form.value.equipment_id || null,
       steps: normalizeSteps(form.value.steps)
-    })
+    }
+    
+    // Додати price тільки якщо вона вказана
+    if (form.value.price !== null && form.value.price !== undefined && form.value.price !== '') {
+      payload.price = Number(form.value.price)
+    } else {
+      payload.price = null
+    }
+    
+    await procedureApi.create(payload)
     showForm.value = false
     resetForm()
     await fetchProcedures()
@@ -259,6 +283,8 @@ const startEdit = (procedure) => {
   editForm.value = {
     name: procedure.name || '',
     category: procedure.category || '',
+    code: procedure.code || '',
+    price: procedure.price || null,
     duration_minutes: procedure.duration_minutes ?? 30,
     requires_room: !!procedure.requires_room,
     requires_assistant: !!procedure.requires_assistant,
@@ -276,15 +302,25 @@ const updateProcedure = async (procedure) => {
   savingEdit.value = true
   editError.value = null
   try {
-    await procedureApi.update(procedure.id, {
+    const payload: any = {
       name: editForm.value.name,
       category: editForm.value.category || null,
+      code: editForm.value.code || null,
       duration_minutes: editForm.value.duration_minutes,
       requires_room: editForm.value.requires_room,
       requires_assistant: editForm.value.requires_assistant,
       equipment_id: editForm.value.equipment_id || null,
       steps: normalizeSteps(editForm.value.steps)
-    })
+    }
+    
+    // Додати price тільки якщо вона вказана
+    if (editForm.value.price !== null && editForm.value.price !== undefined && editForm.value.price !== '') {
+      payload.price = Number(editForm.value.price)
+    } else {
+      payload.price = null
+    }
+    
+    await procedureApi.update(procedure.id, payload)
     await fetchProcedures()
     editingProcedureId.value = null
   } catch (err) {
@@ -340,14 +376,14 @@ const goToPage = async (page) => {
   <div class="space-y-6">
     <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 class="text-2xl font-semibold">Процедури</h1>
-        <p class="text-sm text-text/70">Налаштування процедур для клінік.</p>
+        <h1 class="text-2xl font-semibold">{{ isServicesPage ? 'Послуги' : 'Процедури' }}</h1>
+        <p class="text-sm text-text/70">{{ isServicesPage ? 'Прайс-лист послуг для клінік.' : 'Налаштування процедур для клінік.' }}</p>
       </div>
       <button
         class="px-4 py-2 rounded-lg bg-emerald-500 text-text text-sm font-semibold hover:bg-emerald-400"
         @click="toggleForm"
       >
-        {{ showForm ? 'Приховати форму' : 'Нова процедура' }}
+        {{ showForm ? 'Приховати форму' : (isServicesPage ? 'Додати послугу' : 'Нова процедура') }}
       </button>
     </header>
 
@@ -416,6 +452,36 @@ const goToPage = async (page) => {
             name="category"
             type="text"
             class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
+          />
+        </div>
+
+        <div>
+          <label for="procedure-create-code" class="block text-xs uppercase text-text/70 mb-1"
+            >Код</label
+          >
+          <input
+            v-model="form.code"
+            id="procedure-create-code"
+            name="code"
+            type="text"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
+            placeholder="Наприклад: PROC001"
+          />
+        </div>
+
+        <div>
+          <label for="procedure-create-price" class="block text-xs uppercase text-text/70 mb-1"
+            >Ціна (грн)</label
+          >
+          <input
+            v-model.number="form.price"
+            id="procedure-create-price"
+            name="price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
+            placeholder="0.00"
           />
         </div>
 
@@ -544,6 +610,8 @@ const goToPage = async (page) => {
           <thead class="text-text/70 text-xs uppercase">
             <tr>
               <th class="text-left py-2 px-3">Назва</th>
+              <th class="text-left py-2 px-3">Код</th>
+              <th class="text-left py-2 px-3">Ціна</th>
               <th class="text-left py-2 px-3">Категорія</th>
               <th class="text-left py-2 px-3">Тривалість</th>
               <th class="text-left py-2 px-3">Етапи</th>
@@ -575,6 +643,46 @@ const goToPage = async (page) => {
                   class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
                 />
                 <span v-else class="text-text/90">{{ procedure.name }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-code-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Код
+                </label>
+                <input
+                  v-if="editingProcedureId === procedure.id"
+                  v-model="editForm.code"
+                  :id="`procedure-edit-code-${procedure.id}`"
+                  name="code"
+                  type="text"
+                  class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
+                />
+                <span v-else class="text-text/70">{{ procedure.code || '—' }}</span>
+              </td>
+              <td class="py-2 px-3">
+                <label
+                  v-if="editingProcedureId === procedure.id"
+                  :for="`procedure-edit-price-${procedure.id}`"
+                  class="sr-only"
+                >
+                  Ціна
+                </label>
+                <input
+                  v-if="editingProcedureId === procedure.id"
+                  v-model.number="editForm.price"
+                  :id="`procedure-edit-price-${procedure.id}`"
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full rounded-md bg-bg border border-border/80 px-2 py-1 text-sm text-text"
+                />
+                <span v-else class="text-text/70">
+                  {{ procedure.price ? `${Number(procedure.price).toFixed(2)} грн` : '—' }}
+                </span>
               </td>
               <td class="py-2 px-3">
                 <label

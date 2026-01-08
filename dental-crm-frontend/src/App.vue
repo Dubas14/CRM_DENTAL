@@ -25,7 +25,8 @@ import {
   X,
   GraduationCap,
   Warehouse,
-  Banknote
+  Banknote,
+  Briefcase
 } from 'lucide-vue-next'
 
 const { user, logout, initAuth } = useAuth()
@@ -320,6 +321,23 @@ const onProfileUpdated = async () => {
             >
               <ClipboardList :size="20" />
               <span class="font-medium">Процедури</span>
+            </router-link>
+
+            <router-link
+              v-if="
+                isSuperAdmin ||
+                isClinicAdmin ||
+                hasPermission('procedure.view') ||
+                hasPermission('procedure.manage')
+              "
+              :to="{ name: 'services' }"
+              :class="[
+                route.name === 'services' ? activeClass : inactiveClass,
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200'
+              ]"
+            >
+              <Briefcase :size="20" />
+              <span class="font-medium">Послуги</span>
             </router-link>
 
             <router-link

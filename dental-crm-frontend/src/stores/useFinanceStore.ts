@@ -65,7 +65,32 @@ export const useFinanceStore = defineStore('finance', () => {
       const params: any = {}
       if (clinicId) params.clinic_id = clinicId
       const { data } = await procedureApi.list(params)
-      procedures.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+      const fetched = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+      
+      // Дедуплікація за ID перед додаванням
+      const uniqueProcedures = fetched.filter((p, index, self) => 
+        index === self.findIndex(proc => proc.id === p.id)
+      )
+      
+      // Якщо clinicId передано, повністю замінити список процедурами цієї клініки
+      if (clinicId) {
+        procedures.value = uniqueProcedures.filter(p => !p.clinic_id || p.clinic_id === clinicId)
+      } else {
+        // Без clinicId: дедуплікувати та додати нові або оновити існуючі
+        const existingIds = new Set(procedures.value.map(p => p.id))
+        const newProcedures = uniqueProcedures.filter(p => !existingIds.has(p.id))
+        
+        // Оновити існуючі
+        uniqueProcedures.forEach(updated => {
+          const index = procedures.value.findIndex(p => p.id === updated.id)
+          if (index !== -1) {
+            procedures.value[index] = updated
+          }
+        })
+        
+        // Додати нові
+        procedures.value.push(...newProcedures)
+      }
     } catch (err: any) {
       console.error('Failed to fetch procedures:', err)
       showToast('Не вдалося завантажити прайс', 'error')

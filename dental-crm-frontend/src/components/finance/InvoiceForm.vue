@@ -53,7 +53,7 @@ const open = computed({
 const items = ref<InvoiceItem[]>([])
 const discount = ref<number>(0)
 const discountType = ref<'percent' | 'amount'>('percent')
-const searchQuery = ref('')
+const selectedProcedureId = ref<number | null>(null)
 const showProcedureSearch = ref(false)
 const description = ref('')
 const dueDate = ref<string | null>(null)
@@ -143,17 +143,37 @@ const isLocked = computed(() => {
   return (financeStore.currentInvoice.paid_amount || 0) > 0
 })
 
-const filteredProcedures = computed(() => {
-  if (!searchQuery.value) return []
-  const query = searchQuery.value.toLowerCase()
-  return financeStore.procedures
-    .filter((p) => {
-      const nameMatch = p.name?.toLowerCase().includes(query)
-      const codeMatch = p.code?.toLowerCase().includes(query)
-      return nameMatch || codeMatch
-    })
-    .slice(0, 10)
+const procedureOptions = computed(() => {
+  // Дедуплікація за ID та фільтрація по клініці
+  const clinicId = resolvedClinicId.value
+  const seen = new Set<number>()
+  const filtered = financeStore.procedures.filter((p) => {
+    // Фільтрувати по клініці якщо вона визначена
+    if (clinicId && p.clinic_id && p.clinic_id !== clinicId) {
+      return false
+    }
+    // Видалити дублікати
+    if (seen.has(p.id)) {
+      return false
+    }
+    seen.add(p.id)
+    return true
+  })
+  
+  return filtered.map((p) => ({
+    value: p.id,
+    label: `${p.name}${p.code ? ` (${p.code})` : ''}${p.price ? ` - ${formatMoney(p.price)} грн` : ''}`
+  }))
 })
+
+const onProcedureSelect = () => {
+  if (!selectedProcedureId.value) return
+  const procedure = financeStore.procedures.find((p) => p.id === selectedProcedureId.value)
+  if (procedure) {
+    addItem(procedure)
+    selectedProcedureId.value = null // Reset for next selection
+  }
+}
 
 const totalAmount = computed(() => {
   const subtotal = items.value.reduce((sum, item) => sum + item.total, 0)
@@ -175,11 +195,11 @@ const addItem = (procedure?: any) => {
     procedure_id: procedure?.id || null,
     name: procedure?.name || '',
     quantity: 1,
-    price: procedure?.price || 0,
-    total: procedure?.price || 0
+    price: procedure?.price ? Number(procedure.price) : 0,
+    total: procedure?.price ? Number(procedure.price) : 0
   }
   items.value.push(newItem)
-  searchQuery.value = ''
+  selectedProcedureId.value = null
   showProcedureSearch.value = false
 }
 
@@ -305,7 +325,8 @@ watch(
   () => props.modelValue,
   async (isOpen) => {
     if (isOpen) {
-      await financeStore.fetchProcedures()
+      const clinicId = resolvedClinicId.value
+      await financeStore.fetchProcedures(clinicId || undefined)
       if (props.invoiceId) {
         await loadInvoice()
       } else {
@@ -314,6 +335,16 @@ watch(
         description.value = ''
         dueDate.value = null
       }
+    }
+  }
+)
+
+watch(
+  () => resolvedClinicId.value,
+  async (clinicId, oldClinicId) => {
+    if (clinicId && clinicId !== oldClinicId) {
+      // Завантажити послуги для нової клініки
+      await financeStore.fetchProcedures(clinicId)
     }
   }
 )
@@ -331,7 +362,10 @@ onMounted(async () => {
 
   // Для inline режиму - завжди ініціалізувати
   if (props.inline) {
-    await financeStore.fetchProcedures()
+    const clinicId = resolvedClinicId.value
+    if (clinicId) {
+      await financeStore.fetchProcedures(clinicId)
+    }
 
     // Якщо редагування - завантажити дані рахунку
     if (props.invoiceId) {
@@ -345,7 +379,10 @@ onMounted(async () => {
       selectedPatientId.value = null
     }
   } else if (props.modelValue) {
-    await financeStore.fetchProcedures()
+    const clinicId = resolvedClinicId.value
+    if (clinicId) {
+      await financeStore.fetchProcedures(clinicId)
+    }
   }
 })
 </script>
@@ -409,31 +446,15 @@ onMounted(async () => {
       </div>
 
       <!-- Procedure Search -->
-      <div v-if="showProcedureSearch && !isLocked" class="relative">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Пошук по прайсу (назва або код)..."
-          class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
-          @focus="showProcedureSearch = true"
+      <div v-if="showProcedureSearch && !isLocked" class="space-y-2">
+        <label class="block text-xs uppercase text-text/70">Оберіть послугу</label>
+        <UISelect
+          v-model="selectedProcedureId"
+          :options="procedureOptions"
+          placeholder="Пошук послуги..."
+          searchable
+          @update:modelValue="onProcedureSelect"
         />
-        <div
-          v-if="searchQuery && filteredProcedures.length > 0"
-          class="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto"
-        >
-          <button
-            v-for="proc in filteredProcedures"
-            :key="proc.id"
-            type="button"
-            class="w-full text-left px-3 py-2 hover:bg-card/80 text-sm text-text/80 hover:text-text border-b border-border/60 last:border-0"
-            @click="addItem(proc)"
-          >
-            <div class="font-medium">{{ proc.name }}</div>
-            <div class="text-xs text-text/60">
-              {{ proc.code || '—' }} • {{ formatMoney(proc.price || 0) }} грн
-            </div>
-          </button>
-        </div>
       </div>
 
       <!-- Items Table -->
@@ -660,31 +681,15 @@ onMounted(async () => {
               </div>
 
               <!-- Procedure Search -->
-              <div v-if="showProcedureSearch && !isLocked" class="relative">
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Пошук по прайсу (назва або код)..."
-                  class="w-full rounded-lg bg-bg border border-border/80 px-3 py-2 text-sm text-text"
-                  @focus="showProcedureSearch = true"
+              <div v-if="showProcedureSearch && !isLocked" class="space-y-2">
+                <label class="block text-xs uppercase text-text/70">Оберіть послугу</label>
+                <UISelect
+                  v-model="selectedProcedureId"
+                  :options="procedureOptions"
+                  placeholder="Пошук послуги..."
+                  searchable
+                  @update:modelValue="onProcedureSelect"
                 />
-                <div
-                  v-if="searchQuery && filteredProcedures.length > 0"
-                  class="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto"
-                >
-                  <button
-                    v-for="proc in filteredProcedures"
-                    :key="proc.id"
-                    type="button"
-                    class="w-full text-left px-3 py-2 hover:bg-card/80 text-sm text-text/80 hover:text-text border-b border-border/60 last:border-0"
-                    @click="addItem(proc)"
-                  >
-                    <div class="font-medium">{{ proc.name }}</div>
-                    <div class="text-xs text-text/60">
-                      {{ proc.code || '—' }} • {{ formatMoney(proc.price || 0) }} грн
-                    </div>
-                  </button>
-                </div>
               </div>
 
               <!-- Items Table -->
