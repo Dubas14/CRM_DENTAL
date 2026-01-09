@@ -353,6 +353,31 @@ MIT License
 - Email: support@crmdental.com
 - Issues: [GitHub Issues](https://github.com/your-repo/issues)
 
+## 🚀 Deployment & CI/CD
+
+### Оновлення на Production сервері
+
+Після `git pull` на сервері:
+
+```bash
+# Автоматичне оновлення (рекомендовано)
+./scripts/update-server.sh
+
+# Або ручне оновлення
+# Детальні інструкції: docs/SERVER_UPDATE.md
+```
+
+**Швидкий огляд:**
+1. Backend: `docker compose exec laravel.test composer install && php artisan migrate --force`
+2. Frontend: `npm ci && npm run build`
+3. Перезапуск: `docker compose restart laravel.test`
+
+Детальна інструкція: [docs/SERVER_UPDATE.md](docs/SERVER_UPDATE.md)
+
+### CI/CD Pipeline
+
+CI/CD налаштування буде додано найближчим часом для автоматичного деплою через GitHub Actions.
+
 ## 🔒 Безпека
 
 ### Важливо: Не комітьте секрети!

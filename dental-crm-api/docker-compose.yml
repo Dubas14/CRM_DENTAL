@@ -19,6 +19,8 @@ services:
       IGNITION_LOCAL_SITES_PATH: '${PWD}'
     volumes:
       - '.:/var/www/html'
+      # Кастомні конфігурації для PHP (Laravel Sail використовує /usr/local/etc/php/conf.d/)
+      - './docker/php/local.ini:/usr/local/etc/php/conf.d/99-custom.ini'
     networks:
       - sail
     depends_on:
