@@ -1,6 +1,0 @@
-/vendor
-/node_modules
-/storage
-/public/build
-.git
-*.lock
