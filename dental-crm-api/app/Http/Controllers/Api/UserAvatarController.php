@@ -13,8 +13,12 @@ class UserAvatarController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'avatar' => ['nullable', 'image', 'max:4096'],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:10240'], // 10MB
             'remove' => ['nullable', 'boolean'],
+        ], [
+            'avatar.image' => 'Файл повинен бути зображенням.',
+            'avatar.mimes' => 'Файл повинен мати формат: jpeg, jpg, png, gif або webp.',
+            'avatar.max' => 'Розмір файлу не повинен перевищувати 10MB.',
         ]);
 
         // Remove avatar

@@ -60,6 +60,28 @@ watch(
 const onAvatarChange = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
+
+  // Валідація розміру файлу (10MB)
+  const maxSize = 10 * 1024 * 1024 // 10MB в байтах
+  if (file.size > maxSize) {
+    showToast('Розмір файлу не повинен перевищувати 10MB', 'error')
+    // Очистити input
+    if (avatarInputRef.value) {
+      avatarInputRef.value.value = ''
+    }
+    return
+  }
+
+  // Валідація типу файлу
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    showToast('Файл повинен бути зображенням (JPEG, PNG, GIF або WebP)', 'error')
+    if (avatarInputRef.value) {
+      avatarInputRef.value.value = ''
+    }
+    return
+  }
+
   avatarFile.value = file
   avatarPreview.value = URL.createObjectURL(file)
   removeAvatar.value = false
