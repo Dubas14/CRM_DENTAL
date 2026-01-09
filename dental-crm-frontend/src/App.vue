@@ -29,7 +29,7 @@ import {
   Briefcase
 } from 'lucide-vue-next'
 
-const { user, logout, initAuth } = useAuth()
+const { user, logout, initAuth, fetchUser } = useAuth()
 const { isSuperAdmin, isClinicAdmin, isDoctor, canManageRoles, hasPermission } =
   usePermissions()
 const router = useRouter()
@@ -115,7 +115,9 @@ const closeProfileMenu = () => (showProfileMenu.value = false)
 const onProfileUpdated = async () => {
   closeProfileMenu()
   showProfileModal.value = false
-  await initAuth()
+  // Оновити дані користувача після зміни профілю
+  // Використовуємо fetchUser замість initAuth, щоб точно оновити дані
+  await fetchUser()
 }
 </script>
 

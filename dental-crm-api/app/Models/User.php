@@ -78,7 +78,8 @@ class User extends Authenticatable
             return null;
         }
 
-        return asset('storage/'.ltrim($this->avatar_path, '/'));
+        // Використовуємо Storage::url для правильного генерування URL
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar_path);
     }
 
     public function isSuperAdmin(): bool

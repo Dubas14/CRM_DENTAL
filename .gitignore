@@ -71,4 +71,10 @@ Thumbs.db
 ### Docker ###
 docker-compose.override.yml
 .env.docker
-.cursor
+# Remove unwanted folders
+.cursor/
+docs/
+scripts/
+
+# Remove unwanted files
+.aigignore

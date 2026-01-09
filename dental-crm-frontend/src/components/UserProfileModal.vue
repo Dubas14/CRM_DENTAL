@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useToast } from '../composables/useToast'
+import { useAuth } from '../composables/useAuth'
 import { UIButton, UIAvatar } from '../ui'
 import { doctorsApi as doctorApi } from '../features/doctors/api'
 import userApi from '../services/userApi'
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const { showToast } = useToast()
+const { fetchUser } = useAuth()
 
 const open = computed({
   get: () => props.modelValue,
@@ -128,10 +130,19 @@ const save = async () => {
     }
 
     // Avatar upload/remove (прив'язуємо до користувача, незалежно від ролі)
+    let avatarResponse = null
     if (avatarFile.value) {
-      await userApi.uploadAvatar(avatarFile.value)
+      avatarResponse = await userApi.uploadAvatar(avatarFile.value)
+      // Оновити user об'єкт з новим avatar_url
+      if (avatarResponse?.data?.avatar_url && props.user) {
+        props.user.avatar_url = avatarResponse.data.avatar_url
+      }
     } else if (removeAvatar.value) {
-      await userApi.uploadAvatar(null, true)
+      avatarResponse = await userApi.uploadAvatar(null, true)
+      // Очистити avatar_url
+      if (props.user) {
+        props.user.avatar_url = null
+      }
     }
 
     // Password update (optional)
@@ -144,6 +155,18 @@ const save = async () => {
     }
 
     showToast('Профіль оновлено', 'success')
+    
+    // Оновити дані користувача після завантаження аватара
+    if (avatarFile.value || removeAvatar.value) {
+      await fetchUser()
+      // Очистити preview після успішного завантаження, щоб використовувався URL з сервера
+      if (avatarPreview.value) {
+        URL.revokeObjectURL(avatarPreview.value)
+        avatarPreview.value = null
+      }
+      avatarFile.value = null
+    }
+    
     emit('updated')
     open.value = false
   } catch (e: any) {
