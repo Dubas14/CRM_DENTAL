@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\ScheduleException;
 use App\Models\User;
+use App\Services\Calendar\AvailabilityService;
 use App\Support\QuerySearch;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -203,7 +207,19 @@ class DoctorController extends Controller
             'specialization_ids.*' => ['integer', 'exists:specializations,id'],
         ]);
 
+        // Зберігаємо старі значення перед оновленням
+        $oldStatus = $doctor->status;
+        $oldIsActive = $doctor->is_active;
+        $oldVacationFrom = $doctor->vacation_from;
+        $oldVacationTo = $doctor->vacation_to;
+        
         $doctor->fill($data);
+        
+        // sync is_active with status перед збереженням
+        if (array_key_exists('status', $data)) {
+            $doctor->is_active = $data['status'] === 'active';
+        }
+        
         $doctor->save();
 
         if (array_key_exists('full_name', $data) && $doctor->user) {
@@ -216,10 +232,23 @@ class DoctorController extends Controller
             $doctor->user->save();
         }
 
-        // sync is_active with status
-        if (array_key_exists('status', $data)) {
-            $doctor->is_active = $data['status'] === 'active';
-            $doctor->save();
+        // Автоматично очищаємо винятки day_off при активації лікаря або очищенні відпустки
+        $statusChangedToActive = array_key_exists('status', $data) && 
+                                 ($oldStatus === 'vacation' || $oldStatus === 'inactive') && 
+                                 $data['status'] === 'active';
+        
+        // Якщо напряму змінюється is_active на true або очищаються дати відпустки, також очищаємо винятки
+        $isActiveChanged = array_key_exists('is_active', $data) && $data['is_active'] === true && !$oldIsActive;
+        $vacationCleared = (array_key_exists('vacation_from', $data) && empty($data['vacation_from'])) ||
+                          (array_key_exists('vacation_to', $data) && empty($data['vacation_to']));
+        
+        if ($isActiveChanged || $vacationCleared) {
+            ScheduleException::where('doctor_id', $doctor->id)
+                ->where('type', 'day_off')
+                ->whereDate('date', '>=', Carbon::today()->toDateString())
+                ->delete();
+            
+            $this->invalidateSlotsCache($doctor->id, Carbon::today(), Carbon::today()->addDays(30));
         }
 
         if (array_key_exists('clinic_ids', $data)) {
@@ -277,5 +306,14 @@ class DoctorController extends Controller
         $doctor->delete();
 
         return response()->noContent();
+    }
+
+    private function invalidateSlotsCache(int $doctorId, Carbon $startAt, Carbon $endAt): void
+    {
+        $period = CarbonPeriod::create($startAt->copy()->startOfDay(), '1 day', $endAt->copy()->startOfDay());
+
+        foreach ($period as $date) {
+            AvailabilityService::bumpSlotsCacheVersion($doctorId, $date);
+        }
     }
 }

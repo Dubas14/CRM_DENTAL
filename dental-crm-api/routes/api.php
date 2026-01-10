@@ -188,6 +188,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'schedule']);
     Route::put('doctors/{doctor}/schedule', [DoctorScheduleController::class, 'updateSchedule']);
+    Route::delete('doctors/{doctor}/schedule-exceptions/{exception}', [DoctorScheduleController::class, 'deleteException']);
     Route::get('doctors/{doctor}/slots', [DoctorScheduleController::class, 'slots']);
     Route::get('doctors/{doctor}/recommended-slots', [DoctorScheduleController::class, 'recommended']);
     Route::get('booking-suggestions', [BookingSuggestionController::class, 'index']);

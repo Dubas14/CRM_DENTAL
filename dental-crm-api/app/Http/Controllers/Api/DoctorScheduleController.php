@@ -128,6 +128,30 @@ class DoctorScheduleController extends Controller
         ]);
     }
 
+    public function deleteException(Request $request, Doctor $doctor, ScheduleException $exception)
+    {
+        $user = $request->user();
+
+        if (! DoctorAccessService::canManageDoctor($user, $doctor)) {
+            abort(403, 'У вас немає доступу до зміни розкладу цього лікаря');
+        }
+
+        if ($exception->doctor_id !== $doctor->id) {
+            abort(404, 'Виняток не знайдено');
+        }
+
+        $date = Carbon::parse($exception->date)->startOfDay();
+        $exception->delete();
+
+        // Інвалідуємо кеш слотів для цієї дати
+        AvailabilityService::bumpSlotsCacheVersion($doctor->id, $date);
+
+        return response()->json([
+            'status' => 'deleted',
+            'message' => 'Виняток успішно видалено',
+        ]);
+    }
+
     public function slots(Request $request, Doctor $doctor)
     {
         $validated = $request->validate([
