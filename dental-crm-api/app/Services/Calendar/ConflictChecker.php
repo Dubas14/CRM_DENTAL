@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Procedure;
 use App\Models\Room;
 use Carbon\Carbon;
+use App\Helpers\DebugLogHelper;
 
 class ConflictChecker
 {
@@ -47,7 +48,11 @@ class ConflictChecker
             $result['hard'][] = ['code' => 'doctor_break', 'message' => 'Час потрапляє у перерву лікаря'];
         }
 
-        $doctorConflict = Appointment::where('doctor_id', $doctor->id)
+        // #region agent log
+        DebugLogHelper::write('ConflictChecker.php:51', 'Checking doctor conflicts', ['doctor_id' => $doctor->id, 'date' => $date->toDateString(), 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'ignoreAppointmentId' => $ignoreAppointmentId], 'conflictCheck', 'A');
+        // #endregion
+        
+        $doctorConflicts = Appointment::where('doctor_id', $doctor->id)
             ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
             ->whereDate('start_at', $date)
             ->whereNotIn('status', ['cancelled', 'no_show'])
@@ -55,9 +60,16 @@ class ConflictChecker
                 $q->where('start_at', '<', $endAt)
                     ->where('end_at', '>', $startAt);
             })
-            ->exists();
-
-        if ($doctorConflict) {
+            ->get();
+        
+        // #region agent log
+        DebugLogHelper::write('ConflictChecker.php:62', 'Doctor conflicts query result', ['doctor_id' => $doctor->id, 'conflicts_count' => $doctorConflicts->count(), 'conflicts' => $doctorConflicts->map(fn($a) => ['id' => $a->id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status, 'patient_id' => $a->patient_id, 'room_id' => $a->room_id, 'assistant_id' => $a->assistant_id])->toArray()], 'conflictCheck', 'A');
+        // #endregion
+        
+        if ($doctorConflicts->isNotEmpty()) {
+            // #region agent log
+            DebugLogHelper::write('ConflictChecker.php:73', 'Doctor conflict found', ['doctor_id' => $doctor->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'conflicting_appointments' => $doctorConflicts->map(fn($a) => ['id' => $a->id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status])->toArray()], 'conflictCheck', 'A');
+            // #endregion
             $result['hard'][] = ['code' => 'doctor_busy', 'message' => 'Лікар вже зайнятий у цей час'];
         }
 
@@ -179,17 +191,26 @@ class ConflictChecker
         }
 
         if ($room) {
-            $roomConflict = Appointment::where('room_id', $room->id)
+            $roomConflictQuery = Appointment::where('room_id', $room->id)
                 ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
                 ->whereDate('start_at', $date)
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->where(function ($q) use ($startAt, $endAt) {
                     $q->where('start_at', '<', $endAt)
                         ->where('end_at', '>', $startAt);
-                })
-                ->exists();
+                });
+            
+            $roomConflictAppointments = $roomConflictQuery->get();
+            $roomConflict = $roomConflictQuery->exists();
+
+            // #region agent log
+            DebugLogHelper::write('ConflictChecker.php:209', 'Room conflict check', ['room_id' => $room->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'ignoreAppointmentId' => $ignoreAppointmentId, 'conflict_exists' => $roomConflict, 'conflicting_appointments' => $roomConflictAppointments->map(fn($a) => ['id' => $a->id, 'doctor_id' => $a->doctor_id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status])->toArray()], 'conflictCheck', 'B');
+            // #endregion
 
             if ($roomConflict) {
+                // #region agent log
+                DebugLogHelper::write('ConflictChecker.php:214', 'Room conflict found', ['room_id' => $room->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString()], 'conflictCheck', 'B');
+                // #endregion
                 $result['hard'][] = ['code' => 'room_busy', 'message' => 'Кабінет зайнятий у цей час'];
             }
 
@@ -231,18 +252,28 @@ class ConflictChecker
                 }
             }
         }
-        if ($procedure?->requires_assistant && $assistantId) {
-            $assistantConflict = Appointment::where('assistant_id', $assistantId)
+        // Перевірка асистента: якщо передано assistantId (незалежно від процедури)
+        if ($assistantId) {
+            $assistantConflictQuery = Appointment::where('assistant_id', $assistantId)
                 ->when($ignoreAppointmentId, fn ($q) => $q->where('id', '<>', $ignoreAppointmentId))
                 ->whereDate('start_at', $date)
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->where(function ($q) use ($startAt, $endAt) {
                     $q->where('start_at', '<', $endAt)
                         ->where('end_at', '>', $startAt);
-                })
-                ->exists();
+                });
+            
+            $assistantConflictAppointments = $assistantConflictQuery->get();
+            $assistantConflict = $assistantConflictQuery->exists();
+
+            // #region agent log
+            DebugLogHelper::write('ConflictChecker.php:272', 'Assistant conflict check', ['assistant_id' => $assistantId, 'procedure_requires_assistant' => $procedure?->requires_assistant ?? false, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'ignoreAppointmentId' => $ignoreAppointmentId, 'conflict_exists' => $assistantConflict, 'conflicting_appointments' => $assistantConflictAppointments->map(fn($a) => ['id' => $a->id, 'doctor_id' => $a->doctor_id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status])->toArray()], 'conflictCheck', 'C');
+            // #endregion
 
             if ($assistantConflict) {
+                // #region agent log
+                DebugLogHelper::write('ConflictChecker.php:277', 'Assistant conflict found', ['assistant_id' => $assistantId, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString()], 'conflictCheck', 'C');
+                // #endregion
                 $result['hard'][] = ['code' => 'assistant_busy', 'message' => 'Асистент зайнятий у цей час'];
             }
 

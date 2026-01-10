@@ -600,8 +600,22 @@ const getRangeForView = (date, mode) => {
   }
 
   if (mode === 'month') {
-    const start = new Date(base.getFullYear(), base.getMonth(), 1)
-    const end = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+    // Для місячного вигляду потрібно включити дні попереднього та наступного місяця,
+    // які відображаються в календарі для вирівнювання по днях тижня
+    const firstDayOfMonth = new Date(base.getFullYear(), base.getMonth(), 1)
+    const lastDayOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0)
+    
+    // Обчислюємо перший день календаря (може бути з попереднього місяця)
+    const start = new Date(firstDayOfMonth)
+    const dayOfWeek = start.getDay() || 7 // 1 = понеділок, 7 = неділя
+    start.setDate(start.getDate() - dayOfWeek + 1) // Відкочуємо до понеділка
+    
+    // Обчислюємо останній день календаря (може бути з наступного місяця)
+    const end = new Date(lastDayOfMonth)
+    const lastDayOfWeek = end.getDay() || 7
+    const daysToAdd = 7 - lastDayOfWeek // Скільки днів додати до неділі
+    end.setDate(end.getDate() + daysToAdd)
+    
     return { start, end }
   }
 
@@ -754,14 +768,24 @@ const fetchEvents = async () => {
   const to = formatDateOnly(end)
 
   try {
+    // Для режимів day/week/month, якщо вибрано конкретного лікаря, передаємо його в запит
+    // Для multi-doctor/multi-room не передаємо, щоб отримати записи для всіх лікарів
+    const shouldFilterByDoctor = ['day', 'week', 'month'].includes(view.value) && selectedDoctorId.value
+    const appointmentsParams = {
+      clinic_id: currentClinicId.value,
+      from_date: from,
+      to_date: to,
+      procedure_id: selectedProcedureId.value || undefined
+    }
+    if (shouldFilterByDoctor) {
+      appointmentsParams.doctor_id = Number(selectedDoctorId.value)
+    }
+    // Для календаря потрібні ВСІ записи без пагінації
+    appointmentsParams.no_pagination = true
+    
     const [blocksResponse, appointmentsResponse] = await Promise.all([
       calendarApi.getCalendarBlocks({ clinic_id: currentClinicId.value, from, to }),
-      calendarApi.getAppointments({
-        clinic_id: currentClinicId.value,
-        from_date: from,
-        to_date: to,
-        procedure_id: selectedProcedureId.value || undefined
-      })
+      calendarApi.getAppointments(appointmentsParams)
     ])
 
     const blocksData = blocksResponse.data?.data || blocksResponse.data || []

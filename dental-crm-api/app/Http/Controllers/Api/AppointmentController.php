@@ -22,6 +22,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Helpers\DebugLogHelper;
 
 class AppointmentController extends Controller
 {
@@ -148,7 +149,40 @@ class AppointmentController extends Controller
             );
         }
 
-        $conflicts = (new ConflictChecker)->evaluate(
+        // Перевіряємо, чи вже не існує такий запис (захист від double-submit)
+        $existingAppointment = Appointment::where('doctor_id', $doctor->id)
+            ->where('start_at', $startAt)
+            ->where('end_at', $endAt)
+            ->where('patient_id', $data['patient_id'] ?? null)
+            ->whereIn('status', ['planned', 'confirmed'])
+            ->first();
+        
+        // #region agent log
+        DebugLogHelper::write('AppointmentController.php:151', 'Checking for existing appointment (before transaction)', ['doctor_id' => $doctor->id, 'date' => $date->toDateString(), 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'patient_id' => $data['patient_id'] ?? null, 'existing_appointment_id' => $existingAppointment?->id], 'createAppointment', 'A');
+        // #endregion
+        
+        if ($existingAppointment) {
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:158', 'Existing appointment found, returning it', ['existing_appointment_id' => $existingAppointment->id], 'createAppointment', 'A');
+            // #endregion
+            $existingAppointment->load([
+                'clinic:id,name',
+                'doctor:id,full_name,clinic_id',
+                'assistant:id,name,first_name,last_name',
+                'patient:id,full_name,phone',
+                'procedure:id,name,duration_minutes',
+                'procedureStep:id,procedure_id,name,duration_minutes,order',
+                'room:id,name',
+                'equipment:id,name',
+            ]);
+            return (new AppointmentResource($existingAppointment))
+                ->response()
+                ->setStatusCode(201);
+        }
+
+        // Обгортаємо все в транзакцію, щоб уникнути race condition
+        // Та перевіряємо конфлікти з SELECT FOR UPDATE для блокування рядків
+        $appointment = DB::transaction(function () use (
             $doctor,
             $date,
             $startAt,
@@ -156,60 +190,136 @@ class AppointmentController extends Controller
             $procedure,
             $room,
             $equipment,
-            $data['patient_id'] ?? null,
-            null,
-            $assistantId
-        );
+            $assistantId,
+            $procedureStep,
+            $data
+        ) {
+            // Перевіряємо ще раз всередині транзакції (захист від race condition)
+            $existingInTransaction = Appointment::where('doctor_id', $doctor->id)
+                ->where('start_at', $startAt)
+                ->where('end_at', $endAt)
+                ->where(function ($q) use ($data) {
+                    if ($data['patient_id'] ?? null) {
+                        $q->where('patient_id', $data['patient_id']);
+                    } else {
+                        $q->whereNull('patient_id');
+                    }
+                })
+                ->whereIn('status', ['planned', 'confirmed'])
+                ->lockForUpdate()
+                ->first();
+            
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:190', 'Checking for existing appointment (inside transaction with lock)', ['doctor_id' => $doctor->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'existing_in_transaction_id' => $existingInTransaction?->id], 'createAppointment', 'A');
+            // #endregion
+            
+            if ($existingInTransaction) {
+                // #region agent log
+                DebugLogHelper::write('AppointmentController.php:195', 'Existing appointment found in transaction, throwing exception', ['existing_appointment_id' => $existingInTransaction->id], 'createAppointment', 'A');
+                // #endregion
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    response()->json([
+                        'message' => 'Запис вже існує',
+                        'appointment_id' => $existingInTransaction->id,
+                    ], 409)
+                );
+            }
 
-        if (! empty($conflicts['hard'])) {
-            return response()->json([
-                'message' => 'Неможливо створити запис через конфлікти',
-                'hard_conflicts' => $conflicts['hard'],
-            ], 422);
-        }
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:205', 'ConflictChecker evaluate params (inside transaction)', ['doctor_id' => $doctor->id, 'date' => $date->toDateString(), 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'procedure_id' => $procedure?->id, 'room_id' => $room?->id, 'equipment_id' => $equipment?->id, 'assistant_id' => $assistantId, 'patient_id' => $data['patient_id'] ?? null], 'createAppointment', 'A');
+            // #endregion
 
-        // Informational soft conflicts should NOT block creation.
-        // We keep blocking only for actionable soft conflicts like patient_busy, missing_prepayment, etc.
-        $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
-        $blockingSoft = array_values(array_filter(
-            $conflicts['soft'] ?? [],
-            fn ($c) => ! in_array(($c['code'] ?? null), $informationalSoftCodes, true)
-        ));
+            $conflicts = (new ConflictChecker)->evaluate(
+                $doctor,
+                $date,
+                $startAt,
+                $endAt,
+                $procedure,
+                $room,
+                $equipment,
+                $data['patient_id'] ?? null,
+                null,
+                $assistantId
+            );
 
-        if (! empty($blockingSoft) && ! ($data['allow_soft_conflicts'] ?? false)) {
-            return response()->json([
-                'message' => 'Виявлено можливі конфлікти',
-                'soft_conflicts' => $blockingSoft,
-            ], 409);
-        }
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:175', 'ConflictChecker result (inside transaction)', ['hard_conflicts' => $conflicts['hard'] ?? [], 'soft_conflicts' => $conflicts['soft'] ?? [], 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString(), 'room_id' => $room?->id, 'assistant_id' => $assistantId], 'createAppointment', 'A');
+            // #endregion
 
-        // Генеруємо токен для підтвердження запису пацієнтом
-        $confirmationToken = Str::random(64);
+            if (! empty($conflicts['hard'])) {
+                // #region agent log
+                DebugLogHelper::write('AppointmentController.php:180', 'Rejecting appointment due to hard conflicts', ['hard_conflicts' => $conflicts['hard']], 'createAppointment', 'A');
+                // #endregion
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    response()->json([
+                        'message' => 'Неможливо створити запис через конфлікти',
+                        'hard_conflicts' => $conflicts['hard'],
+                    ], 422)
+                );
+            }
 
-        $appointment = Appointment::create([
-            'clinic_id' => $doctor->clinic_id,
-            'doctor_id' => $doctor->id,
+            // Informational soft conflicts should NOT block creation.
+            // We keep blocking only for actionable soft conflicts like patient_busy, missing_prepayment, etc.
+            $informationalSoftCodes = ['peak_hours', 'consecutive_appointments'];
+            $blockingSoft = array_values(array_filter(
+                $conflicts['soft'] ?? [],
+                fn ($c) => ! in_array(($c['code'] ?? null), $informationalSoftCodes, true)
+            ));
 
-            'procedure_id' => $procedure?->id,
-            'procedure_step_id' => $procedureStep?->id,
-            'room_id' => $room?->id,
-            'equipment_id' => $equipment?->id,
+            if (! empty($blockingSoft) && ! ($data['allow_soft_conflicts'] ?? false)) {
+                // #region agent log
+                DebugLogHelper::write('AppointmentController.php:194', 'Rejecting appointment due to soft conflicts', ['soft_conflicts' => $blockingSoft], 'createAppointment', 'A');
+                // #endregion
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    response()->json([
+                        'message' => 'Виявлено можливі конфлікти',
+                        'soft_conflicts' => $blockingSoft,
+                    ], 409)
+                );
+            }
 
-            'assistant_id' => $assistantId,
-            'patient_id' => $data['patient_id'] ?? null,
-            'confirmation_token' => $confirmationToken,
+            // Генеруємо токен для підтвердження запису пацієнтом
+            $confirmationToken = Str::random(64);
 
-            'is_follow_up' => (bool) ($data['is_follow_up'] ?? false),
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:207', 'Creating appointment (inside transaction)', ['doctor_id' => $doctor->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString()], 'createAppointment', 'A');
+            // #endregion
 
-            'start_at' => $startAt,
-            'end_at' => $endAt,
+            $appointment = Appointment::create([
+                'clinic_id' => $doctor->clinic_id,
+                'doctor_id' => $doctor->id,
 
-            'status' => 'planned',
-            'source' => $data['source'] ?? 'crm',
-            'comment' => $procedureStep
-                ? trim(($data['comment'] ?? '').' [Етап: '.$procedureStep->name.']') ?: null
-                : ($data['comment'] ?? null),
-        ]);
+                'procedure_id' => $procedure?->id,
+                'procedure_step_id' => $procedureStep?->id,
+                'room_id' => $room?->id,
+                'equipment_id' => $equipment?->id,
+
+                'assistant_id' => $assistantId,
+                'patient_id' => $data['patient_id'] ?? null,
+                'confirmation_token' => $confirmationToken,
+
+                'is_follow_up' => (bool) ($data['is_follow_up'] ?? false),
+
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+
+                'status' => 'planned',
+                'source' => $data['source'] ?? 'crm',
+                'comment' => $procedureStep
+                    ? trim(($data['comment'] ?? '').' [Етап: '.$procedureStep->name.']') ?: null
+                    : ($data['comment'] ?? null),
+            ]);
+
+            // #region agent log
+            DebugLogHelper::write('AppointmentController.php:235', 'Appointment created successfully (inside transaction)', ['appointment_id' => $appointment->id, 'doctor_id' => $doctor->id, 'start_at' => $startAt->toDateTimeString(), 'end_at' => $endAt->toDateTimeString()], 'createAppointment', 'A');
+            // #endregion
+
+            return $appointment;
+        });
+
+        // #region agent log
+        DebugLogHelper::write('AppointmentController.php:238', 'Appointment created, processing post-creation tasks', ['appointment_id' => $appointment->id, 'doctor_id' => $appointment->doctor_id, 'start_at' => $appointment->start_at->toDateTimeString(), 'end_at' => $appointment->end_at->toDateTimeString()], 'createAppointment', 'A');
+        // #endregion
 
         if (! empty($data['waitlist_entry_id'])) {
             WaitlistEntry::where('id', $data['waitlist_entry_id'])->update(['status' => 'booked']);
@@ -218,7 +328,7 @@ class AppointmentController extends Controller
         $appointment->load([
             'clinic:id,name',
             'doctor:id,full_name,clinic_id',
-            'assistant:id,full_name',
+            'assistant:id,name,first_name,last_name',
             'patient:id,full_name,phone',
             'procedure:id,name,duration_minutes',
             'procedureStep:id,procedure_id,name,duration_minutes,order',
@@ -226,7 +336,42 @@ class AppointmentController extends Controller
             'equipment:id,name',
         ]);
 
+        // Інвалідуємо кеш слотів для лікаря цього запису
         $this->invalidateSlotsCache($appointment->doctor_id, $appointment->start_at, $appointment->end_at);
+        
+        // Якщо запис використовує кабінет/асистента, інвалідуємо кеш для інших лікарів, які можуть використовувати ці ресурси
+        // Це критично, бо getSlots перевіряє доступність кабінетів/асистентів для всіх лікарів
+        if ($room) {
+            // Отримуємо всіх лікарів, які мали записи в цьому кабінеті на цю дату (для інвалідації їх кешу)
+            $doctorsWithRoomAppointments = Appointment::where('room_id', $room->id)
+                ->whereDate('start_at', $date)
+                ->distinct()
+                ->pluck('doctor_id');
+            
+            foreach ($doctorsWithRoomAppointments as $otherDoctorId) {
+                if ($otherDoctorId !== $doctor->id) {
+                    $this->invalidateSlotsCache($otherDoctorId, $startAt, $endAt);
+                }
+            }
+        }
+        
+        if ($assistantId) {
+            // Отримуємо всіх лікарів, які мали записи з цим асистентом на цю дату (для інвалідації їх кешу)
+            $doctorsWithAssistantAppointments = Appointment::where('assistant_id', $assistantId)
+                ->whereDate('start_at', $date)
+                ->distinct()
+                ->pluck('doctor_id');
+            
+            foreach ($doctorsWithAssistantAppointments as $otherDoctorId) {
+                if ($otherDoctorId !== $doctor->id) {
+                    $this->invalidateSlotsCache($otherDoctorId, $startAt, $endAt);
+                }
+            }
+        }
+
+        // #region agent log
+        DebugLogHelper::write('AppointmentController.php:273', 'Returning successful response', ['appointment_id' => $appointment->id, 'status_code' => 201], 'createAppointment', 'A');
+        // #endregion
 
         return (new AppointmentResource($appointment))
             ->response()
@@ -466,6 +611,7 @@ class AppointmentController extends Controller
 
         $query = Appointment::query()
             ->where('doctor_id', $doctor->id)
+            ->whereNotIn('status', ['cancelled', 'no_show']) // Виключаємо скасовані записи та записи з "не з'явився" зі сторінки розкладу
             ->with([
                 'clinic:id,name',
                 'doctor:id,full_name,clinic_id',
@@ -739,6 +885,7 @@ class AppointmentController extends Controller
         ]);
 
         $query = Appointment::query()
+            ->whereNotIn('status', ['cancelled', 'no_show']) // Виключаємо скасовані записи та записи з "не з'явився" з календаря
             ->with(['doctor', 'assistant', 'patient', 'procedure', 'procedureStep', 'room', 'equipment', 'clinic'])
             ->orderBy('start_at');
 
@@ -785,8 +932,15 @@ class AppointmentController extends Controller
             $query->where('procedure_id', $validated['procedure_id']);
         }
 
-        // пагінація
-        $perPage = $request->integer('per_page', 50); // більший ліміт для календаря
+        // Для календаря потрібні ВСІ записи без пагінації
+        // Якщо передано параметр no_pagination=true або для календаря (відсутність пагінації за запитом)
+        $noPagination = $request->boolean('no_pagination', false);
+        if ($noPagination) {
+            return AppointmentResource::collection($query->get());
+        }
+
+        // пагінація для інших випадків
+        $perPage = $request->integer('per_page', 50);
         $perPage = min(max($perPage, 1), 200);
 
         return AppointmentResource::collection($query->paginate($perPage));
@@ -819,7 +973,7 @@ class AppointmentController extends Controller
             $appointment->clinic_id,
             $appointment->doctor_id,
             $appointment->procedure_id,
-            $startDate->toDateString()
+            $startDate
         );
 
         AppointmentCancelled::dispatch($appointment);

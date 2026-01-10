@@ -13,12 +13,14 @@ use App\Models\Payment;
 use App\Models\Patient;
 use App\Models\Procedure;
 use App\Models\Room;
+use App\Models\Schedule;
 use App\Services\Calendar\AvailabilityService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class ProductionDataSeeder extends Seeder
@@ -52,6 +54,12 @@ class ProductionDataSeeder extends Seeder
      */
     private function updateClinics(): void
     {
+        // Перевіряємо, чи міграція з новими полями виконана
+        if (!Schema::hasColumn('clinics', 'address_street')) {
+            $this->command->warn('⚠️  Міграція з новими полями для клінік не виконана!');
+            $this->command->info('   Запустіть: php artisan migrate');
+            $this->command->info('   Або seeder оновить тільки базові поля (city, website, address, phone, email).');
+        }
         $clinicsData = [
             [
                 'city' => 'Київ',
@@ -137,34 +145,76 @@ class ProductionDataSeeder extends Seeder
 
         $clinics = Clinic::all();
 
+        // Перевіряємо, чи існують нові колонки в таблиці
+        $hasNewFields = Schema::hasColumn('clinics', 'address_street');
+
         foreach ($clinics as $index => $clinic) {
+            $updateData = [];
+            
             if (isset($clinicsData[$index])) {
-                $clinic->update($clinicsData[$index]);
+                $data = $clinicsData[$index];
+                
+                // Базові поля, які завжди є
+                $updateData['city'] = $data['city'];
+                $updateData['website'] = $data['website'] ?? null;
+                
+                // Нові поля тільки якщо міграція виконана
+                if ($hasNewFields) {
+                    $updateData['address_street'] = $data['address_street'] ?? null;
+                    $updateData['address_building'] = $data['address_building'] ?? null;
+                    $updateData['phone_main'] = $data['phone_main'] ?? null;
+                    $updateData['email_public'] = $data['email_public'] ?? null;
+                    $updateData['slogan'] = $data['slogan'] ?? null;
+                    $updateData['currency_code'] = 'UAH';
+                    $updateData['requisites'] = $data['requisites'] ?? null;
+                } else {
+                    // Якщо нових полів немає, використовуємо старі поля
+                    $addressParts = array_filter([
+                        $data['address_street'] ?? null,
+                        $data['address_building'] ?? null,
+                    ]);
+                    $updateData['address'] = !empty($addressParts) ? implode(', ', $addressParts) : null;
+                    $updateData['phone'] = $data['phone_main'] ?? null;
+                    $updateData['email'] = $data['email_public'] ?? null;
+                }
+                
+                $clinic->update($updateData);
                 $this->command->info("Оновлено клініку: {$clinic->name}");
             } else {
                 // Для додаткових клінік використовуємо випадкові дані
-                $clinic->update([
-                    'city' => fake()->city(),
-                    'address_street' => fake()->streetName(),
-                    'address_building' => fake()->buildingNumber(),
-                    'phone_main' => '+380' . fake()->numberBetween(10, 99) . fake()->numberBetween(1000000, 9999999),
-                    'email_public' => fake()->companyEmail(),
-                    'website' => 'https://' . fake()->domainName(),
-                    'slogan' => fake()->optional()->sentence(),
-                    'requisites' => [
-                        'legal_name' => fake()->company(),
-                        'tax_id' => fake()->numerify('########'),
-                        'iban' => 'UA' . fake()->numerify('###########################'),
-                        'bank_name' => fake()->randomElement(['ПриватБанк', 'Райффайзен Банк', 'Монобанк', 'Ощадбанк']),
-                        'mfo' => fake()->optional()->numerify('######'),
-                    ],
-                ]);
+                if ($hasNewFields) {
+                    $clinic->update([
+                        'city' => fake()->city(),
+                        'address_street' => fake()->streetName(),
+                        'address_building' => fake()->buildingNumber(),
+                        'phone_main' => '+380' . fake()->numberBetween(10, 99) . fake()->numberBetween(1000000, 9999999),
+                        'email_public' => fake()->companyEmail(),
+                        'website' => 'https://' . fake()->domainName(),
+                        'slogan' => fake()->optional()->sentence(),
+                        'currency_code' => 'UAH',
+                        'requisites' => [
+                            'legal_name' => fake()->company(),
+                            'tax_id' => fake()->numerify('########'),
+                            'iban' => 'UA' . fake()->numerify('###########################'),
+                            'bank_name' => fake()->randomElement(['ПриватБанк', 'Райффайзен Банк', 'Монобанк', 'Ощадбанк']),
+                            'mfo' => fake()->optional()->numerify('######'),
+                        ],
+                    ]);
+                } else {
+                    $clinic->update([
+                        'city' => fake()->city(),
+                        'address' => fake()->streetAddress(),
+                        'phone' => '+380' . fake()->numberBetween(10, 99) . fake()->numberBetween(1000000, 9999999),
+                        'email' => fake()->companyEmail(),
+                        'website' => 'https://' . fake()->domainName(),
+                    ]);
+                }
             }
         }
     }
 
     /**
-     * Створює записи на 3-4 місяці вперед для активних лікарів (5-6 записів на день)
+     * Створює записи на 3-4 місяці вперед для активних лікарів (8-10 записів на день)
      */
     private function seedFutureAppointments(): void
     {
@@ -186,7 +236,7 @@ class ProductionDataSeeder extends Seeder
         $period = new CarbonPeriod($startDate, $endDate);
 
         $activeDoctors = Doctor::where('is_active', true)
-            ->with(['clinics', 'appointments'])
+            ->with(['clinics', 'appointments', 'schedules'])
             ->get();
 
         if ($activeDoctors->isEmpty()) {
@@ -195,6 +245,7 @@ class ProductionDataSeeder extends Seeder
         }
 
         $createdCount = 0;
+        $skippedDays = 0;
 
         foreach ($activeDoctors as $doctor) {
             $clinicIds = collect([$doctor->clinic_id])
@@ -208,81 +259,166 @@ class ProductionDataSeeder extends Seeder
             }
 
             foreach ($period as $date) {
-                // Пропускаємо вихідні (субота та неділя)
-                if ($date->isWeekend()) {
-                    continue;
-                }
-
                 foreach ($clinicIds as $clinicId) {
                     $plan = $availability->getDailyPlan($doctor, $date, $clinicId);
-                    if (isset($plan['reason'])) {
+                    $appointmentsCreated = 0;
+                    
+                    // Отримуємо розклад лікаря для цього дня
+                    $weekday = (int) $date->isoWeekday();
+                    $schedule = Schedule::where('doctor_id', $doctor->id)
+                        ->where(function ($q) use ($clinicId) {
+                            $q->where('clinic_id', $clinicId)->orWhereNull('clinic_id');
+                        })
+                        ->where('weekday', $weekday)
+                        ->first();
+
+                    // Якщо немає розкладу, пропускаємо цей день
+                    if (!$schedule || !$schedule->start_time || !$schedule->end_time) {
+                        $skippedDays++;
                         continue;
                     }
 
-                    $slotDuration = $plan['slot_duration'] ?? 30;
-                    $slots = $availability->getSlots(
-                        $doctor,
-                        $date,
-                        $slotDuration,
-                        null,
-                        null,
-                        null,
-                        null,
-                        $clinicId
-                    )['slots'] ?? [];
+                    $slotDuration = $schedule->slot_duration_minutes ?? 30;
+                    $startTime = Carbon::parse($date->toDateString() . ' ' . $schedule->start_time);
+                    $endTime = Carbon::parse($date->toDateString() . ' ' . $schedule->end_time);
+                    
+                    // Враховуємо перерву
+                    $breakStart = $schedule->break_start ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_start) : null;
+                    $breakEnd = $schedule->break_end ? Carbon::parse($date->toDateString() . ' ' . $schedule->break_end) : null;
 
-                    if (empty($slots)) {
-                        continue;
-                    }
+                    // Спробуємо використати AvailabilityService для отримання вільних слотів
+                    if (!isset($plan['reason'])) {
+                        $slots = $availability->getSlots(
+                            $doctor,
+                            $date,
+                            $slotDuration,
+                            null,
+                            null,
+                            null,
+                            null,
+                            $clinicId
+                        )['slots'] ?? [];
 
-                    // 5-6 записів на день
-                    $appointmentsPerDay = fake()->numberBetween(5, 6);
-                    $daySlots = collect($slots)->shuffle()->take($appointmentsPerDay);
+                        if (!empty($slots)) {
+                            // 8-10 записів на день зі слотів
+                            $appointmentsPerDay = fake()->numberBetween(8, 10);
+                            $daySlots = collect($slots)->shuffle()->take(min($appointmentsPerDay, count($slots)));
 
-                    foreach ($daySlots as $slot) {
-                        $startAt = Carbon::parse($date->toDateString() . ' ' . $slot['start']);
-                        $endAt = Carbon::parse($date->toDateString() . ' ' . $slot['end']);
+                            foreach ($daySlots as $slot) {
+                                $startAt = Carbon::parse($date->toDateString() . ' ' . $slot['start']);
+                                $endAt = Carbon::parse($date->toDateString() . ' ' . $slot['end']);
 
-                        // Перевірка на дублікати
-                        if (
-                            Appointment::where('doctor_id', $doctor->id)
-                                ->where('start_at', $startAt)
-                                ->exists()
-                        ) {
-                            continue;
+                                // Перевірка на дублікати
+                                if (
+                                    Appointment::where('doctor_id', $doctor->id)
+                                        ->where('start_at', $startAt)
+                                        ->exists()
+                                ) {
+                                    continue;
+                                }
+
+                                $patient = $patients->random();
+                                $procedure = $procedures
+                                    ->where('clinic_id', $clinicId)
+                                    ->whenEmpty(fn ($c) => $procedures)
+                                    ->random();
+
+                                $room = Room::where('clinic_id', $clinicId)->inRandomOrder()->first();
+
+                                Appointment::create([
+                                    'clinic_id' => $clinicId,
+                                    'doctor_id' => $doctor->id,
+                                    'patient_id' => $patient->id,
+                                    'procedure_id' => $procedure?->id,
+                                    'room_id' => $room?->id,
+                                    'equipment_id' => $procedure?->equipment_id,
+                                    'assistant_id' => null,
+                                    'start_at' => $startAt,
+                                    'end_at' => $endAt,
+                                    'status' => Arr::random(['planned', 'confirmed']),
+                                    'source' => Arr::random(['phone', 'site', 'in_person']),
+                                    'comment' => fake()->optional(0.3)->sentence(),
+                                    'is_follow_up' => fake()->boolean(15),
+                                ]);
+
+                                $createdCount++;
+                                $appointmentsCreated++;
+                            }
                         }
+                    }
 
-                        $patient = $patients->random();
-                        $procedure = $procedures
-                            ->where('clinic_id', $clinicId)
-                            ->whenEmpty(fn ($c) => $procedures)
-                            ->random();
+                    // Якщо через AvailabilityService не створили достатньо записів (менше 8),
+                    // створюємо додаткові на основі розкладу лікаря (ігноруючи перевірки конфліктів)
+                    if ($appointmentsCreated < 8) {
+                        $targetAppointments = fake()->numberBetween(8, 10);
+                        $currentTime = $startTime->copy();
+                        $attempts = 0;
+                        $maxAttempts = 50; // Максимум спроб
 
-                        $room = Room::where('clinic_id', $clinicId)->inRandomOrder()->first();
+                        while ($appointmentsCreated < $targetAppointments && $currentTime->copy()->addMinutes($slotDuration)->lte($endTime) && $attempts < $maxAttempts) {
+                            $appointmentEnd = $currentTime->copy()->addMinutes($slotDuration);
 
-                        Appointment::create([
-                            'clinic_id' => $clinicId,
-                            'doctor_id' => $doctor->id,
-                            'patient_id' => $patient->id,
-                            'procedure_id' => $procedure?->id,
-                            'room_id' => $room?->id,
-                            'equipment_id' => $procedure?->equipment_id,
-                            'assistant_id' => null,
-                            'start_at' => $startAt,
-                            'end_at' => $endAt,
-                            'status' => Arr::random(['planned', 'confirmed']),
-                            'source' => Arr::random(['phone', 'site', 'in_person']),
-                            'comment' => fake()->optional(0.3)->sentence(),
-                            'is_follow_up' => fake()->boolean(15),
-                        ]);
+                            // Пропускаємо перерву
+                            if ($breakStart && $breakEnd && $currentTime->between($breakStart, $breakEnd->copy()->subMinute())) {
+                                $currentTime = $breakEnd->copy();
+                                $attempts++;
+                                continue;
+                            }
 
-                        $createdCount++;
+                            // Перевірка на дублікати (обов'язкова)
+                            if (
+                                Appointment::where('doctor_id', $doctor->id)
+                                    ->where('start_at', $currentTime)
+                                    ->exists()
+                            ) {
+                                $currentTime->addMinutes($slotDuration);
+                                $attempts++;
+                                continue;
+                            }
+
+                            // Створюємо запис
+                            $patient = $patients->random();
+                            $procedure = $procedures
+                                ->where('clinic_id', $clinicId)
+                                ->whenEmpty(fn ($c) => $procedures)
+                                ->random();
+
+                            $room = Room::where('clinic_id', $clinicId)->inRandomOrder()->first();
+
+                            Appointment::create([
+                                'clinic_id' => $clinicId,
+                                'doctor_id' => $doctor->id,
+                                'patient_id' => $patient->id,
+                                'procedure_id' => $procedure?->id,
+                                'room_id' => $room?->id,
+                                'equipment_id' => $procedure?->equipment_id,
+                                'assistant_id' => null,
+                                'start_at' => $currentTime->copy(),
+                                'end_at' => $appointmentEnd,
+                                'status' => Arr::random(['planned', 'confirmed']),
+                                'source' => Arr::random(['phone', 'site', 'in_person']),
+                                'comment' => fake()->optional(0.3)->sentence(),
+                                'is_follow_up' => fake()->boolean(15),
+                            ]);
+
+                            $createdCount++;
+                            $appointmentsCreated++;
+                            $currentTime->addMinutes($slotDuration);
+                            $attempts++;
+                        }
+                    }
+
+                    if ($appointmentsCreated === 0) {
+                        $skippedDays++;
                     }
                 }
             }
         }
 
         $this->command->info("Створено {$createdCount} записів на майбутнє.");
+        if ($skippedDays > 0) {
+            $this->command->warn("Пропущено {$skippedDays} днів (немає розкладу або лікар неактивний).");
+        }
     }
 
     /**

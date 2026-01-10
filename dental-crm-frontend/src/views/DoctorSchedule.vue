@@ -674,7 +674,16 @@ const bookSelectedSlot = async () => {
     commentText += ` (Тел: ${bookingPhone.value})`
   }
 
+  // Захист від double-submit
+  if (bookingLoading.value) {
+    console.warn('Booking already in progress, ignoring duplicate request')
+    return
+  }
+
   bookingLoading.value = true
+  bookingError.value = null
+  bookingSuccess.value = false
+  
   try {
     // Use snapshot captured on selectSlot to prevent mismatch (slot list was generated with those filters).
     const ctx = bookingContext.value || {}
@@ -721,12 +730,31 @@ const bookSelectedSlot = async () => {
     }
 
     bookingSuccess.value = true
+    bookingError.value = null
     await refreshScheduleData()
     setTimeout(() => {
       bookingSlot.value = null
     }, 1200)
   } catch (e) {
-    bookingError.value = e.response?.data?.message || 'Не вдалося створити запис'
+    console.error('Error creating appointment:', e)
+    // Якщо помилка 409 (conflict) або 422 (validation), це може означати, що запис вже створений
+    // Перевіряємо, чи запис дійсно створений, і якщо так - показуємо успіх
+    if (e.response?.status === 409 || e.response?.status === 422) {
+      const errorMessage = e.response?.data?.message || 'Не вдалося створити запис'
+      // Якщо в помилці є appointment_id, це означає, що запис вже існує
+      if (e.response?.data?.appointment_id) {
+        bookingSuccess.value = true
+        bookingError.value = null
+        await refreshScheduleData()
+        setTimeout(() => {
+          bookingSlot.value = null
+        }, 1200)
+        return
+      }
+      bookingError.value = errorMessage
+    } else {
+      bookingError.value = e.response?.data?.message || 'Не вдалося створити запис'
+    }
   } finally {
     bookingLoading.value = false
   }

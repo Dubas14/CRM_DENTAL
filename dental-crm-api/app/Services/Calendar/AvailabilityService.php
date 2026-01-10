@@ -15,6 +15,7 @@ use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\DebugLogHelper;
 
 class AvailabilityService
 {
@@ -157,7 +158,8 @@ class AvailabilityService
             $room,
             $equipment,
             $assistantId,
-            $clinicId
+            $clinicId,
+            $hasResourceConstraints
         ) {
             $plan = $this->getDailyPlan($doctor, $date, $clinicId);
 
@@ -175,6 +177,10 @@ class AvailabilityService
                 $candidateRooms = collect();
             }
 
+            // #region agent log
+            DebugLogHelper::write('AvailabilityService.php:180', 'getSlots params', ['doctor_id' => $doctor->id, 'date' => $date->toDateString(), 'procedure_id' => $procedure?->id, 'room_id' => $room?->id, 'equipment_id' => $equipment?->id, 'assistant_id' => $assistantId, 'candidateRooms_count' => $candidateRooms->count(), 'hasResourceConstraints' => $hasResourceConstraints, 'procedure_requires_room' => $procedure?->requires_room ?? false], 'getSlots', 'A');
+            // #endregion
+
             if ($procedure && $procedure->requires_room && $candidateRooms->isEmpty()) {
                 return ['slots' => [], 'reason' => 'no_room_compatibility'];
             }
@@ -184,6 +190,10 @@ class AvailabilityService
                 // Planned записи можуть бути без patient_id або з source=crm — все одно блокують час.
                 ->whereNotIn('status', ['cancelled', 'no_show'])
                 ->get();
+            
+            // #region agent log
+            DebugLogHelper::write('AvailabilityService.php:191', 'Doctor appointments loaded', ['doctor_id' => $doctor->id, 'date' => $date->toDateString(), 'appointments_count' => $appointments->count(), 'appointments' => $appointments->map(fn($a) => ['id' => $a->id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status, 'room_id' => $a->room_id, 'assistant_id' => $a->assistant_id])->toArray()], 'getSlots', 'E');
+            // #endregion
 
             $dayStart = $date->copy()->startOfDay();
             $dayEnd = $date->copy()->endOfDay();
@@ -260,6 +270,14 @@ class AvailabilityService
                 }
 
                 if ($this->hasConflict($appointments, $start, $end)) {
+                    // #region agent log
+                    $conflictingAppt = $appointments->first(function ($a) use ($start, $end) {
+                        $aStart = $a->start_at instanceof Carbon ? $a->start_at : Carbon::parse($a->start_at);
+                        $aEnd = $a->end_at instanceof Carbon ? $a->end_at : Carbon::parse($a->end_at);
+                        return $start < $aEnd && $end > $aStart;
+                    });
+                    DebugLogHelper::write('AvailabilityService.php:267', 'Slot skipped: doctor appointment conflict', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'conflicting_appointment' => $conflictingAppt ? ['id' => $conflictingAppt->id, 'start_at' => $conflictingAppt->start_at, 'end_at' => $conflictingAppt->end_at, 'status' => $conflictingAppt->status] : null], 'getSlots', 'E');
+                    // #endregion
                     continue;
                 }
 
@@ -267,6 +285,7 @@ class AvailabilityService
                     continue;
                 }
 
+                // Якщо передано явно room, перевіряємо його навіть якщо candidateRooms порожні
                 if ($candidateRooms->isNotEmpty()) {
                     $hasFreeRoom = $candidateRooms->contains(function (Room $candidate) use ($roomAppointmentsByRoom, $roomBlocksByRoom, $start, $end) {
                         $appointments = $roomAppointmentsByRoom->get($candidate->id, collect());
@@ -284,6 +303,43 @@ class AvailabilityService
                     });
 
                     if (! $hasFreeRoom) {
+                        // #region agent log
+                        DebugLogHelper::write('AvailabilityService.php:294', 'Slot skipped: no free room', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'candidateRooms_count' => $candidateRooms->count()], 'getSlots', 'B');
+                        // #endregion
+                        continue;
+                    }
+                } elseif ($room) {
+                    // Явно переданий кабінет - перевіряємо конфлікти для нього
+                    // ВАЖЛИВО: перевіряємо ВСІ записи в кабінеті, не тільки поточного лікаря
+                    $roomAppointments = Appointment::where('room_id', $room->id)
+                        ->whereDate('start_at', $date)
+                        ->whereNotIn('status', ['cancelled', 'no_show'])
+                        ->get();
+                    $roomBlocks = CalendarBlock::where('room_id', $room->id)
+                        ->where('start_at', '<', $dayEnd)
+                        ->where('end_at', '>', $dayStart)
+                        ->get();
+                    
+                    // #region agent log
+                    DebugLogHelper::write('AvailabilityService.php:300', 'Checking explicit room for slot', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'room_id' => $room->id, 'room_appointments_count' => $roomAppointments->count(), 'room_appointments' => $roomAppointments->map(fn($a) => ['id' => $a->id, 'doctor_id' => $a->doctor_id, 'start_at' => $a->start_at, 'end_at' => $a->end_at, 'status' => $a->status])->toArray()], 'getSlots', 'B');
+                    // #endregion
+                    
+                    if ($this->hasConflict($roomAppointments, $start, $end)) {
+                        // #region agent log
+                        $conflictingRoomAppt = $roomAppointments->first(function ($a) use ($start, $end) {
+                            $aStart = $a->start_at instanceof Carbon ? $a->start_at : Carbon::parse($a->start_at);
+                            $aEnd = $a->end_at instanceof Carbon ? $a->end_at : Carbon::parse($a->end_at);
+                            return $start < $aEnd && $end > $aStart;
+                        });
+                        DebugLogHelper::write('AvailabilityService.php:311', 'Slot skipped: explicit room conflict', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'room_id' => $room->id, 'conflicting_appointment' => $conflictingRoomAppt ? ['id' => $conflictingRoomAppt->id, 'doctor_id' => $conflictingRoomAppt->doctor_id, 'start_at' => $conflictingRoomAppt->start_at, 'end_at' => $conflictingRoomAppt->end_at, 'status' => $conflictingRoomAppt->status] : null], 'getSlots', 'B');
+                        // #endregion
+                        continue;
+                    }
+                    
+                    if ($this->hasConflict($roomBlocks, $start, $end)) {
+                        // #region agent log
+                        DebugLogHelper::write('AvailabilityService.php:318', 'Slot skipped: explicit room block conflict', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'room_id' => $room->id], 'getSlots', 'B');
+                        // #endregion
                         continue;
                     }
                 }
@@ -297,12 +353,27 @@ class AvailabilityService
                 }
 
                 if ($assistantId && $this->hasConflict($assistantAppointments, $start, $end)) {
+                    // #region agent log
+                    $conflictingAssistantAppt = $assistantAppointments->first(function ($a) use ($start, $end) {
+                        $aStart = $a->start_at instanceof Carbon ? $a->start_at : Carbon::parse($a->start_at);
+                        $aEnd = $a->end_at instanceof Carbon ? $a->end_at : Carbon::parse($a->end_at);
+                        return $start < $aEnd && $end > $aStart;
+                    });
+                    DebugLogHelper::write('AvailabilityService.php:334', 'Slot skipped: assistant conflict', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'assistant_id' => $assistantId, 'conflicting_appointment' => $conflictingAssistantAppt ? ['id' => $conflictingAssistantAppt->id, 'doctor_id' => $conflictingAssistantAppt->doctor_id, 'start_at' => $conflictingAssistantAppt->start_at, 'end_at' => $conflictingAssistantAppt->end_at, 'status' => $conflictingAssistantAppt->status] : null], 'getSlots', 'C');
+                    // #endregion
                     continue;
                 }
 
                 if ($assistantId && $this->hasConflict($assistantBlocks, $start, $end)) {
+                    // #region agent log
+                    DebugLogHelper::write('AvailabilityService.php:341', 'Slot skipped: assistant block conflict', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'assistant_id' => $assistantId], 'getSlots', 'C');
+                    // #endregion
                     continue;
                 }
+
+                // #region agent log
+                DebugLogHelper::write('AvailabilityService.php:347', 'Slot added', ['slot_start' => $start->format('H:i'), 'slot_end' => $end->format('H:i'), 'room_id' => $room?->id, 'equipment_id' => $equipment?->id, 'assistant_id' => $assistantId], 'getSlots', 'D');
+                // #endregion
 
                 $slots[] = [
                     'start' => $start->format('H:i'),
